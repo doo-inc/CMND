@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CustomerWithOwner } from "@/types/customers";
 import { toast } from "sonner";
+import { customers as mockCustomers } from "@/data/mockData";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -26,26 +27,48 @@ const Customers = () => {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Convert mock customer to CustomerData format
+  const convertMockToCustomerData = (mockCustomer: any): CustomerData => {
+    return {
+      id: mockCustomer.id,
+      name: mockCustomer.name,
+      logo: mockCustomer.logo || undefined,
+      segment: mockCustomer.segment || "Unknown Segment",
+      region: mockCustomer.region || "Unknown Region",
+      stage: mockCustomer.stage || "New",
+      status: (mockCustomer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+      contractSize: mockCustomer.contractSize || 0,
+      owner: mockCustomer.owner ? {
+        id: mockCustomer.owner.id,
+        name: mockCustomer.owner.name,
+        role: mockCustomer.owner.role || "Unknown Role"
+      } : {
+        id: "unknown",
+        name: "Unassigned",
+        role: "Unassigned"
+      }
+    };
+  };
+
   // Fetch customers from Supabase
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         setIsLoading(true);
         
+        console.log("Fetching customers...");
         const { data, error } = await supabase
           .from('customers')
-          .select(`
-            *,
-            staff:owner_id (
-              id, name, role
-            )
-          `);
+          .select('*');
 
         if (error) {
+          console.error("Supabase error:", error);
           throw error;
         }
 
-        if (data) {
+        console.log("Customers data fetched:", data);
+
+        if (data && data.length > 0) {
           // Convert Supabase data to our CustomerData format
           const formattedCustomers: CustomerData[] = data.map((customer: any) => ({
             id: customer.id,
@@ -56,22 +79,24 @@ const Customers = () => {
             stage: customer.stage || "New",
             status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
             contractSize: customer.contract_size || 0,
-            owner: customer.staff ? {
-              id: customer.staff.id,
-              name: customer.staff.name,
-              role: customer.staff.role || "Unknown Role"
-            } : {
-              id: "unknown",
-              name: "Unassigned",
+            owner: {
+              id: customer.owner_id || "unknown",
+              name: "Unassigned", // We don't have the owner data from this query
               role: "Unassigned"
             }
           }));
 
           setCustomers(formattedCustomers);
+        } else {
+          console.log("No customers found in database, using mock data");
+          // Use mock data if no customers found
+          setCustomers(mockCustomers.map(convertMockToCustomerData));
         }
       } catch (error) {
         console.error("Error fetching customers:", error);
-        toast.error("Failed to load customers");
+        toast.error("Failed to load customers, using mock data");
+        // Fall back to mock data
+        setCustomers(mockCustomers.map(convertMockToCustomerData));
       } finally {
         setIsLoading(false);
       }

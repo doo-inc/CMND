@@ -47,7 +47,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Notification, CreateNotificationParams } from "@/utils/notificationHelpers";
+import { createNotification, CreateNotificationParams } from "@/utils/notificationHelpers";
+import { Notification } from "@/types/notifications";
 
 interface TeamMember {
   id: string;

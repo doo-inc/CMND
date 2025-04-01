@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -10,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { customers } from "@/data/mockData";
+import { customers as mockCustomers } from "@/data/mockData";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
@@ -58,53 +57,37 @@ const Lifecycle = () => {
       try {
         setLoading(true);
         
+        console.log("Fetching customers for lifecycle...");
         const { data, error } = await supabase
           .from('customers')
           .select('*');
 
         if (error) {
+          console.error("Error fetching customers:", error);
           throw error;
         }
 
-        console.log("Fetched customers:", data);
+        console.log("Lifecycle - fetched customers:", data);
 
         if (data && data.length > 0) {
+          // We're getting back proper customers from the database
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
         } else {
-          console.log("No customers found, creating from mock data");
+          console.log("No customers found, using mock data");
           // If no customers exist in the database, use mock data
-          // and create them in the database
-          await createMockCustomers();
-          
-          // After inserting, fetch again
-          const { data: updatedData, error: refetchError } = await supabase
-            .from('customers')
-            .select('*');
-            
-          if (refetchError) {
-            throw refetchError;
-          }
-            
-          if (updatedData && updatedData.length > 0) {
-            console.log("Created and fetched customers:", updatedData);
-            setCustomerList(updatedData);
-            setSelectedCustomer(updatedData[0]?.id || "");
-          } else {
-            console.log("Still no customers, using mock data directly");
-            // Fall back to mock data directly, but convert to Customer type
-            const convertedCustomers = customers.map(convertMockToCustomer);
-            setCustomerList(convertedCustomers);
-            setSelectedCustomer(convertedCustomers[0]?.id || "");
-          }
+          const convertedCustomers = mockCustomers.map(convertMockToCustomer);
+          setCustomerList(convertedCustomers);
+          setSelectedCustomer(convertedCustomers[0].id);
         }
       } catch (error) {
-        console.error("Error fetching customers:", error);
-        toast.error("Failed to load customers");
+        console.error("Error in fetchCustomers:", error);
+        toast.error("Failed to load customers, using mock data");
+        
         // Fall back to mock data but convert to Customer type
-        const convertedCustomers = customers.map(convertMockToCustomer);
+        const convertedCustomers = mockCustomers.map(convertMockToCustomer);
         setCustomerList(convertedCustomers);
-        setSelectedCustomer(convertedCustomers[0]?.id || "");
+        setSelectedCustomer(convertedCustomers[0].id);
       } finally {
         setLoading(false);
       }
@@ -112,102 +95,6 @@ const Lifecycle = () => {
 
     fetchCustomers();
   }, []);
-
-  const createMockCustomers = async () => {
-    try {
-      for (const customer of customers) {
-        const dbCustomerId = getDbCustomerId(customer.id);
-        // Check if customer exists
-        const { data: existingCustomer } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('id', dbCustomerId)
-          .maybeSingle();
-          
-        if (!existingCustomer) {
-          console.log("Creating customer:", customer.name, "with ID:", dbCustomerId);
-          // Create the customer
-          const { error: insertError } = await supabase
-            .from('customers')
-            .insert({
-              id: dbCustomerId,
-              name: customer.name,
-              segment: customer.segment,
-              region: customer.region,
-              stage: customer.stage,
-              status: customer.status,
-              contract_size: customer.contractSize,
-              owner_id: customer.owner?.id
-            });
-            
-          if (insertError) {
-            console.error("Error creating customer:", insertError);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error creating mock customers:", error);
-    }
-  };
-
-  // Default integration stages to add for new customers
-  const defaultIntegrationStages = [
-    {
-      name: "WhatsApp Integration",
-      status: "not-started",
-      owner: {
-        id: "user-004",
-        name: "Mohammed Rahman",
-        role: "Integration Engineer"
-      },
-      notes: "Set up WhatsApp Business API for document uploads and verification",
-      icon: <MessageSquare className="h-5 w-5 text-green-600" />
-    },
-    {
-      name: "Instagram Account",
-      status: "not-started",
-      owner: {
-        id: "user-004",
-        name: "Mohammed Rahman",
-        role: "Integration Engineer"
-      },
-      notes: "Set up Instagram business account and API connections",
-      icon: <Instagram className="h-5 w-5 text-pink-600" />
-    },
-    {
-      name: "Website Widget",
-      status: "not-started",
-      owner: {
-        id: "user-004",
-        name: "Mohammed Rahman",
-        role: "Integration Engineer"
-      },
-      notes: "Embed the chat widget on customer website for interactions",
-      icon: <Globe className="h-5 w-5 text-blue-600" />
-    },
-    {
-      name: "Email Integration",
-      status: "not-started",
-      owner: {
-        id: "user-004",
-        name: "Mohammed Rahman",
-        role: "Integration Engineer"
-      },
-      notes: "Connect email service for notifications and communications",
-      icon: <Mail className="h-5 w-5 text-yellow-600" />
-    },
-    {
-      name: "Mobile SDK Setup",
-      status: "not-started",
-      owner: {
-        id: "user-004",
-        name: "Mohammed Rahman",
-        role: "Integration Engineer"
-      },
-      notes: "Implement native SDK for iOS and Android applications",
-      icon: <Smartphone className="h-5 w-5 text-purple-600" />
-    }
-  ];
 
   const handleCustomerChange = async (value: string) => {
     console.log("Selected customer changed to:", value);
@@ -230,12 +117,12 @@ const Lifecycle = () => {
         .from('lifecycle_stages')
         .select(`
           *,
-          staff(id, name, role)
+          staff:owner_id (id, name, role)
         `)
         .eq('customer_id', dbCustomerId);
 
       if (error) {
-        console.error("Error details:", error);
+        console.error("Error fetching lifecycle stages:", error);
         throw error;
       }
 
@@ -269,7 +156,7 @@ const Lifecycle = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching lifecycle stages:", error);
+      console.error("Error in fetchCustomerStages:", error);
       toast.error("Failed to load lifecycle stages");
       setCustomerStages([]);
     } finally {
@@ -348,7 +235,7 @@ const Lifecycle = () => {
 
   const selectedCustomerData = customerList.find(
     (customer) => customer.id === selectedCustomer
-  ) || (selectedCustomer ? convertMockToCustomer(customers.find((c) => c.id === selectedCustomer)) : null);
+  ) || (selectedCustomer ? convertMockToCustomer(mockCustomers.find((c) => c.id === selectedCustomer)) : null);
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -371,7 +258,7 @@ const Lifecycle = () => {
                 {loading ? (
                   <SelectItem value="loading" disabled>Loading customers...</SelectItem>
                 ) : (
-                  (customerList.length > 0 ? customerList : customers.map(convertMockToCustomer)).map((customer) => (
+                  (customerList.length > 0 ? customerList : mockCustomers.map(convertMockToCustomer)).map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
                     </SelectItem>

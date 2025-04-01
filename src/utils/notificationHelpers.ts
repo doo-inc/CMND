@@ -16,6 +16,8 @@ export const createNotification = async (params: CreateNotificationParams): Prom
   try {
     const { type, title, message, related_id, related_type } = params;
     
+    console.log("Creating notification:", params);
+    
     const { error } = await supabase
       .from('notifications')
       .insert({
@@ -29,6 +31,8 @@ export const createNotification = async (params: CreateNotificationParams): Prom
       
     if (error) {
       console.error("Error creating notification:", error);
+    } else {
+      console.log("Notification created successfully");
     }
   } catch (error) {
     console.error("Error in createNotification:", error);
