@@ -73,7 +73,7 @@ const secondaryNavItems = [
 export function DashboardSidebar() {
   return (
     <Sidebar className="glass-sidebar border-0 transition-all duration-300">
-      <SidebarHeader className="p-4 bg-sidebar-background/30 backdrop-blur-md border-b border-sidebar-border/10">
+      <SidebarHeader className="p-4 bg-sidebar/30 backdrop-blur-md border-b border-sidebar-border/10">
         <div className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-full bg-doo-purple-500/80 backdrop-blur-sm flex items-center justify-center text-white font-bold shadow-lg border border-white/20">
             D

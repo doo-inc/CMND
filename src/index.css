@@ -134,7 +134,7 @@
   }
   
   .glass-sidebar {
-    @apply bg-sidebar-background/90 backdrop-blur-xl border-r border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+    @apply bg-sidebar/90 backdrop-blur-xl border-r border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.1)];
   }
   
   .glass-dialog {
