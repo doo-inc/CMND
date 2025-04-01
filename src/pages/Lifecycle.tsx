@@ -23,6 +23,18 @@ const Lifecycle = () => {
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Convert customerId to UUID format for database operations
+  const getDbCustomerId = (customerId: string) => {
+    // If it's already a UUID, return it
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+      return customerId;
+    }
+    
+    // For our mock customers with format like "cust-001", we'll create a deterministic UUID
+    // This approach ensures the same mock ID always maps to the same UUID
+    return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
+  };
+
   // Fetch customers from Supabase
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -38,10 +50,51 @@ const Lifecycle = () => {
         if (data && data.length > 0) {
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
+        } else {
+          // If no customers exist in the database, use mock data
+          // and create them in the database
+          for (const customer of customers) {
+            const dbCustomerId = getDbCustomerId(customer.id);
+            // Check if customer exists
+            const { data: existingCustomer } = await supabase
+              .from('customers')
+              .select('id')
+              .eq('id', dbCustomerId)
+              .maybeSingle();
+              
+            if (!existingCustomer) {
+              // Create the customer
+              await supabase
+                .from('customers')
+                .insert({
+                  id: dbCustomerId,
+                  name: customer.name,
+                  segment: customer.segment,
+                  region: customer.region,
+                  stage: customer.stage,
+                  status: customer.status,
+                  contract_size: customer.contractSize,
+                  owner_id: customer.owner?.id
+                });
+            }
+          }
+          
+          // After inserting, fetch again
+          const { data: updatedData } = await supabase
+            .from('customers')
+            .select('*');
+            
+          if (updatedData) {
+            setCustomerList(updatedData);
+            setSelectedCustomer(updatedData[0]?.id || customers[0].id);
+          }
         }
       } catch (error) {
         console.error("Error fetching customers:", error);
         toast.error("Failed to load customers");
+        // Fall back to mock data
+        setCustomerList([]);
+        setSelectedCustomer(customers[0].id);
       } finally {
         setLoading(false);
       }
@@ -117,19 +170,24 @@ const Lifecycle = () => {
   const fetchCustomerStages = async (customerId: string) => {
     try {
       setLoading(true);
+      const dbCustomerId = getDbCustomerId(customerId);
+      console.log("Fetching stages for customer ID:", customerId, "DB ID:", dbCustomerId);
+      
       const { data, error } = await supabase
         .from('lifecycle_stages')
         .select(`
           *,
           staff(id, name, role)
         `)
-        .eq('customer_id', customerId);
+        .eq('customer_id', dbCustomerId);
 
       if (error) {
+        console.error("Error details:", error);
         throw error;
       }
 
       if (data) {
+        console.log("Fetched stages:", data);
         // Convert Supabase data to LifecycleStageProps format
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
           id: stage.id,
@@ -149,6 +207,11 @@ const Lifecycle = () => {
         }));
 
         setCustomerStages(formattedStages);
+        
+        // If no stages are found, automatically add default stages
+        if (formattedStages.length === 0) {
+          await handleAddDefaultIntegrations(customerId);
+        }
       }
     } catch (error) {
       console.error("Error fetching lifecycle stages:", error);
@@ -158,17 +221,19 @@ const Lifecycle = () => {
     }
   };
 
-  const handleAddDefaultIntegrations = async () => {
-    if (!selectedCustomer) return;
+  const handleAddDefaultIntegrations = async (customerId = selectedCustomer) => {
+    if (!customerId) return;
     
     try {
       setLoading(true);
+      const dbCustomerId = getDbCustomerId(customerId);
+      console.log("Adding default stages for customer ID:", customerId, "DB ID:", dbCustomerId);
       
       // Check if integrations already exist for this customer
       const { data: existingStages } = await supabase
         .from('lifecycle_stages')
         .select('name')
-        .eq('customer_id', selectedCustomer);
+        .eq('customer_id', dbCustomerId);
       
       const existingStageNames = existingStages?.map(stage => stage.name) || [];
       
@@ -184,24 +249,29 @@ const Lifecycle = () => {
       
       // Prepare stages for insertion
       const stagesToInsert = stagesToAdd.map(stage => ({
-        customer_id: selectedCustomer,
+        customer_id: dbCustomerId,
         name: stage.name,
         status: stage.status,
         owner_id: stage.owner.id,
         notes: stage.notes
       }));
       
+      console.log("Inserting stages:", stagesToInsert);
+      
       // Insert stages
       const { error } = await supabase
         .from('lifecycle_stages')
         .insert(stagesToInsert);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error details:", error);
+        throw error;
+      }
       
       toast.success("Integration stages added successfully");
       
       // Refresh stages
-      await fetchCustomerStages(selectedCustomer);
+      await fetchCustomerStages(customerId);
       
     } catch (error) {
       console.error("Error adding integration stages:", error);
@@ -251,7 +321,7 @@ const Lifecycle = () => {
             </Select>
             <Button 
               variant="outline" 
-              onClick={handleAddDefaultIntegrations}
+              onClick={() => handleAddDefaultIntegrations()}
               disabled={loading}
             >
               Add Integration Stages

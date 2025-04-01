@@ -22,6 +22,18 @@ export function LifecycleTracker({
 }: LifecycleTrackerProps) {
   const [stages, setStages] = useState(initialStages);
 
+  // Convert customerId to UUID format if it's not already
+  const getDbCustomerId = () => {
+    // If it's already a UUID, return it
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+      return customerId;
+    }
+    
+    // For our mock customers with format like "cust-001", we'll create a deterministic UUID
+    // This approach ensures the same mock ID always maps to the same UUID
+    return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
+  };
+
   const handleAddStage = async (newStage: Partial<LifecycleStageProps>) => {
     try {
       const stageWithId: LifecycleStageProps = {
@@ -37,11 +49,11 @@ export function LifecycleTracker({
         notes: newStage.notes,
       };
 
-      // Prepare the data for Supabase
+      // Prepare the data for Supabase with converted customerId
       const { data, error } = await supabase
         .from('lifecycle_stages')
         .insert({
-          customer_id: customerId,
+          customer_id: getDbCustomerId(),
           name: stageWithId.name,
           status: stageWithId.status,
           owner_id: stageWithId.owner.id,
@@ -51,6 +63,7 @@ export function LifecycleTracker({
         .select();
 
       if (error) {
+        console.error("Error details:", error);
         throw error;
       }
 
@@ -96,6 +109,7 @@ export function LifecycleTracker({
         .eq('id', stageId);
 
       if (error) {
+        console.error("Error details:", error);
         throw error;
       }
 
@@ -123,19 +137,25 @@ export function LifecycleTracker({
   useEffect(() => {
     const fetchLifecycleStages = async () => {
       try {
+        // Use the converted customer ID for database operations
+        const dbCustomerId = getDbCustomerId();
+        console.log("Fetching lifecycle stages for customer ID:", customerId, "DB ID:", dbCustomerId);
+
         const { data, error } = await supabase
           .from('lifecycle_stages')
           .select(`
             *,
             staff(id, name, role)
           `)
-          .eq('customer_id', customerId);
+          .eq('customer_id', dbCustomerId);
 
         if (error) {
+          console.error("Error details:", error);
           throw error;
         }
 
         if (data) {
+          console.log("Fetched lifecycle stages:", data);
           // Convert Supabase data to LifecycleStageProps format
           const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
             id: stage.id,
