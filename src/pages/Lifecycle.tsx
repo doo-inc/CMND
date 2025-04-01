@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { lifecycleStages } from "@/data/mockData";
@@ -12,12 +12,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { customers } from "@/data/mockData";
+import { toast } from "sonner";
 
 const Lifecycle = () => {
-  const [selectedCustomer, setSelectedCustomer] = React.useState(customers[0].id);
+  const [selectedCustomer, setSelectedCustomer] = useState(customers[0].id);
+  const [customerStages, setCustomerStages] = useState(lifecycleStages);
 
   const handleCustomerChange = (value: string) => {
     setSelectedCustomer(value);
+    // In a real app, you would fetch stages for the selected customer
+    // For now, we'll just reset to the default stages
+    setCustomerStages(lifecycleStages);
+  };
+
+  const handleStagesUpdate = (updatedStages: any) => {
+    setCustomerStages(updatedStages);
+    // In a real app, you would save these changes to your backend
+    console.log("Updated stages:", updatedStages);
+    toast.success("Lifecycle stages updated successfully");
   };
 
   const selectedCustomerData = customers.find(
@@ -42,7 +54,6 @@ const Lifecycle = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button>Edit Stages</Button>
           </div>
         </div>
 
@@ -50,7 +61,8 @@ const Lifecycle = () => {
           <LifecycleTracker
             customerId={selectedCustomerData.id}
             customerName={selectedCustomerData.name}
-            stages={lifecycleStages}
+            stages={customerStages}
+            onStagesUpdate={handleStagesUpdate}
           />
         )}
       </div>

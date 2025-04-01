@@ -13,8 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 const Customers = () => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
@@ -75,7 +77,7 @@ const Customers = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customers</h1>
-          <Button>
+          <Button onClick={() => navigate("/customers/new")}>
             <Plus className="mr-2 h-4 w-4" /> Add Customer
           </Button>
         </div>
@@ -115,6 +117,20 @@ const Customers = () => {
             {sortBy === "contractSize" && sortOrder !== "none" && (
               <span className="text-xs">
                 ({sortOrder === "asc" ? "Low to High" : "High to Low"})
+              </span>
+            )}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => handleSort("name")}
+            className="flex items-center gap-2"
+          >
+            <span>Sort by Name</span>
+            <ArrowUpDown className="h-4 w-4" />
+            {sortBy === "name" && sortOrder !== "none" && (
+              <span className="text-xs">
+                ({sortOrder === "asc" ? "A to Z" : "Z to A"})
               </span>
             )}
           </Button>

@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Customers from "./pages/Customers";
 import CustomerDetails from "./pages/CustomerDetails";
+import AddEditCustomer from "./pages/AddEditCustomer";
 import Lifecycle from "./pages/Lifecycle";
 import Contracts from "./pages/Contracts";
 import Integrations from "./pages/Integrations";
@@ -30,6 +31,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/customers/new" element={<AddEditCustomer />} />
+              <Route path="/customers/:id/edit" element={<AddEditCustomer />} />
               <Route path="/customers/:id" element={<CustomerDetails />} />
               <Route path="/lifecycle" element={<Lifecycle />} />
               <Route path="/contracts" element={<Contracts />} />

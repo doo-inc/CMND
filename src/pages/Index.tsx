@@ -17,7 +17,7 @@ const Index = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Dashboard</h1>
-          <Button onClick={() => navigate("/customers")}>
+          <Button onClick={() => navigate("/customers/new")}>
             <Plus className="mr-2 h-4 w-4" /> Add Customer
           </Button>
         </div>
@@ -30,7 +30,7 @@ const Index = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Customers */}
-          <Card className="col-span-2 bg-card">
+          <Card className="col-span-2 bg-card dark:bg-gray-800">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-medium">
                 Recent Customers
@@ -49,7 +49,7 @@ const Index = () => {
           </Card>
 
           {/* Quick Actions */}
-          <Card className="bg-card">
+          <Card className="bg-card dark:bg-gray-800">
             <CardHeader>
               <CardTitle className="text-lg font-medium">
                 Quick Actions
@@ -58,7 +58,7 @@ const Index = () => {
             <CardContent className="space-y-4">
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/customers")}>
                 <Users className="mr-2 h-4 w-4" />
-                View All Customers
+                Manage Customers
               </Button>
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/lifecycle")}>
                 <Calendar className="mr-2 h-4 w-4" />

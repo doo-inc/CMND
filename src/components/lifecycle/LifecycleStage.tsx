@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { AddEditStage } from "./AddEditStage";
 
 export interface OwnerType {
   id: string;
@@ -24,14 +25,19 @@ export interface LifecycleStageProps {
   notes?: string;
 }
 
+interface LifecycleStageComponentProps extends LifecycleStageProps {
+  onUpdate?: (id: string, updatedStage: Partial<LifecycleStageProps>) => void;
+}
+
 export function LifecycleStage({ 
   id, 
   name, 
   status, 
   owner, 
   deadline, 
-  notes 
-}: LifecycleStageProps) {
+  notes,
+  onUpdate
+}: LifecycleStageComponentProps) {
   
   const getStatusClass = () => {
     switch (status) {
@@ -48,6 +54,12 @@ export function LifecycleStage({
     }
   };
 
+  const handleSaveStage = (updatedStage: Partial<LifecycleStageProps>) => {
+    if (onUpdate) {
+      onUpdate(id, updatedStage);
+    }
+  };
+
   return (
     <div className="lifecycle-stage glass-card animate-fade-in">
       <div className="flex justify-between items-start mb-3">
@@ -59,9 +71,12 @@ export function LifecycleStage({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-card">
-            <DropdownMenuItem className="cursor-pointer">
-              <FileEdit className="mr-2 h-4 w-4" />
-              <span>Edit</span>
+            <DropdownMenuItem className="cursor-pointer" asChild>
+              <AddEditStage 
+                stage={{ id, name, status, owner, deadline, notes }} 
+                isEditing={true}
+                onSave={handleSaveStage}
+              />
             </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer">
               <Users className="mr-2 h-4 w-4" />

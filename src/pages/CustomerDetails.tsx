@@ -42,7 +42,8 @@ import {
   Building, 
   MapPin,
   DollarSign,
-  Activity
+  Activity,
+  Edit
 } from "lucide-react";
 import { customers } from "@/data/mockData";
 import { CustomerOwner, CustomerData } from "@/components/customers/CustomerCard";
@@ -50,6 +51,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -66,7 +68,6 @@ const formSchema = z.object({
 const CustomerDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
   
   const customer = customers.find(c => c.id === id);
   
@@ -83,29 +84,13 @@ const CustomerDetails = () => {
     );
   }
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: customer.name,
-      segment: customer.segment,
-      region: customer.region,
-      stage: customer.stage,
-      status: customer.status,
-      contractSize: customer.contractSize,
-      ownerId: customer.owner.id,
-    },
-  });
-  
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, you would save this data to your backend
-    console.log(values);
-    
-    // Simulate an API call
-    setTimeout(() => {
-      setIsEditing(false);
-      toast.success("Customer details updated successfully");
-    }, 500);
-  }
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
   
   return (
     <DashboardLayout>
@@ -131,58 +116,59 @@ const CustomerDetails = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle>Customer Information</CardTitle>
-                    <CardDescription>Manage customer details and preferences</CardDescription>
+                    <CardDescription>View and manage customer details</CardDescription>
                   </div>
-                  {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)}>
-                      Edit Details
-                    </Button>
-                  ) : (
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                  )}
+                  <Button onClick={() => navigate(`/customers/${id}/edit`)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Details
+                  </Button>
                 </CardHeader>
                 <CardContent>
-                  {!isEditing ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Name</h3>
-                          <p className="text-base">{customer.name}</p>
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Segment</h3>
-                          <p className="text-base">{customer.segment}</p>
+                  <div className="flex items-center gap-4 mb-6">
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={customer.logo} alt={customer.name} />
+                      <AvatarFallback className="text-xl bg-primary/10">
+                        {getInitials(customer.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h2 className="text-xl font-bold">{customer.name}</h2>
+                      <p className="text-muted-foreground">{customer.segment} · {customer.region}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Segment</h3>
+                        <p className="text-base">{customer.segment}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Region</h3>
+                        <p className="text-base">{customer.region}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Current Stage</h3>
+                        <p className="text-base">{customer.stage}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                        <div className="mt-1">
+                          <span className={`status-badge status-${customer.status}`}>
+                            {customer.status.replace("-", " ")}
+                          </span>
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Region</h3>
-                          <p className="text-base">{customer.region}</p>
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Current Stage</h3>
-                          <p className="text-base">{customer.stage}</p>
-                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">Contract Size</h3>
+                        <p className="text-base">${customer.contractSize.toLocaleString()}</p>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                          <div className="mt-1">
-                            <span className={`status-badge status-${customer.status}`}>
-                              {customer.status.replace("-", " ")}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground">Contract Size</h3>
-                          <p className="text-base">${customer.contractSize.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      
                       <div>
                         <h3 className="text-sm font-medium text-muted-foreground">Owner</h3>
                         <div className="flex items-center mt-1">
@@ -191,161 +177,7 @@ const CustomerDetails = () => {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Customer name" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="segment"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Segment</FormLabel>
-                                <Select 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select segment" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="Enterprise">Enterprise</SelectItem>
-                                    <SelectItem value="Mid-Market">Mid-Market</SelectItem>
-                                    <SelectItem value="SMB">SMB</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="region"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Region</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Region" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="stage"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Current Stage</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Current stage" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Status</FormLabel>
-                                <Select 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="not-started">Not Started</SelectItem>
-                                    <SelectItem value="in-progress">In Progress</SelectItem>
-                                    <SelectItem value="done">Done</SelectItem>
-                                    <SelectItem value="blocked">Blocked</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="contractSize"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Contract Size ($)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    placeholder="Contract size" 
-                                    {...field} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <FormField
-                          control={form.control}
-                          name="ownerId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Owner</FormLabel>
-                              <Select 
-                                onValueChange={field.onChange} 
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select owner" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="user-001">Ahmed Abdullah (Account Executive)</SelectItem>
-                                  <SelectItem value="user-002">Fatima Hassan (Customer Success Manager)</SelectItem>
-                                  <SelectItem value="user-003">Khalid Al-Farsi (Finance Manager)</SelectItem>
-                                  <SelectItem value="user-004">Mohammed Rahman (Integration Engineer)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="flex justify-end">
-                          <Button type="submit">Save Changes</Button>
-                        </div>
-                      </form>
-                    </Form>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
               
@@ -417,7 +249,7 @@ const CustomerDetails = () => {
                 <CardDescription>View all customer interactions and events</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-center py-8 text-muted-foreground">Coming soon: Activity timeline for this customer</p>
+                <p className="text-center py-8 text-muted-foreground">Activity timeline for this customer will appear here</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -429,7 +261,7 @@ const CustomerDetails = () => {
                 <CardDescription>View and manage customer documents</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-center py-8 text-muted-foreground">Coming soon: Document management for this customer</p>
+                <p className="text-center py-8 text-muted-foreground">Document management for this customer will appear here</p>
               </CardContent>
             </Card>
           </TabsContent>
