@@ -1,4 +1,9 @@
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
+import { 
+  MessageSquare, Instagram, Globe, Mail, Smartphone, 
+  FileCheck, Users, Briefcase, DollarSign, Calendar, 
+  BookOpen, HeartHandshake, Medal, Zap, CheckSquare 
+} from "lucide-react";
 
 // Mock customers
 export const customers = [
@@ -130,7 +135,263 @@ export const dashboardStats = [
   },
 ];
 
-// Mock lifecycle stages
+// Default lifecycle stages by category
+export const defaultLifecycleStages: LifecycleStageProps[] = [
+  {
+    id: "sales-stage-1",
+    name: "Initial Contact",
+    status: "not-started",
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    notes: "First connection with the potential customer.",
+    icon: <Briefcase className="h-5 w-5" />
+  },
+  {
+    id: "sales-stage-2",
+    name: "Demo Completed",
+    status: "not-started",
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    notes: "Product demonstration for key stakeholders.",
+    icon: <Briefcase className="h-5 w-5" />
+  },
+  {
+    id: "sales-stage-3",
+    name: "Proposal Sent",
+    status: "not-started",
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    notes: "Formal proposal shared with pricing and terms.",
+    icon: <FileCheck className="h-5 w-5" />
+  },
+  
+  {
+    id: "finance-stage-1",
+    name: "Contract Signed",
+    status: "not-started",
+    category: "Finance",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Khalid Al-Farsi",
+      role: "Finance Manager"
+    },
+    notes: "Completed contract with signatures from all parties.",
+    icon: <FileCheck className="h-5 w-5" />
+  },
+  {
+    id: "finance-stage-2",
+    name: "Invoice Generated",
+    status: "not-started",
+    category: "Finance",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Khalid Al-Farsi",
+      role: "Finance Manager"
+    },
+    notes: "Initial invoice sent to customer.",
+    icon: <DollarSign className="h-5 w-5" />
+  },
+  {
+    id: "finance-stage-3",
+    name: "Payment Processed",
+    status: "not-started",
+    category: "Finance",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Khalid Al-Farsi",
+      role: "Finance Manager"
+    },
+    notes: "First payment successfully received.",
+    icon: <DollarSign className="h-5 w-5" />
+  },
+  
+  {
+    id: "onboarding-stage-1",
+    name: "Kickoff Meeting",
+    status: "not-started",
+    category: "Onboarding",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Initial project kickoff with key stakeholders.",
+    icon: <Calendar className="h-5 w-5" />
+  },
+  {
+    id: "onboarding-stage-2",
+    name: "Requirements Gathering",
+    status: "not-started",
+    category: "Onboarding",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Document detailed customer requirements and configuration needs.",
+    icon: <CheckSquare className="h-5 w-5" />
+  },
+  {
+    id: "onboarding-stage-3",
+    name: "Account Setup",
+    status: "not-started",
+    category: "Onboarding",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Set up customer account with initial configuration.",
+    icon: <Users className="h-5 w-5" />
+  },
+  
+  {
+    id: "integration-stage-1",
+    name: "Chat Integration",
+    status: "not-started",
+    category: "Integration",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Implement customer chat integration for real-time support.",
+    icon: <MessageSquare className="h-5 w-5" />
+  },
+  {
+    id: "integration-stage-2",
+    name: "Social Media Connect",
+    status: "not-started",
+    category: "Integration",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Set up Instagram business account connection for the customer.",
+    icon: <Instagram className="h-5 w-5" />
+  },
+  {
+    id: "integration-stage-3",
+    name: "Website API Setup",
+    status: "not-started",
+    category: "Integration",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Configure API endpoints for the customer's website integration.",
+    icon: <Globe className="h-5 w-5" />
+  },
+  {
+    id: "integration-stage-4",
+    name: "Email Campaign Integration",
+    status: "not-started",
+    category: "Integration",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Set up email marketing integration with customer's CRM.",
+    icon: <Mail className="h-5 w-5" />
+  },
+  {
+    id: "integration-stage-5",
+    name: "Mobile App Configuration",
+    status: "not-started",
+    category: "Integration",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Configure mobile app settings and push notification services.",
+    icon: <Smartphone className="h-5 w-5" />
+  },
+  
+  {
+    id: "training-stage-1",
+    name: "Admin Training",
+    status: "not-started",
+    category: "Training",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Train customer administrators on platform management.",
+    icon: <BookOpen className="h-5 w-5" />
+  },
+  {
+    id: "training-stage-2",
+    name: "End User Training",
+    status: "not-started",
+    category: "Training",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Train end users on daily operations and features.",
+    icon: <Users className="h-5 w-5" />
+  },
+  
+  {
+    id: "success-stage-1",
+    name: "Go-Live",
+    status: "not-started",
+    category: "Success",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Official launch of the solution for customer use.",
+    icon: <Zap className="h-5 w-5" />
+  },
+  {
+    id: "success-stage-2",
+    name: "30-Day Review",
+    status: "not-started",
+    category: "Success",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Post-implementation review after 30 days of live usage.",
+    icon: <HeartHandshake className="h-5 w-5" />
+  },
+  {
+    id: "success-stage-3",
+    name: "Success Metrics Achieved",
+    status: "not-started",
+    category: "Success",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Key performance indicators and success metrics have been met.",
+    icon: <Medal className="h-5 w-5" />
+  }
+];
+
+// Legacy lifecycle stages - keep for backward compatibility
 export const lifecycleStages: LifecycleStageProps[] = [
   {
     id: "stage-001",

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { AddEditStage } from "./AddEditStage";
 import { 
@@ -7,7 +8,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { CheckCircle, Clock, AlertCircle, Circle } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Circle, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +17,7 @@ import { ReactNode } from "react";
 export interface LifecycleStageProps {
   id: string;
   name: string;
-  status: "not-started" | "in-progress" | "done" | "blocked";
+  status: "not-started" | "in-progress" | "done" | "blocked" | "not-applicable";
   owner: {
     id: string;
     name: string;
@@ -25,6 +26,7 @@ export interface LifecycleStageProps {
   deadline?: string;
   notes?: string;
   icon?: ReactNode;
+  category?: string;
   onUpdate?: (stageId: string, updatedStage: Partial<LifecycleStageProps>) => void;
 }
 
@@ -36,6 +38,7 @@ export function LifecycleStageComponent({
   deadline,
   notes,
   icon,
+  category,
   onUpdate,
 }: LifecycleStageProps) {
   const getStatusIcon = (status: string) => {
@@ -48,6 +51,8 @@ export function LifecycleStageComponent({
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "blocked":
         return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "not-applicable":
+        return <Slash className="h-4 w-4 text-gray-400" />;
       default:
         return null;
     }
@@ -63,6 +68,8 @@ export function LifecycleStageComponent({
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Done</Badge>;
       case "blocked":
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Blocked</Badge>;
+      case "not-applicable":
+        return <Badge variant="outline" className="border-gray-300 text-gray-500">Not Applicable</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -81,6 +88,9 @@ export function LifecycleStageComponent({
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
+          {category && (
+            <Badge variant="outline" className="bg-secondary/10">{category}</Badge>
+          )}
           <div className="flex items-center space-x-2">
             <Avatar className="h-7 w-7">
               <AvatarImage src={`https://avatar.vercel.sh/${owner.name}.png`} alt={owner.name} />
@@ -109,7 +119,7 @@ export function LifecycleStageComponent({
       <CardFooter className="flex justify-between items-center">
         {getStatusBadge(status)}
         <AddEditStage 
-          stage={{ id, name, status, owner, deadline, notes, icon }} 
+          stage={{ id, name, status, owner, deadline, notes, icon, category }} 
           isEditing 
           onSave={(updatedStage) => {
             if (onUpdate) {

@@ -44,6 +44,7 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
     stage?.deadline ? new Date(stage.deadline) : undefined
   );
   const [notes, setNotes] = React.useState(stage?.notes || "");
+  const [category, setCategory] = React.useState(stage?.category || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +57,7 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
     const updatedStage: Partial<LifecycleStageProps> = {
       name,
       status,
+      category,
       owner: {
         id: ownerId,
         name: getOwnerName(ownerId),
@@ -129,6 +131,24 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
             </div>
             
             <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sales">Sales</SelectItem>
+                  <SelectItem value="Onboarding">Onboarding</SelectItem>
+                  <SelectItem value="Integration">Integration</SelectItem>
+                  <SelectItem value="Training">Training</SelectItem>
+                  <SelectItem value="Success">Success</SelectItem>
+                  <SelectItem value="Finance">Finance</SelectItem>
+                  <SelectItem value="Technical">Technical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
               <Label htmlFor="status">Status</Label>
               <Select value={status} onValueChange={handleStatusChange}>
                 <SelectTrigger id="status">
@@ -139,6 +159,7 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
                   <SelectItem value="blocked">Blocked</SelectItem>
+                  <SelectItem value="not-applicable">Not Applicable</SelectItem>
                 </SelectContent>
               </Select>
             </div>

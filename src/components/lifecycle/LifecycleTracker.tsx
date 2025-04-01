@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -6,7 +7,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LifecycleStage, LifecycleStageWithOwner } from "@/types/customers";
 import { createNotification } from "@/utils/notificationHelpers";
-import { MessageSquare, Instagram, Globe, Mail, Smartphone } from "lucide-react";
+import { defaultLifecycleStages } from "@/data/mockData";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LifecycleTrackerProps {
   customerId: string;
@@ -15,31 +17,14 @@ interface LifecycleTrackerProps {
   onStagesUpdate?: (stages: LifecycleStageProps[]) => void;
 }
 
-const defaultFallbackStages: LifecycleStageProps[] = [
-  {
-    id: "fallback-stage-1",
-    name: "Chat Integration",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000001",
-      name: "Ahmed Abdullah",
-      role: "Account Executive"
-    },
-    notes: "Implement customer chat integration for real-time support.",
-    icon: <MessageSquare className="h-5 w-5" />
-  },
-  {
-    id: "fallback-stage-2",
-    name: "Social Media Connect",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000004",
-      name: "Mohammed Rahman",
-      role: "Integration Engineer"
-    },
-    notes: "Set up Instagram business account connection for the customer.",
-    icon: <Instagram className="h-5 w-5" />
-  }
+const STAGE_CATEGORIES = [
+  "All",
+  "Sales",
+  "Finance",
+  "Onboarding",
+  "Integration",
+  "Training",
+  "Success"
 ];
 
 export function LifecycleTracker({
@@ -50,6 +35,7 @@ export function LifecycleTracker({
 }: LifecycleTrackerProps) {
   const [stages, setStages] = useState<LifecycleStageProps[]>(initialStages && initialStages.length > 0 ? initialStages : []);
   const [hasFetchedStages, setHasFetchedStages] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("All");
 
   const getDbCustomerId = () => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -64,6 +50,7 @@ export function LifecycleTracker({
         id: `stage-${Date.now()}`,
         name: newStage.name || "",
         status: newStage.status || "not-started",
+        category: newStage.category || "",
         owner: newStage.owner || {
           id: "user-001",
           name: "Ahmed Abdullah",
@@ -81,7 +68,8 @@ export function LifecycleTracker({
           status: stageWithId.status,
           owner_id: stageWithId.owner.id,
           deadline: stageWithId.deadline,
-          notes: stageWithId.notes
+          notes: stageWithId.notes,
+          category: stageWithId.category
         })
         .select();
 
@@ -94,7 +82,8 @@ export function LifecycleTracker({
         const newStageData: LifecycleStageProps = {
           id: data[0].id,
           name: data[0].name,
-          status: data[0].status as "not-started" | "in-progress" | "done" | "blocked",
+          status: data[0].status as LifecycleStageProps["status"],
+          category: data[0].category,
           owner: stageWithId.owner,
           deadline: data[0].deadline,
           notes: data[0].notes,
@@ -151,6 +140,7 @@ export function LifecycleTracker({
       if (updatedStage.owner?.id) updateData.owner_id = updatedStage.owner.id;
       if (updatedStage.deadline !== undefined) updateData.deadline = updatedStage.deadline;
       if (updatedStage.notes !== undefined) updateData.notes = updatedStage.notes;
+      if (updatedStage.category !== undefined) updateData.category = updatedStage.category;
 
       const { error } = await supabase
         .from('lifecycle_stages')
@@ -222,33 +212,71 @@ export function LifecycleTracker({
     }
   };
 
-  useEffect(() => {
-    const fetchLifecycleStages = async () => {
-      if (!customerId || hasFetchedStages) return;
+  const handleAddDefaultStages = async () => {
+    try {
+      setStages([...stages, ...defaultLifecycleStages]);
+      toast.success("Default stages loaded");
       
-      try {
-        const dbCustomerId = getDbCustomerId();
-        console.log("Fetching lifecycle stages for customer ID:", customerId, "DB ID:", dbCustomerId);
+      const dbCustomerId = getDbCustomerId();
+      const stagesToInsert = defaultLifecycleStages.map(stage => ({
+        customer_id: dbCustomerId,
+        name: stage.name,
+        status: stage.status,
+        owner_id: stage.owner.id,
+        notes: stage.notes,
+        category: stage.category
+      }));
+      
+      const { error } = await supabase
+        .from('lifecycle_stages')
+        .insert(stagesToInsert);
+      
+      if (error) {
+        console.error("Error details:", error);
+        throw error;
+      }
+      
+      // Refresh stages to get the server-generated IDs
+      await fetchLifecycleStages();
+    } catch (error) {
+      console.error("Error adding default stages:", error);
+      toast.error("Failed to add default stages");
+    }
+  };
 
-        const { data, error } = await supabase
-          .from('lifecycle_stages')
-          .select(`
-            *,
-            staff(id, name, role)
-          `)
-          .eq('customer_id', dbCustomerId);
+  const fetchLifecycleStages = async () => {
+    if (!customerId) return;
+    
+    try {
+      const dbCustomerId = getDbCustomerId();
+      console.log("Fetching lifecycle stages for customer ID:", customerId, "DB ID:", dbCustomerId);
 
-        if (error) {
-          console.error("Error details:", error);
-          throw error;
-        }
+      const { data, error } = await supabase
+        .from('lifecycle_stages')
+        .select(`
+          *,
+          staff(id, name, role)
+        `)
+        .eq('customer_id', dbCustomerId);
 
-        if (data) {
-          console.log("Fetched lifecycle stages:", data);
-          const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
+      if (error) {
+        console.error("Error details:", error);
+        throw error;
+      }
+
+      if (data) {
+        console.log("Fetched lifecycle stages:", data);
+        const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
+          // Get the matching default stage with icon if available
+          const defaultStage = defaultLifecycleStages.find(
+            ds => ds.name === stage.name && ds.category === stage.category
+          );
+          
+          return {
             id: stage.id,
             name: stage.name,
-            status: stage.status as "not-started" | "in-progress" | "done" | "blocked",
+            status: stage.status as LifecycleStageProps["status"],
+            category: stage.category,
             owner: stage.staff ? {
               id: stage.staff.id,
               name: stage.staff.name,
@@ -260,35 +288,39 @@ export function LifecycleTracker({
             },
             deadline: stage.deadline,
             notes: stage.notes,
-          }));
+            icon: defaultStage?.icon
+          };
+        });
 
-          setStages(formattedStages);
-          setHasFetchedStages(true);
-          
-          if (onStagesUpdate) {
-            onStagesUpdate(formattedStages);
-          }
+        setStages(formattedStages);
+        setHasFetchedStages(true);
+        
+        if (onStagesUpdate) {
+          onStagesUpdate(formattedStages);
         }
-      } catch (error) {
-        console.error("Error fetching lifecycle stages:", error);
-        toast.error("Failed to load lifecycle stages");
       }
-    };
-
+    } catch (error) {
+      console.error("Error fetching lifecycle stages:", error);
+      toast.error("Failed to load lifecycle stages");
+    }
+  };
+  
+  useEffect(() => {
     if (customerId) {
       fetchLifecycleStages();
     }
-  }, [customerId, onStagesUpdate, hasFetchedStages]);
+  }, [customerId, onStagesUpdate]);
   
   useEffect(() => {
     if (hasFetchedStages && stages.length === 0) {
-      console.log("No stages found after fetch, using fallback stages");
-      setStages(defaultFallbackStages);
-      if (onStagesUpdate) {
-        onStagesUpdate(defaultFallbackStages);
-      }
+      console.log("No stages found after fetch, using default stages");
+      handleAddDefaultStages();
     }
-  }, [hasFetchedStages, stages.length, onStagesUpdate]);
+  }, [hasFetchedStages, stages.length]);
+
+  const filteredStages = activeCategory === 'All' 
+    ? stages 
+    : stages.filter(stage => stage.category === activeCategory);
 
   return (
     <Card className="w-full glass-card">
@@ -300,8 +332,18 @@ export function LifecycleTracker({
         />
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="All" value={activeCategory} onValueChange={setActiveCategory} className="mb-6">
+          <TabsList className="mb-4">
+            {STAGE_CATEGORIES.map(category => (
+              <TabsTrigger key={category} value={category}>
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stages.map((stage, index) => (
+          {filteredStages.map((stage, index) => (
             <div key={stage.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
               <LifecycleStageComponent 
                 {...stage} 
@@ -310,9 +352,13 @@ export function LifecycleTracker({
             </div>
           ))}
           
-          {stages.length === 0 && (
+          {filteredStages.length === 0 && (
             <div className="col-span-3 text-center py-8">
-              <p className="text-muted-foreground">No lifecycle stages defined. Add your first stage!</p>
+              <p className="text-muted-foreground">
+                {stages.length === 0 
+                  ? "No lifecycle stages defined. Add your first stage!" 
+                  : `No ${activeCategory} stages found. Switch category or add a new stage.`}
+              </p>
             </div>
           )}
         </div>

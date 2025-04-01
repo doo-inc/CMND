@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -14,71 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
-import { MessageSquare, Instagram, Globe, Mail, Smartphone } from "lucide-react";
-
-// Default integration stages for the lifecycle tracker
-const defaultIntegrationStages: LifecycleStageProps[] = [
-  {
-    id: "integration-stage-1",
-    name: "Chat Integration",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000001",
-      name: "Ahmed Abdullah",
-      role: "Account Executive"
-    },
-    notes: "Implement customer chat integration for real-time support.",
-    icon: <MessageSquare className="h-5 w-5" />
-  },
-  {
-    id: "integration-stage-2",
-    name: "Social Media Connect",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000004",
-      name: "Mohammed Rahman",
-      role: "Integration Engineer"
-    },
-    notes: "Set up Instagram business account connection for the customer.",
-    icon: <Instagram className="h-5 w-5" />
-  },
-  {
-    id: "integration-stage-3",
-    name: "Website API Setup",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000004",
-      name: "Mohammed Rahman",
-      role: "Integration Engineer"
-    },
-    notes: "Configure API endpoints for the customer's website integration.",
-    icon: <Globe className="h-5 w-5" />
-  },
-  {
-    id: "integration-stage-4",
-    name: "Email Campaign Integration",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000002",
-      name: "Fatima Hassan",
-      role: "Customer Success Manager"
-    },
-    notes: "Set up email marketing integration with customer's CRM.",
-    icon: <Mail className="h-5 w-5" />
-  },
-  {
-    id: "integration-stage-5",
-    name: "Mobile App Configuration",
-    status: "not-started",
-    owner: {
-      id: "00000000-0000-0000-0000-000000000004",
-      name: "Mohammed Rahman",
-      role: "Integration Engineer"
-    },
-    notes: "Configure mobile app settings and push notification services.",
-    icon: <Smartphone className="h-5 w-5" />
-  }
-];
+import { defaultLifecycleStages } from "@/data/mockData";
 
 // Helper function to convert mock customer to DB Customer type
 const convertMockToCustomer = (mockCustomer: any): Customer => {
@@ -187,28 +124,36 @@ const Lifecycle = () => {
       console.log("Fetched stages:", data);
       
       if (data) {
-        const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
-          id: stage.id,
-          name: stage.name,
-          status: stage.status as "not-started" | "in-progress" | "done" | "blocked",
-          owner: stage.staff ? {
-            id: stage.staff.id,
-            name: stage.staff.name,
-            role: stage.staff.role
-          } : {
-            id: "00000000-0000-0000-0000-000000000001",
-            name: "Ahmed Abdullah",
-            role: "Account Executive"
-          },
-          deadline: stage.deadline,
-          notes: stage.notes,
-        }));
+        const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
+          // Match with a default stage to get the icon if available
+          const defaultStage = defaultLifecycleStages.find(
+            ds => ds.name === stage.name && ds.category === stage.category
+          );
+          
+          return {
+            id: stage.id,
+            name: stage.name,
+            status: stage.status as LifecycleStageProps["status"],
+            category: stage.category,
+            owner: stage.staff ? {
+              id: stage.staff.id,
+              name: stage.staff.name,
+              role: stage.staff.role
+            } : {
+              id: "00000000-0000-0000-0000-000000000001",
+              name: "Ahmed Abdullah",
+              role: "Account Executive"
+            },
+            deadline: stage.deadline,
+            notes: stage.notes,
+            icon: defaultStage?.icon
+          };
+        });
 
         setCustomerStages(formattedStages);
         
         if (formattedStages.length === 0) {
-          console.log("No stages found, adding default stages");
-          await handleAddDefaultIntegrations(customerId);
+          console.log("No stages found, default stages will be added by the lifecycle tracker");
         }
       }
     } catch (error) {
@@ -220,9 +165,9 @@ const Lifecycle = () => {
     }
   };
 
-  const handleAddDefaultIntegrations = async (customerId = selectedCustomer) => {
+  const handleAddAllDefaultStages = async (customerId = selectedCustomer) => {
     if (!customerId) {
-      console.log("No customer ID provided, can't add default integrations");
+      console.log("No customer ID provided, can't add default stages");
       return;
     }
     
@@ -231,9 +176,10 @@ const Lifecycle = () => {
       const dbCustomerId = getDbCustomerId(customerId);
       console.log("Adding default stages for customer ID:", customerId, "DB ID:", dbCustomerId);
       
+      // First check if any stages already exist
       const { data: existingStages, error: checkError } = await supabase
         .from('lifecycle_stages')
-        .select('name')
+        .select('name, category')
         .eq('customer_id', dbCustomerId);
       
       if (checkError) {
@@ -241,38 +187,15 @@ const Lifecycle = () => {
         throw checkError;
       }
       
-      const existingStageNames = existingStages?.map(stage => stage.name) || [];
-      
-      const stagesToAdd = defaultIntegrationStages.filter(
-        stage => !existingStageNames.includes(stage.name)
-      );
+      // Filter out stages that already exist (by name AND category)
+      const stagesToAdd = defaultLifecycleStages.filter(stage => {
+        return !existingStages?.some(
+          existing => existing.name === stage.name && existing.category === stage.category
+        );
+      });
       
       if (stagesToAdd.length === 0) {
-        const { data: allStages, error: getAllError } = await supabase
-          .from('lifecycle_stages')
-          .select('*')
-          .eq('customer_id', dbCustomerId);
-        
-        if (getAllError || !allStages || allStages.length === 0) {
-          const stagesToInsert = defaultIntegrationStages.map(stage => ({
-            customer_id: dbCustomerId,
-            name: stage.name,
-            status: stage.status,
-            owner_id: stage.owner.id,
-            notes: stage.notes
-          }));
-          
-          const { error: insertError } = await supabase
-            .from('lifecycle_stages')
-            .insert(stagesToInsert);
-          
-          if (!insertError) {
-            toast.success("Default integration stages added");
-            setCustomerStages(defaultIntegrationStages);
-          }
-        } else {
-          toast.info("Integration stages already exist for this customer");
-        }
+        toast.info("All default stages already exist for this customer");
         return;
       }
       
@@ -281,10 +204,11 @@ const Lifecycle = () => {
         name: stage.name,
         status: stage.status,
         owner_id: stage.owner.id,
-        notes: stage.notes
+        notes: stage.notes,
+        category: stage.category
       }));
       
-      console.log("Inserting stages:", stagesToInsert);
+      console.log(`Inserting ${stagesToInsert.length} stages:`, stagesToInsert);
       
       const { error } = await supabase
         .from('lifecycle_stages')
@@ -295,26 +219,14 @@ const Lifecycle = () => {
         throw error;
       }
       
-      toast.success("Integration stages added successfully");
+      toast.success(`${stagesToInsert.length} default stages added successfully`);
       
-      const updatedStages = [...customerStages, ...stagesToAdd.map(stage => ({
-        ...stage,
-        id: `temp-${Date.now()}-${Math.random()}`
-      }))];
-      setCustomerStages(updatedStages);
-      
+      // Refresh the customer stages
       await fetchCustomerStages(customerId);
       
     } catch (error) {
-      console.error("Error adding integration stages:", error);
-      toast.error("Failed to add integration stages");
-      
-      if (customerStages.length === 0) {
-        setCustomerStages(defaultIntegrationStages.map(stage => ({
-          ...stage,
-          id: `temp-${Date.now()}-${Math.random()}`
-        })));
-      }
+      console.error("Error adding default stages:", error);
+      toast.error("Failed to add default stages");
     } finally {
       setLoading(false);
     }
@@ -323,7 +235,43 @@ const Lifecycle = () => {
   const handleStagesUpdate = (updatedStages: LifecycleStageProps[]) => {
     setCustomerStages(updatedStages);
     console.log("Updated stages:", updatedStages);
-    toast.success("Lifecycle stages updated successfully");
+  };
+
+  const handleMarkAllNotApplicable = async (customerId = selectedCustomer) => {
+    if (!customerId) return;
+    
+    try {
+      setLoading(true);
+      const dbCustomerId = getDbCustomerId(customerId);
+      
+      // Only update stages that are in 'not-started' status
+      const { error } = await supabase
+        .from('lifecycle_stages')
+        .update({ status: 'not-applicable' })
+        .eq('customer_id', dbCustomerId)
+        .eq('status', 'not-started');
+      
+      if (error) {
+        console.error("Error updating stages:", error);
+        throw error;
+      }
+      
+      // Update local state
+      const updatedStages = customerStages.map(stage => {
+        if (stage.status === 'not-started') {
+          return { ...stage, status: 'not-applicable' as const };
+        }
+        return stage;
+      });
+      
+      setCustomerStages(updatedStages);
+      toast.success("All not-started stages marked as Not Applicable");
+    } catch (error) {
+      console.error("Error marking stages as not applicable:", error);
+      toast.error("Failed to update stages");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedCustomerData = customerList.find(
@@ -342,7 +290,7 @@ const Lifecycle = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customer Lifecycle</h1>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedCustomer} onValueChange={handleCustomerChange}>
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Select customer" />
@@ -361,10 +309,17 @@ const Lifecycle = () => {
             </Select>
             <Button 
               variant="outline" 
-              onClick={() => handleAddDefaultIntegrations()}
+              onClick={() => handleAddAllDefaultStages()}
               disabled={loading || !selectedCustomer}
             >
-              Add Integration Stages
+              Add All Default Stages
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => handleMarkAllNotApplicable()}
+              disabled={loading || !selectedCustomer}
+            >
+              Mark Not Started as N/A
             </Button>
           </div>
         </div>
