@@ -9,7 +9,304 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      contracts: {
+        Row: {
+          created_at: string
+          customer_id: string
+          end_date: string
+          id: string
+          name: string
+          owner_id: string | null
+          renewal_date: string | null
+          start_date: string
+          status: string | null
+          terms: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          end_date: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          renewal_date?: string | null
+          start_date: string
+          status?: string | null
+          terms?: string | null
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          end_date?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          renewal_date?: string | null
+          start_date?: string
+          status?: string | null
+          terms?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          contract_size: number | null
+          created_at: string
+          id: string
+          logo: string | null
+          name: string
+          owner_id: string | null
+          region: string | null
+          segment: string | null
+          stage: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_size?: number | null
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name: string
+          owner_id?: string | null
+          region?: string | null
+          segment?: string | null
+          stage?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_size?: number | null
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name?: string
+          owner_id?: string | null
+          region?: string | null
+          segment?: string | null
+          stage?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          customer_id: string
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          customer_id: string
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          customer_id?: string
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lifecycle_stages: {
+        Row: {
+          created_at: string
+          customer_id: string
+          deadline: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          deadline?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          deadline?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifecycle_stages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lifecycle_stages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renewal_activities: {
+        Row: {
+          activity_type: string
+          assigned_to: string | null
+          completed_date: string | null
+          contract_id: string
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_type: string
+          assigned_to?: string | null
+          completed_date?: string | null
+          contract_id: string
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: string
+          assigned_to?: string | null
+          completed_date?: string | null
+          contract_id?: string
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_activities_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renewal_activities_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,10 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard, CustomerData } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, ArrowUpDown } from "lucide-react";
-import { customers } from "@/data/mockData";
 import { 
   Select,
   SelectContent,
@@ -14,6 +13,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { CustomerWithOwner } from "@/types/customers";
+import { toast } from "sonner";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -21,6 +23,60 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
   const [sortBy, setSortBy] = useState<"name" | "contractSize">("name");
+  const [customers, setCustomers] = useState<CustomerData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch customers from Supabase
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setIsLoading(true);
+        
+        const { data, error } = await supabase
+          .from('customers')
+          .select(`
+            *,
+            staff:owner_id (
+              id, name, role
+            )
+          `);
+
+        if (error) {
+          throw error;
+        }
+
+        // Convert Supabase data to our CustomerData format
+        const formattedCustomers: CustomerData[] = data.map((customer: CustomerWithOwner) => ({
+          id: customer.id,
+          name: customer.name,
+          logo: customer.logo || undefined,
+          segment: customer.segment || "Unknown Segment",
+          region: customer.region || "Unknown Region",
+          stage: customer.stage || "New",
+          status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+          contractSize: customer.contract_size || 0,
+          owner: customer.staff ? {
+            id: customer.staff.id,
+            name: customer.staff.name,
+            role: customer.staff.role || "Unknown Role"
+          } : {
+            id: "unknown",
+            name: "Unassigned",
+            role: "Unassigned"
+          }
+        }));
+
+        setCustomers(formattedCustomers);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+        toast.error("Failed to load customers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
 
   const handleSort = (field: "name" | "contractSize") => {
     if (sortBy === field) {
@@ -137,13 +193,19 @@ const Customers = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCustomers.map((customer) => (
-            <CustomerCard key={customer.id} customer={customer} />
-          ))}
+          {isLoading ? (
+            Array(6).fill(0).map((_, index) => (
+              <div key={index} className="h-48 bg-gray-100 animate-pulse rounded-md"></div>
+            ))
+          ) : (
+            filteredCustomers.map((customer) => (
+              <CustomerCard key={customer.id} customer={customer} />
+            ))
+          )}
           
-          {filteredCustomers.length === 0 && (
+          {!isLoading && filteredCustomers.length === 0 && (
             <div className="col-span-3 py-16 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No customers found. Try adjusting your filters.</p>
+              <p className="text-gray-500 dark:text-gray-400">No customers found. Try adjusting your filters or add a new customer.</p>
             </div>
           )}
         </div>
