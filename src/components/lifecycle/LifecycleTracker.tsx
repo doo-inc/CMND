@@ -35,6 +35,7 @@ export function LifecycleTracker({
   const [stages, setStages] = useState<LifecycleStageProps[]>(initialStages && initialStages.length > 0 ? initialStages : []);
   const [hasFetchedStages, setHasFetchedStages] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
 
   const getDbCustomerId = () => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -49,6 +50,24 @@ export function LifecycleTracker({
       ...defaultStage,
       icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
     };
+  };
+
+  const fetchValidStaffIds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id');
+      
+      if (error) {
+        console.error("Error fetching staff IDs:", error);
+        return [];
+      }
+      
+      return data?.map(staff => staff.id) || [];
+    } catch (error) {
+      console.error("Error in fetchValidStaffIds:", error);
+      return [];
+    }
   };
 
   const handleAddStage = async (newStage: Partial<LifecycleStageProps>) => {
@@ -228,17 +247,30 @@ export function LifecycleTracker({
 
   const handleAddDefaultStages = async () => {
     try {
+      if (validStaffIds.length === 0) {
+        const ids = await fetchValidStaffIds();
+        setValidStaffIds(ids);
+        
+        if (ids.length === 0) {
+          toast.error("No staff members found in the database. Please add staff members first.");
+          return;
+        }
+      }
+      
       const stagesWithIcons = defaultLifecycleStages.map(convertDefaultStageToProps);
       
       setStages([...stages, ...stagesWithIcons]);
       toast.success("Default stages loaded");
       
       const dbCustomerId = getDbCustomerId();
+      
+      const defaultStaffId = validStaffIds[0];
+      
       const stagesToInsert = defaultLifecycleStages.map(stage => ({
         customer_id: dbCustomerId,
         name: stage.name,
         status: stage.status,
-        owner_id: stage.owner.id,
+        owner_id: validStaffIds.includes(stage.owner.id) ? stage.owner.id : defaultStaffId,
         notes: stage.notes,
         category: stage.category || null
       }));

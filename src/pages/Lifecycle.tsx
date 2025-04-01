@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -45,6 +46,7 @@ const Lifecycle = () => {
   const [customerList, setCustomerList] = useState<Customer[]>([]);
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
   const [loading, setLoading] = useState(true);
+  const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
 
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -54,7 +56,35 @@ const Lifecycle = () => {
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
+  // Fetch valid staff IDs from the database
+  const fetchValidStaffIds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id');
+      
+      if (error) {
+        console.error("Error fetching staff IDs:", error);
+        return [];
+      }
+      
+      return data?.map(staff => staff.id) || [];
+    } catch (error) {
+      console.error("Error in fetchValidStaffIds:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
+    // Fetch valid staff IDs when component mounts
+    const loadStaffIds = async () => {
+      const ids = await fetchValidStaffIds();
+      console.log("Valid staff IDs:", ids);
+      setValidStaffIds(ids);
+    };
+    
+    loadStaffIds();
+    
     const fetchCustomers = async () => {
       try {
         setLoading(true);
@@ -177,6 +207,16 @@ const Lifecycle = () => {
     }
     
     try {
+      if (validStaffIds.length === 0) {
+        const ids = await fetchValidStaffIds();
+        setValidStaffIds(ids);
+        
+        if (ids.length === 0) {
+          toast.error("No staff members found in the database. Please add staff members first.");
+          return;
+        }
+      }
+      
       setLoading(true);
       const dbCustomerId = getDbCustomerId(customerId);
       console.log("Adding default stages for customer ID:", customerId, "DB ID:", dbCustomerId);
@@ -202,11 +242,15 @@ const Lifecycle = () => {
         return;
       }
       
+      // Use a fallback staff ID if the owner ID from default stages doesn't exist
+      const defaultStaffId = validStaffIds[0];
+      
       const stagesToInsert = stagesToAdd.map(stage => ({
         customer_id: dbCustomerId,
         name: stage.name,
         status: stage.status,
-        owner_id: stage.owner.id,
+        // Use the default owner_id if the specified one doesn't exist in the staff table
+        owner_id: validStaffIds.includes(stage.owner.id) ? stage.owner.id : defaultStaffId,
         notes: stage.notes,
         category: stage.category || null
       }));
