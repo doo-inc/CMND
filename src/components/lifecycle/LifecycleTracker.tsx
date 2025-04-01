@@ -43,7 +43,6 @@ export function LifecycleTracker({
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
-  // Convert a defaultLifecycleStage to a LifecycleStageProps with icon
   const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
     const IconComponent = icons[defaultStage.iconName];
     return {
@@ -87,7 +86,6 @@ export function LifecycleTracker({
       }
 
       if (data && data.length > 0) {
-        // Look for a matching default stage to get the icon
         const matchingDefaultStage = defaultLifecycleStages.find(
           ds => ds.name === data[0].name && ds.category === data[0].category
         );
@@ -230,7 +228,6 @@ export function LifecycleTracker({
 
   const handleAddDefaultStages = async () => {
     try {
-      // Convert default stages to proper LifecycleStageProps with icons
       const stagesWithIcons = defaultLifecycleStages.map(convertDefaultStageToProps);
       
       setStages([...stages, ...stagesWithIcons]);
@@ -255,7 +252,6 @@ export function LifecycleTracker({
         throw error;
       }
       
-      // Refresh stages to get the server-generated IDs
       await fetchLifecycleStages();
     } catch (error) {
       console.error("Error adding default stages:", error);
@@ -286,9 +282,8 @@ export function LifecycleTracker({
       if (data) {
         console.log("Fetched lifecycle stages:", data);
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          // Get the matching default stage with icon if available
           const defaultStage = defaultLifecycleStages.find(
-            ds => ds.name === stage.name && ds.category === stage.category
+            ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
           );
           
           const IconComponent = defaultStage ? icons[defaultStage.iconName] : undefined;
@@ -297,7 +292,7 @@ export function LifecycleTracker({
             id: stage.id,
             name: stage.name,
             status: stage.status as LifecycleStageProps["status"],
-            category: stage.category,
+            category: stage.category || defaultStage?.category || "",
             owner: stage.staff ? {
               id: stage.staff.id,
               name: stage.staff.name,

@@ -16,7 +16,6 @@ import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 import { defaultLifecycleStages, icons, DefaultLifecycleStage } from "@/data/mockData";
 
-// Helper function to convert mock customer to DB Customer type
 const convertMockToCustomer = (mockCustomer: any): Customer => {
   return {
     id: mockCustomer.id,
@@ -33,7 +32,6 @@ const convertMockToCustomer = (mockCustomer: any): Customer => {
   };
 };
 
-// Helper function to convert default stage format to lifecycle stage props with icon
 const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
   const IconComponent = icons[defaultStage.iconName];
   return {
@@ -48,7 +46,6 @@ const Lifecycle = () => {
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Convert customerId to UUID format for database operations
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
       return customerId;
@@ -57,7 +54,6 @@ const Lifecycle = () => {
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
-  // Fetch customers from Supabase
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -133,9 +129,8 @@ const Lifecycle = () => {
       
       if (data) {
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          // Match with a default stage to get the icon if available
           const defaultStage = defaultLifecycleStages.find(
-            ds => ds.name === stage.name && ds.category === stage.category
+            ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
           );
           
           const IconComponent = defaultStage ? icons[defaultStage.iconName] : undefined;
@@ -144,7 +139,7 @@ const Lifecycle = () => {
             id: stage.id,
             name: stage.name,
             status: stage.status as LifecycleStageProps["status"],
-            category: stage.category,
+            category: stage.category || defaultStage?.category || "",
             owner: stage.staff ? {
               id: stage.staff.id,
               name: stage.staff.name,
@@ -186,7 +181,6 @@ const Lifecycle = () => {
       const dbCustomerId = getDbCustomerId(customerId);
       console.log("Adding default stages for customer ID:", customerId, "DB ID:", dbCustomerId);
       
-      // First check if any stages already exist
       const { data: existingStages, error: checkError } = await supabase
         .from('lifecycle_stages')
         .select('name, category')
@@ -197,7 +191,6 @@ const Lifecycle = () => {
         throw checkError;
       }
       
-      // Filter out stages that already exist (by name AND category)
       const stagesToAdd = defaultLifecycleStages.filter(stage => {
         return !existingStages?.some(
           existing => existing.name === stage.name && existing.category === stage.category
@@ -231,7 +224,6 @@ const Lifecycle = () => {
       
       toast.success(`${stagesToInsert.length} default stages added successfully`);
       
-      // Refresh the customer stages
       await fetchCustomerStages(customerId);
       
     } catch (error) {
@@ -254,7 +246,6 @@ const Lifecycle = () => {
       setLoading(true);
       const dbCustomerId = getDbCustomerId(customerId);
       
-      // Only update stages that are in 'not-started' status
       const { error } = await supabase
         .from('lifecycle_stages')
         .update({ status: 'not-applicable' })
@@ -266,7 +257,6 @@ const Lifecycle = () => {
         throw error;
       }
       
-      // Update local state
       const updatedStages = customerStages.map(stage => {
         if (stage.status === 'not-started') {
           return { ...stage, status: 'not-applicable' as const };

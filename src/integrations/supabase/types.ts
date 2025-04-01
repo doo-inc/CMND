@@ -174,6 +174,7 @@ export type Database = {
       }
       lifecycle_stages: {
         Row: {
+          category: string | null
           created_at: string
           customer_id: string
           deadline: string | null
@@ -185,6 +186,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           customer_id: string
           deadline?: string | null
@@ -196,6 +198,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           customer_id?: string
           deadline?: string | null

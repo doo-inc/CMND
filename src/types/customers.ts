@@ -1,4 +1,3 @@
-
 // Define basic types without relying on Supabase generated types
 // These types match our database schema but don't depend on the generated types
 
@@ -43,6 +42,7 @@ export interface LifecycleStage {
   owner_id?: string | null;
   deadline?: string | null;
   notes?: string | null;
+  category?: string | null;
   created_at: string;
   updated_at: string;
 }
