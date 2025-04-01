@@ -16,6 +16,65 @@ import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 import { MessageSquare, Instagram, Globe, Mail, Smartphone } from "lucide-react";
 
+// Default integration stages for the lifecycle tracker
+const defaultIntegrationStages: LifecycleStageProps[] = [
+  {
+    id: "integration-stage-1",
+    name: "Chat Integration",
+    status: "not-started",
+    owner: {
+      id: "user-001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    notes: "Implement customer chat integration for real-time support."
+  },
+  {
+    id: "integration-stage-2",
+    name: "Social Media Connect",
+    status: "not-started",
+    owner: {
+      id: "user-004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Set up Instagram business account connection for the customer."
+  },
+  {
+    id: "integration-stage-3",
+    name: "Website API Setup",
+    status: "not-started",
+    owner: {
+      id: "user-004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Configure API endpoints for the customer's website integration."
+  },
+  {
+    id: "integration-stage-4",
+    name: "Email Campaign Integration",
+    status: "not-started",
+    owner: {
+      id: "user-002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    notes: "Set up email marketing integration with customer's CRM."
+  },
+  {
+    id: "integration-stage-5",
+    name: "Mobile App Configuration",
+    status: "not-started",
+    owner: {
+      id: "user-004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    notes: "Configure mobile app settings and push notification services."
+  }
+];
+
 // Helper function to convert mock customer to DB Customer type
 const convertMockToCustomer = (mockCustomer: any): Customer => {
   return {
