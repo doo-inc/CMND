@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, CheckCheck, Clock, UserPlus, FileText, Calendar, AlertCircle } from "lucide-react";
+import { Bell, CheckCheck, Clock, UserPlus, FileText, Calendar, AlertCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
