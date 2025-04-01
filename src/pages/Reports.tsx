@@ -15,7 +15,7 @@ import {
   ArrowUp
 } from "lucide-react";
 import {
-  Chart as ChartComponent,
+  // Remove Chart import as it doesn't exist in recharts
   Line,
   Bar,
   Pie
