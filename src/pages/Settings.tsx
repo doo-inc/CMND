@@ -13,7 +13,8 @@ import {
   Mail,
   Settings as SettingsIcon,
   Globe,
-  Save
+  Save,
+  Plus
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
