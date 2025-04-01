@@ -75,9 +75,11 @@ export function DashboardSidebar() {
     <Sidebar className="glass-sidebar border-0 transition-all duration-300">
       <SidebarHeader className="p-4 bg-sidebar/30 backdrop-blur-md border-b border-sidebar-border/10">
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-full bg-doo-purple-500/80 backdrop-blur-sm flex items-center justify-center text-white font-bold shadow-lg border border-white/20">
-            D
-          </div>
+          <img 
+            src="/lovable-uploads/7103ec49-9766-44ba-a938-b218c15a85e7.png" 
+            alt="DOO Command" 
+            className="h-10 w-10"
+          />
           <h2 className="text-xl font-bold text-white/90">DOO Command</h2>
         </div>
       </SidebarHeader>
