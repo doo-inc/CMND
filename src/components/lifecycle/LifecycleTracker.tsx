@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -7,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LifecycleStage, LifecycleStageWithOwner } from "@/types/customers";
 import { createNotification } from "@/utils/notificationHelpers";
-import { defaultLifecycleStages, icons } from "@/data/mockData";
+import { defaultLifecycleStages, icons, DefaultLifecycleStage } from "@/data/mockData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LifecycleTrackerProps {
@@ -45,7 +44,7 @@ export function LifecycleTracker({
   };
 
   // Convert a defaultLifecycleStage to a LifecycleStageProps with icon
-  const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
+  const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
     const IconComponent = icons[defaultStage.iconName];
     return {
       ...defaultStage,

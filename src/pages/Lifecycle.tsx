@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -15,7 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
-import { defaultLifecycleStages, icons } from "@/data/mockData";
+import { defaultLifecycleStages, icons, DefaultLifecycleStage } from "@/data/mockData";
 
 // Helper function to convert mock customer to DB Customer type
 const convertMockToCustomer = (mockCustomer: any): Customer => {
@@ -35,7 +34,7 @@ const convertMockToCustomer = (mockCustomer: any): Customer => {
 };
 
 // Helper function to convert default stage format to lifecycle stage props with icon
-const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
+const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
   const IconComponent = icons[defaultStage.iconName];
   return {
     ...defaultStage,

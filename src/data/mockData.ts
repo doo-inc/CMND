@@ -136,8 +136,13 @@ export const dashboardStats = [
   },
 ];
 
+// Define a type for the default lifecycle stage that includes iconName
+export interface DefaultLifecycleStage extends Omit<LifecycleStageProps, "icon"> {
+  iconName: keyof typeof icons;
+}
+
 // Default lifecycle stages by category
-export const defaultLifecycleStages: Omit<LifecycleStageProps, "icon"> & { iconName: keyof typeof icons }[] = [
+export const defaultLifecycleStages: DefaultLifecycleStage[] = [
   {
     id: "sales-stage-1",
     name: "Initial Contact",
