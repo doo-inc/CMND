@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -79,6 +78,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 
 type CustomerAgent = {
   id: string;
@@ -135,8 +135,8 @@ const renewalFormSchema = z.object({
 const CustomerDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  const customer = customers.find(c => c.id === id);
+  const [customer, setCustomer] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   // Sample customer agents and renewal activities
   const [agents, setAgents] = useState<CustomerAgent[]>([
@@ -218,19 +218,75 @@ const CustomerDetails = () => {
     setRenewalActivities(updatedRenewals);
     toast.success(`Payment status updated to ${status.replace('-', ' ')}`);
   };
-  
-  if (!customer) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-[60vh]">
-          <h2 className="text-2xl font-bold mb-4">Customer Not Found</h2>
-          <Button onClick={() => navigate("/customers")}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customers
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
-  }
+
+  // Convert ID to UUID format if needed
+  const getDbCustomerId = (customerId: string) => {
+    // If it's already a UUID, return it
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+      return customerId;
+    }
+    
+    // For our mock customers with format like "cust-001", we'll create a deterministic UUID
+    return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
+  };
+
+  // Fetch customer data
+  useEffect(() => {
+    const fetchCustomer = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        
+        // Try to fetch from database first
+        const dbId = getDbCustomerId(id);
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', dbId)
+          .single();
+        
+        if (data) {
+          // Transform database customer to match UI expectations
+          const customerData = {
+            id: data.id,
+            name: data.name,
+            logo: data.logo,
+            segment: data.segment || "Unknown Segment",
+            region: data.region || "Unknown Region",
+            stage: data.stage || "Unknown Stage",
+            status: data.status || "not-started",
+            contractSize: data.contract_size || 0,
+            owner: {
+              id: data.owner_id || "unknown",
+              name: "Unknown Owner",
+              role: "Unknown Role"
+            }
+          };
+          setCustomer(customerData);
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to mock data if not found in database
+        const mockCustomer = customers.find(c => c.id === id);
+        if (mockCustomer) {
+          setCustomer(mockCustomer);
+        }
+      } catch (error) {
+        console.error("Error fetching customer:", error);
+        // Still try to use mock data
+        const mockCustomer = customers.find(c => c.id === id);
+        if (mockCustomer) {
+          setCustomer(mockCustomer);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCustomer();
+  }, [id]);
   
   const getInitials = (name: string) => {
     return name
@@ -254,6 +310,29 @@ const CustomerDetails = () => {
         return <Badge>{status}</Badge>;
     }
   };
+  
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <p className="text-lg">Loading customer data...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  if (!customer) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <h2 className="text-2xl font-bold mb-4">Customer Not Found</h2>
+          <Button onClick={() => navigate("/customers")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customers
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   return (
     <DashboardLayout>

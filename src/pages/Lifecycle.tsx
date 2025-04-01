@@ -23,55 +23,60 @@ const defaultIntegrationStages: LifecycleStageProps[] = [
     name: "Chat Integration",
     status: "not-started",
     owner: {
-      id: "user-001",
+      id: "00000000-0000-0000-0000-000000000001",
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
-    notes: "Implement customer chat integration for real-time support."
+    notes: "Implement customer chat integration for real-time support.",
+    icon: <MessageSquare className="h-5 w-5" />
   },
   {
     id: "integration-stage-2",
     name: "Social Media Connect",
     status: "not-started",
     owner: {
-      id: "user-004",
+      id: "00000000-0000-0000-0000-000000000004",
       name: "Mohammed Rahman",
       role: "Integration Engineer"
     },
-    notes: "Set up Instagram business account connection for the customer."
+    notes: "Set up Instagram business account connection for the customer.",
+    icon: <Instagram className="h-5 w-5" />
   },
   {
     id: "integration-stage-3",
     name: "Website API Setup",
     status: "not-started",
     owner: {
-      id: "user-004",
+      id: "00000000-0000-0000-0000-000000000004",
       name: "Mohammed Rahman",
       role: "Integration Engineer"
     },
-    notes: "Configure API endpoints for the customer's website integration."
+    notes: "Configure API endpoints for the customer's website integration.",
+    icon: <Globe className="h-5 w-5" />
   },
   {
     id: "integration-stage-4",
     name: "Email Campaign Integration",
     status: "not-started",
     owner: {
-      id: "user-002",
+      id: "00000000-0000-0000-0000-000000000002",
       name: "Fatima Hassan",
       role: "Customer Success Manager"
     },
-    notes: "Set up email marketing integration with customer's CRM."
+    notes: "Set up email marketing integration with customer's CRM.",
+    icon: <Mail className="h-5 w-5" />
   },
   {
     id: "integration-stage-5",
     name: "Mobile App Configuration",
     status: "not-started",
     owner: {
-      id: "user-004",
+      id: "00000000-0000-0000-0000-000000000004",
       name: "Mohammed Rahman",
       role: "Integration Engineer"
     },
-    notes: "Configure mobile app settings and push notification services."
+    notes: "Configure mobile app settings and push notification services.",
+    icon: <Smartphone className="h-5 w-5" />
   }
 ];
 
@@ -100,13 +105,10 @@ const Lifecycle = () => {
 
   // Convert customerId to UUID format for database operations
   const getDbCustomerId = (customerId: string) => {
-    // If it's already a UUID, return it
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
       return customerId;
     }
     
-    // For our mock customers with format like "cust-001", we'll create a deterministic UUID
-    // This approach ensures the same mock ID always maps to the same UUID
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
@@ -129,12 +131,10 @@ const Lifecycle = () => {
         console.log("Lifecycle - fetched customers:", data);
 
         if (data && data.length > 0) {
-          // We're getting back proper customers from the database
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
         } else {
           console.log("No customers found, using mock data");
-          // If no customers exist in the database, use mock data
           const convertedCustomers = mockCustomers.map(convertMockToCustomer);
           setCustomerList(convertedCustomers);
           setSelectedCustomer(convertedCustomers[0].id);
@@ -143,7 +143,6 @@ const Lifecycle = () => {
         console.error("Error in fetchCustomers:", error);
         toast.error("Failed to load customers, using mock data");
         
-        // Fall back to mock data but convert to Customer type
         const convertedCustomers = mockCustomers.map(convertMockToCustomer);
         setCustomerList(convertedCustomers);
         setSelectedCustomer(convertedCustomers[0].id);
@@ -188,7 +187,6 @@ const Lifecycle = () => {
       console.log("Fetched stages:", data);
       
       if (data) {
-        // Convert Supabase data to LifecycleStageProps format
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
           id: stage.id,
           name: stage.name,
@@ -208,7 +206,6 @@ const Lifecycle = () => {
 
         setCustomerStages(formattedStages);
         
-        // If no stages are found, automatically add default stages
         if (formattedStages.length === 0) {
           console.log("No stages found, adding default stages");
           await handleAddDefaultIntegrations(customerId);
@@ -234,7 +231,6 @@ const Lifecycle = () => {
       const dbCustomerId = getDbCustomerId(customerId);
       console.log("Adding default stages for customer ID:", customerId, "DB ID:", dbCustomerId);
       
-      // Check if integrations already exist for this customer
       const { data: existingStages } = await supabase
         .from('lifecycle_stages')
         .select('name')
@@ -242,7 +238,6 @@ const Lifecycle = () => {
       
       const existingStageNames = existingStages?.map(stage => stage.name) || [];
       
-      // Filter out integration stages that already exist
       const stagesToAdd = defaultIntegrationStages.filter(
         stage => !existingStageNames.includes(stage.name)
       );
@@ -252,7 +247,6 @@ const Lifecycle = () => {
         return;
       }
       
-      // Prepare stages for insertion
       const stagesToInsert = stagesToAdd.map(stage => ({
         customer_id: dbCustomerId,
         name: stage.name,
@@ -263,7 +257,6 @@ const Lifecycle = () => {
       
       console.log("Inserting stages:", stagesToInsert);
       
-      // Insert stages
       const { error } = await supabase
         .from('lifecycle_stages')
         .insert(stagesToInsert);
@@ -275,7 +268,6 @@ const Lifecycle = () => {
       
       toast.success("Integration stages added successfully");
       
-      // Refresh stages
       await fetchCustomerStages(customerId);
       
     } catch (error) {

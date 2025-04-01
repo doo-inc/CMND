@@ -1,136 +1,123 @@
-
 import React from "react";
-import { CalendarClock, Clock, FileEdit, MoreHorizontal, Users, MessageSquare, Instagram, Globe, Mail, Smartphone } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
 import { AddEditStage } from "./AddEditStage";
-
-export interface OwnerType {
-  id: string;
-  name: string;
-  role: string;
-}
+import { 
+  Card, 
+  CardContent, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { CheckCircle, Clock, AlertCircle, Circle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ReactNode } from "react";
 
 export interface LifecycleStageProps {
   id: string;
   name: string;
   status: "not-started" | "in-progress" | "done" | "blocked";
-  owner: OwnerType;
+  owner: {
+    id: string;
+    name: string;
+    role: string;
+  };
   deadline?: string;
   notes?: string;
+  icon?: ReactNode;
+  onUpdate?: (stageId: string, updatedStage: Partial<LifecycleStageProps>) => void;
 }
 
-interface LifecycleStageComponentProps extends LifecycleStageProps {
-  onUpdate?: (id: string, updatedStage: Partial<LifecycleStageProps>) => void;
-}
-
-export function LifecycleStage({ 
-  id, 
-  name, 
-  status, 
-  owner, 
-  deadline, 
+export function LifecycleStageComponent({
+  id,
+  name,
+  status,
+  owner,
+  deadline,
   notes,
-  onUpdate
-}: LifecycleStageComponentProps) {
-  
-  const getStatusClass = () => {
+  icon,
+  onUpdate,
+}: LifecycleStageProps) {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "not-started":
-        return "status-not-started";
+        return <Circle className="h-4 w-4 text-gray-500" />;
       case "in-progress":
-        return "status-in-progress";
+        return <Clock className="h-4 w-4 text-blue-500 animate-pulse" />;
       case "done":
-        return "status-done";
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "blocked":
-        return "status-blocked";
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
-        return "status-not-started";
+        return null;
     }
   };
 
-  const getIntegrationIcon = () => {
-    if (name.includes("WhatsApp")) {
-      return <MessageSquare className="h-4 w-4 mr-2 text-green-600" />;
-    } else if (name.includes("Instagram")) {
-      return <Instagram className="h-4 w-4 mr-2 text-pink-600" />;
-    } else if (name.includes("Website")) {
-      return <Globe className="h-4 w-4 mr-2 text-blue-600" />;
-    } else if (name.includes("Email")) {
-      return <Mail className="h-4 w-4 mr-2 text-yellow-600" />;
-    } else if (name.includes("Mobile")) {
-      return <Smartphone className="h-4 w-4 mr-2 text-purple-600" />;
-    }
-    return null;
-  };
-
-  const integrationIcon = getIntegrationIcon();
-
-  const handleSaveStage = (updatedStage: Partial<LifecycleStageProps>) => {
-    if (onUpdate) {
-      onUpdate(id, updatedStage);
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "not-started":
+        return <Badge variant="outline">Not Started</Badge>;
+      case "in-progress":
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">In Progress</Badge>;
+      case "done":
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Done</Badge>;
+      case "blocked":
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Blocked</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
     }
   };
 
   return (
-    <div className="lifecycle-stage glass-card animate-fade-in">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="text-base font-semibold flex items-center">
-          {integrationIcon}
-          {name}
-        </h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-card">
-            <DropdownMenuItem className="cursor-pointer" asChild>
-              <AddEditStage 
-                stage={{ id, name, status, owner, deadline, notes }} 
-                isEditing={true}
-                onSave={handleSaveStage}
-              />
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <Users className="mr-2 h-4 w-4" />
-              <span>Change Owner</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <CalendarClock className="mr-2 h-4 w-4" />
-              <span>Set Deadline</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
-      <div className="flex flex-col space-y-3">
+    <Card>
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <span className={`status-badge ${getStatusClass()}`}>
-            {status.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase())}
-          </span>
-          <span className="text-xs text-muted-foreground">{owner.name}</span>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            {icon && icon}
+            {name}
+          </CardTitle>
+          {getStatusIcon(status)}
         </div>
-        
-        {deadline && (
-          <div className="flex items-center text-xs text-muted-foreground">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>Due {deadline}</span>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={`https://avatar.vercel.sh/${owner.name}.png`} alt={owner.name} />
+              <AvatarFallback className="bg-secondary/50 text-secondary">{owner.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="text-sm">
+              <p className="font-medium">{owner.name}</p>
+              <p className="text-muted-foreground">{owner.role}</p>
+            </div>
           </div>
-        )}
-        
-        {notes && (
-          <p className="text-xs mt-2 text-muted-foreground line-clamp-2">
-            {notes}
-          </p>
-        )}
-      </div>
-    </div>
+          
+          {deadline && (
+            <div className="text-sm text-muted-foreground">
+              Deadline: {new Date(deadline).toLocaleDateString()}
+            </div>
+          )}
+          
+          {notes && (
+            <div className="text-sm">
+              <p className="text-muted-foreground">Notes:</p>
+              <p>{notes}</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between items-center">
+        {getStatusBadge(status)}
+        <AddEditStage 
+          stage={{ id, name, status, owner, deadline, notes, icon }} 
+          isEditing 
+          onSave={(updatedStage) => {
+            if (onUpdate) {
+              onUpdate(id, updatedStage);
+            }
+          }}
+        />
+      </CardFooter>
+    </Card>
   );
 }
