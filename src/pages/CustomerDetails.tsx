@@ -7,12 +7,13 @@ import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, FileText } from "lucide-react";
+import { Pencil, FileText, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCustomerId } from "@/utils/customerUtils";
 import { CustomerTeamMembers } from "@/components/customers/CustomerTeamMembers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const CustomerDetails = () => {
   const { id } = useParams();
@@ -64,6 +65,10 @@ const CustomerDetails = () => {
     }
   };
 
+  const handleAddContract = () => {
+    navigate(`/contracts?customerId=${id}&action=new`);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -90,9 +95,14 @@ const CustomerDetails = () => {
               <FileText className="mr-2 h-5 w-5" />
               Contract Details
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/contracts?customerId=${id}`)}>
-              View All Contracts
-            </Button>
+            <div className="space-x-2">
+              <Button variant="outline" size="sm" onClick={() => navigate(`/contracts?customerId=${id}`)}>
+                View All
+              </Button>
+              <Button size="sm" onClick={handleAddContract}>
+                <Plus className="h-4 w-4 mr-1" /> Add Contract
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {contractsLoading ? (
@@ -103,7 +113,8 @@ const CustomerDetails = () => {
                   <div key={contract.id} className="py-3">
                     <div className="flex justify-between items-center mb-1">
                       <h3 className="font-medium">{contract.name}</h3>
-                      <Badge variant={contract.status === 'active' ? 'success' : 'outline'}>
+                      <Badge variant={contract.status === 'active' ? 'default' : 'outline'} 
+                             className={contract.status === 'active' ? "bg-green-500 hover:bg-green-600" : ""}>
                         {contract.status || 'Draft'}
                       </Badge>
                     </div>
@@ -121,11 +132,25 @@ const CustomerDetails = () => {
                         {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'N/A'}
                       </div>
                     </div>
+                    <div className="mt-2 flex justify-end">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigate(`/contracts?customerId=${id}&contractId=${contract.id}&action=edit`)}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center py-4">No contract details available.</p>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No contracts available for this customer.</p>
+                <Button onClick={handleAddContract} variant="outline">
+                  <Plus className="h-4 w-4 mr-1" /> Add First Contract
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
