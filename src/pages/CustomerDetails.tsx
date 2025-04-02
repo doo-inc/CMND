@@ -62,6 +62,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { customers } from "@/data/mockData";
+import { customers as realCustomers } from "@/data/realCustomers";
 import { CustomerOwner, CustomerData } from "@/components/customers/CustomerCard";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -238,30 +239,34 @@ const CustomerDetails = () => {
       
       try {
         setLoading(true);
+        console.log("Fetching customer with ID:", id);
         
         // Try to fetch from database first
         const dbId = getDbCustomerId(id);
+        console.log("Normalized DB ID:", dbId);
+        
         const { data, error } = await supabase
           .from('customers')
           .select('*')
-          .eq('id', dbId)
-          .single();
+          .eq('id', dbId);
         
-        if (data) {
+        console.log("Database lookup result:", data);
+        
+        if (data && data.length > 0) {
           // Transform database customer to match UI expectations
           const customerData = {
-            id: data.id,
-            name: data.name,
-            logo: data.logo,
-            segment: data.segment || "Unknown Segment",
-            region: data.region || "Unknown Region",
-            stage: data.stage || "Unknown Stage",
-            status: data.status || "not-started",
-            contractSize: data.contract_size || 0,
+            id: data[0].id,
+            name: data[0].name,
+            logo: data[0].logo,
+            segment: data[0].segment || "Unknown Segment",
+            region: data[0].region || "Unknown Region",
+            stage: data[0].stage || "Unknown Stage",
+            status: data[0].status || "not-started",
+            contractSize: data[0].contract_size || 0,
             owner: {
-              id: data.owner_id || "unknown",
-              name: "Unknown Owner",
-              role: "Unknown Role"
+              id: data[0].owner_id || "unknown",
+              name: "Account Manager",
+              role: "Sales"
             }
           };
           setCustomer(customerData);
@@ -269,62 +274,29 @@ const CustomerDetails = () => {
           return;
         }
         
-        // Fallback to the customers data if not found in database
-        const { data: customersData } = await supabase
-          .from('customers')
-          .select('*');
-          
-        if (customersData && customersData.length > 0) {
-          // Check if any of the customers match by name or other criteria
-          const matchedCustomer = customersData.find(c => 
-            c.id === id || 
-            c.name.toLowerCase() === id.toLowerCase()
-          );
-          
-          if (matchedCustomer) {
-            const customerData = {
-              id: matchedCustomer.id,
-              name: matchedCustomer.name,
-              logo: matchedCustomer.logo,
-              segment: matchedCustomer.segment || "Unknown Segment",
-              region: matchedCustomer.region || "Unknown Region",
-              stage: matchedCustomer.stage || "Unknown Stage",
-              status: matchedCustomer.status || "not-started",
-              contractSize: matchedCustomer.contract_size || 0,
-              owner: {
-                id: matchedCustomer.owner_id || "unknown",
-                name: "Unknown Owner",
-                role: "Unknown Role"
-              }
-            };
-            setCustomer(customerData);
-            setLoading(false);
-            return;
-          }
-        }
-        
         // Fallback to imported customer data
-        const { customers } = await import("@/data/realCustomers");
-        const mockCustomer = customers.find(c => 
+        console.log("Customer not found in database, checking real customer data");
+        const foundCustomer = realCustomers.find(c => 
           c.id === id || 
           c.name.toLowerCase() === id.toLowerCase() ||
-          id.includes(c.name.toLowerCase().replace(/\s+/g, ''))
+          (id && c.name && id.includes(c.name.toLowerCase().replace(/\s+/g, '')))
         );
         
-        if (mockCustomer) {
+        if (foundCustomer) {
+          console.log("Found matching customer in real customer data:", foundCustomer);
           const customerData = {
-            id: mockCustomer.id || crypto.randomUUID(),
-            name: mockCustomer.name,
+            id: foundCustomer.id || crypto.randomUUID(),
+            name: foundCustomer.name,
             logo: undefined,
-            segment: mockCustomer.segment || "Unknown Segment",
-            region: mockCustomer.region || "Unknown Region",
-            stage: mockCustomer.stage || "New",
+            segment: foundCustomer.segment || "Unknown Segment",
+            region: foundCustomer.region || "Unknown Region",
+            stage: foundCustomer.stage || "New",
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: mockCustomer.contractSize || 0,
-            owner: mockCustomer.owner ? {
+            contractSize: foundCustomer.contractSize || 0,
+            owner: foundCustomer.owner ? {
               id: "unknown",
-              name: mockCustomer.owner.name || "Account Manager",
-              role: mockCustomer.owner.role || "Sales"
+              name: foundCustomer.owner.name || "Account Manager",
+              role: foundCustomer.owner.role || "Sales"
             } : {
               id: "unknown",
               name: "Account Manager",
@@ -333,10 +305,42 @@ const CustomerDetails = () => {
           };
           setCustomer(customerData);
         } else {
-          console.error("Customer not found with ID:", id);
+          // Perform a looser search as a last resort
+          console.log("Performing loose search on all customers");
+          const looseMatch = realCustomers.find(c => 
+            c.id && c.id.includes(id || '') || 
+            (c.name && id && c.name.toLowerCase().includes(id.toLowerCase()))
+          );
+          
+          if (looseMatch) {
+            console.log("Found loose match:", looseMatch);
+            setCustomer({
+              id: looseMatch.id || crypto.randomUUID(),
+              name: looseMatch.name,
+              logo: undefined,
+              segment: looseMatch.segment || "Unknown Segment",
+              region: looseMatch.region || "Unknown Region",
+              stage: looseMatch.stage || "New",
+              status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
+              contractSize: looseMatch.contractSize || 0,
+              owner: looseMatch.owner ? {
+                id: "unknown",
+                name: looseMatch.owner.name || "Account Manager",
+                role: looseMatch.owner.role || "Sales"
+              } : {
+                id: "unknown",
+                name: "Account Manager",
+                role: "Sales"
+              }
+            });
+          } else {
+            console.log("No customer found with ID:", id);
+            toast.error("Customer not found");
+          }
         }
       } catch (error) {
         console.error("Error fetching customer:", error);
+        toast.error("Failed to load customer");
       } finally {
         setLoading(false);
       }

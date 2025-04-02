@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -35,8 +36,10 @@ export function LifecycleTracker({
 }: LifecycleTrackerProps) {
   const [stages, setStages] = useState<LifecycleStageProps[]>(initialStages && initialStages.length > 0 ? initialStages : []);
   const [hasFetchedStages, setHasFetchedStages] = useState(false);
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
+  const [isAddingDefaultStages, setIsAddingDefaultStages] = useState(false);
 
   const getDbCustomerId = () => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -256,6 +259,7 @@ export function LifecycleTracker({
   const handleAddDefaultStages = async () => {
     try {
       console.log("Adding default lifecycle stages for customer:", customerId);
+      setIsAddingDefaultStages(true);
       
       if (validStaffIds.length === 0) {
         const ids = await fetchValidStaffIds();
@@ -283,6 +287,7 @@ export function LifecycleTracker({
         category: stage.category || null
       }));
       
+      // Delete existing stages first to avoid duplicates
       const { error: deleteError } = await supabase
         .from('lifecycle_stages')
         .delete()
@@ -292,6 +297,7 @@ export function LifecycleTracker({
         console.error("Error deleting existing stages:", deleteError);
       }
       
+      // Insert new default stages
       const { error } = await supabase
         .from('lifecycle_stages')
         .insert(stagesToInsert);
@@ -306,6 +312,8 @@ export function LifecycleTracker({
     } catch (error) {
       console.error("Error adding default stages:", error);
       toast.error("Failed to add default stages");
+    } finally {
+      setIsAddingDefaultStages(false);
     }
   };
 
@@ -368,29 +376,25 @@ export function LifecycleTracker({
     } catch (error) {
       console.error("Error fetching lifecycle stages:", error);
       toast.error("Failed to load lifecycle stages");
+    } finally {
+      setInitialFetchComplete(true);
     }
   };
   
+  // Fetch stages when the component mounts or customer changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (customerId) {
-        fetchLifecycleStages();
-      }
-    }, 300);
-    
-    return () => clearTimeout(timer);
+    if (customerId) {
+      fetchLifecycleStages();
+    }
   }, [customerId]);
   
+  // Force add default stages if none exist after initial fetch
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (hasFetchedStages && stages.length === 0) {
-        console.log("No stages found after fetch, using default stages");
-        handleAddDefaultStages();
-      }
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [hasFetchedStages, stages.length]);
+    if (initialFetchComplete && stages.length === 0 && !isAddingDefaultStages) {
+      console.log("No stages found after initial fetch, adding default stages");
+      handleAddDefaultStages();
+    }
+  }, [initialFetchComplete, stages.length, isAddingDefaultStages]);
 
   const filteredStages = activeCategory === 'All' 
     ? stages 

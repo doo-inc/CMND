@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -10,12 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
+import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 
 const convertMockToCustomer = (mockCustomer: any): Customer => {
   return {
@@ -48,6 +49,7 @@ const Lifecycle = () => {
   const [loading, setLoading] = useState(true);
   const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [syncingData, setSyncingData] = useState(false);
   
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -88,10 +90,13 @@ const Lifecycle = () => {
       try {
         setLoading(true);
         
+        await syncCustomersToDatabase();
+        
         console.log("Fetching customers for lifecycle...");
         const { data, error } = await supabase
           .from('customers')
-          .select('*');
+          .select('*')
+          .order('name', { ascending: true });
 
         if (error) {
           console.error("Error fetching customers:", error);
@@ -104,7 +109,8 @@ const Lifecycle = () => {
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
         } else {
-          console.log("No customers found in the database");
+          console.log("No customers found in the database, trying to sync again");
+          await syncCustomersToDatabase();
           setCustomerList([]);
         }
       } catch (error) {
@@ -197,6 +203,43 @@ const Lifecycle = () => {
   const handleStagesUpdate = (stages: LifecycleStageProps[]) => {
     setCustomerStages(stages);
   };
+  
+  const handleSyncData = async () => {
+    try {
+      setSyncingData(true);
+      toast.info("Syncing customer data to database...");
+      
+      const success = await syncCustomersToDatabase();
+      
+      if (success) {
+        toast.success("Customer data synced successfully");
+        
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .order('name', { ascending: true });
+          
+        if (error) {
+          console.error("Error refreshing customers:", error);
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          setCustomerList(data);
+          if (!selectedCustomer) {
+            setSelectedCustomer(data[0].id);
+          }
+        }
+      } else {
+        toast.error("Failed to sync customer data");
+      }
+    } catch (error) {
+      console.error("Error syncing data:", error);
+      toast.error("Failed to sync customer data");
+    } finally {
+      setSyncingData(false);
+    }
+  };
 
   const filteredCustomers = customerList.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -218,15 +261,26 @@ const Lifecycle = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customer Lifecycle</h1>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              type="text"
-              placeholder="Search customers..."
-              className="pl-8 pr-4 py-2 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                type="text"
+                placeholder="Search customers..."
+                className="pl-8 pr-4 py-2 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSyncData}
+              disabled={syncingData}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncingData ? 'animate-spin' : ''}`} />
+              Sync Data
+            </Button>
           </div>
         </div>
         

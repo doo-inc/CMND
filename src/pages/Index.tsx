@@ -25,13 +25,14 @@ const Index = () => {
           .from('customers')
           .select('*')
           .order('contract_size', { ascending: false })
-          .limit(4);
+          .limit(8);
 
         if (error) {
           throw error;
         }
 
         if (data && data.length > 0) {
+          console.log("Customers data fetched from database:", data);
           const formattedCustomers: CustomerData[] = data.map(customer => ({
             id: customer.id,
             name: customer.name,
@@ -53,18 +54,18 @@ const Index = () => {
           console.log("No customers found in database, using real customer data");
           
           const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
-            id: crypto.randomUUID(),
+            id: customer.id || crypto.randomUUID(),
             name: customer.name,
             logo: undefined,
             segment: customer.segment || "Unknown Segment", 
             region: customer.region || "Unknown Region",
-            stage: customer.stage,
+            stage: customer.stage || "New",
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
             contractSize: customer.contractSize || 0,
             owner: {
               id: "unknown",
-              name: "Account Manager",
-              role: "Sales"
+              name: customer.owner?.name || "Account Manager",
+              role: customer.owner?.role || "Sales"
             }
           }));
           
@@ -73,20 +74,20 @@ const Index = () => {
       } catch (error) {
         console.error("Error fetching customers:", error);
         
-        // Use real customers data instead of mock data
+        // Use real customers data in case of error
         const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
-          id: crypto.randomUUID(),
+          id: customer.id || crypto.randomUUID(),
           name: customer.name,
           logo: undefined,
           segment: customer.segment || "Unknown Segment",
           region: customer.region || "Unknown Region",
-          stage: customer.stage,
+          stage: customer.stage || "New",
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
           contractSize: customer.contractSize || 0,
           owner: {
             id: "unknown",
-            name: "Account Manager",
-            role: "Sales"
+            name: customer.owner?.name || "Account Manager",
+            role: customer.owner?.role || "Sales"
           }
         }));
         
@@ -107,6 +108,28 @@ const Index = () => {
   const getTotalCustomersCount = () => {
     return realCustomers.length;
   };
+  
+  const getActiveCustomersCount = () => {
+    return customers.filter(c => c.status === "in-progress" || c.status === "done").length;
+  };
+  
+  const calculateDealsPipeline = () => {
+    // Deal pipeline includes customers in specific stages that haven't been fully paid yet
+    const pipelineCustomers = customers.filter(c => 
+      (c.stage === "Proposal Sent" || c.stage === "Invoice Sent" || c.stage === "Demo Completed") &&
+      (c.status !== "done")
+    );
+    
+    const totalValue = pipelineCustomers.reduce((sum, c) => sum + (c.contractSize || 0), 0);
+    const count = pipelineCustomers.length;
+    
+    return {
+      value: totalValue > 0 ? `$${(totalValue / 1000).toFixed(0)}k` : "$0",
+      count: count
+    };
+  };
+  
+  const dealsPipeline = calculateDealsPipeline();
 
   const dashboardStats = [
     {
@@ -117,7 +140,7 @@ const Index = () => {
     },
     {
       title: "Active Customers",
-      value: `${customers.filter(c => c.status === "in-progress" || c.status === "done").length}`,
+      value: `${getActiveCustomersCount()}`,
       change: { value: 5, type: "increase" as const },
       icon: <Users className="h-6 w-6" />
     },
@@ -128,8 +151,8 @@ const Index = () => {
     },
     {
       title: "Deals Pipeline",
-      value: `$${(customers.filter(c => c.stage === "Proposal Sent" || c.stage === "Invoice Sent").reduce((sum, c) => sum + (c.contractSize || 0), 0) / 1000).toFixed(0)}k`,
-      description: `${customers.filter(c => c.stage === "Proposal Sent" || c.stage === "Invoice Sent").length} active deals`,
+      value: dealsPipeline.value,
+      description: `${dealsPipeline.count} active deals`,
       icon: <TrendingUp className="h-6 w-6" />
     },
     {
