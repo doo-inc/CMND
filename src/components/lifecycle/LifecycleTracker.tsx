@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LifecycleStage, LifecycleStageWithOwner } from "@/types/customers";
 import { createNotification } from "@/utils/notificationHelpers";
-import { defaultLifecycleStages, icons, DefaultLifecycleStage } from "@/data/mockData";
+import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LifecycleProgress } from "./LifecycleProgress";
 
@@ -46,7 +46,7 @@ export function LifecycleTracker({
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
-  const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
+  const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
     const IconComponent = icons[defaultStage.iconName];
     return {
       ...defaultStage,
@@ -107,7 +107,7 @@ export function LifecycleTracker({
       }
 
       if (data && data.length > 0) {
-        const matchingDefaultStage = defaultLifecycleStages.find(
+        const matchingDefaultStage = defaultCustomerLifecycleStages.find(
           ds => ds.name === data[0].name && ds.category === data[0].category
         );
         
@@ -278,7 +278,7 @@ export function LifecycleTracker({
         throw checkError;
       }
       
-      const stagesToAdd = defaultLifecycleStages.filter(stage => {
+      const stagesToAdd = defaultCustomerLifecycleStages.filter(stage => {
         return !existingStages?.some(
           existing => existing.name === stage.name && (existing.category ? existing.category === stage.category : true)
         );
@@ -339,7 +339,7 @@ export function LifecycleTracker({
       if (data && Array.isArray(data)) {
         console.log("Fetched lifecycle stages:", data);
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          const defaultStage = defaultLifecycleStages.find(
+          const defaultStage = defaultCustomerLifecycleStages.find(
             ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
           );
           

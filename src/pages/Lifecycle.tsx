@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -9,12 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { customers as mockCustomers } from "@/data/mockData";
+import { customers as realCustomers } from "@/data/realCustomers";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
-import { defaultLifecycleStages, icons, DefaultLifecycleStage } from "@/data/mockData";
+import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
 
 const convertMockToCustomer = (mockCustomer: any): Customer => {
   return {
@@ -32,7 +33,7 @@ const convertMockToCustomer = (mockCustomer: any): Customer => {
   };
 };
 
-const convertDefaultStageToProps = (defaultStage: DefaultLifecycleStage): LifecycleStageProps => {
+const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
   const IconComponent = icons[defaultStage.iconName];
   return {
     ...defaultStage,
@@ -102,16 +103,16 @@ const Lifecycle = () => {
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
         } else {
-          console.log("No customers found, using mock data");
-          const convertedCustomers = mockCustomers.map(convertMockToCustomer);
+          console.log("No customers found, using real customer data");
+          const convertedCustomers = realCustomers.map(convertMockToCustomer);
           setCustomerList(convertedCustomers);
           setSelectedCustomer(convertedCustomers[0].id);
         }
       } catch (error) {
         console.error("Error in fetchCustomers:", error);
-        toast.error("Failed to load customers, using mock data");
+        toast.error("Failed to load customers, using real customer data");
         
-        const convertedCustomers = mockCustomers.map(convertMockToCustomer);
+        const convertedCustomers = realCustomers.map(convertMockToCustomer);
         setCustomerList(convertedCustomers);
         setSelectedCustomer(convertedCustomers[0].id);
       } finally {
@@ -156,7 +157,7 @@ const Lifecycle = () => {
       
       if (data && Array.isArray(data)) {
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          const defaultStage = defaultLifecycleStages.find(
+          const defaultStage = defaultCustomerLifecycleStages.find(
             ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
           );
           
@@ -238,7 +239,7 @@ const Lifecycle = () => {
 
   const selectedCustomerData = customerList.find(
     (customer) => customer.id === selectedCustomer
-  ) || (selectedCustomer ? convertMockToCustomer(mockCustomers.find((c) => c.id === selectedCustomer)) : null);
+  ) || (selectedCustomer ? convertMockToCustomer(realCustomers.find((c) => c.id === selectedCustomer)) : null);
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -261,7 +262,7 @@ const Lifecycle = () => {
                 {loading ? (
                   <SelectItem value="loading" disabled>Loading customers...</SelectItem>
                 ) : (
-                  (customerList.length > 0 ? customerList : mockCustomers.map(convertMockToCustomer)).map((customer) => (
+                  (customerList.length > 0 ? customerList : realCustomers.map(convertMockToCustomer)).map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
                     </SelectItem>
