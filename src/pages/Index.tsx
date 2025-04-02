@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -54,15 +53,13 @@ const Index = () => {
           
           const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
             id: crypto.randomUUID(),
-            name: customer.client || customer.name,
+            name: customer.name,
             logo: undefined,
             segment: customer.segment || "Unknown Segment", 
             region: customer.region || "Unknown Region",
             stage: customer.stage,
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: typeof customer.contractSize !== 'undefined' ? 
-              customer.contractSize : 
-              (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
+            contractSize: customer.contractSize || 0,
             owner: {
               id: "unknown",
               name: "Account Manager",
@@ -78,15 +75,13 @@ const Index = () => {
         // Use real customers data instead of mock data
         const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
           id: crypto.randomUUID(),
-          name: customer.client || customer.name,
+          name: customer.name,
           logo: undefined,
           segment: customer.segment || "Unknown Segment",
           region: customer.region || "Unknown Region",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: typeof customer.contractSize !== 'undefined' ? 
-            customer.contractSize : 
-            (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
+          contractSize: customer.contractSize || 0,
           owner: {
             id: "unknown",
             name: "Account Manager",
@@ -103,13 +98,11 @@ const Index = () => {
     fetchCustomers();
   }, []);
 
-  // Calculate total ARR from customers in database or real data
   const calculateTotalARR = () => {
     const total = customers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
     return total > 0 ? `$${(total / 1000).toFixed(0)}k` : "$0";
   };
 
-  // Dashboard stats data with real metrics based on customers
   const dashboardStats = [
     {
       title: "Total ARR",
@@ -155,7 +148,6 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Customers */}
           <Card className="col-span-2 bg-card dark:bg-gray-800">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-medium">
@@ -180,7 +172,6 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
           <Card className="bg-card dark:bg-gray-800">
             <CardHeader>
               <CardTitle className="text-lg font-medium">

@@ -31,11 +31,11 @@ const Customers = () => {
       id: customer.id || crypto.randomUUID(),
       name: customer.name,
       logo: customer.logo || undefined,
-      segment: customer.segment || customer.client || "Unknown Segment",
+      segment: customer.segment || "Unknown Segment",
       region: customer.region || "Unknown Region",
       stage: customer.stage || "New",
       status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
-      contractSize: customer.contractSize || customer.value || 0,
+      contractSize: customer.contractSize || 0,
       owner: customer.owner ? {
         id: customer.owner.id,
         name: customer.owner.name,
@@ -92,15 +92,13 @@ const Customers = () => {
           // Map real customers into the expected format
           const formattedRealCustomers = realCustomers.map(customer => ({
             id: crypto.randomUUID(),
-            name: customer.client || customer.name,
+            name: customer.name,
             logo: undefined,
             segment: customer.segment || "Unknown Segment",
             region: customer.region || "Unknown Region",
             stage: customer.stage,
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: typeof customer.contractSize !== 'undefined' ? 
-              customer.contractSize : 
-              (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
+            contractSize: customer.contractSize || 0,
             owner: {
               id: "unknown",
               name: customer.owner?.name || "Unassigned",
@@ -117,15 +115,13 @@ const Customers = () => {
         // Map real customers into the expected format
         const formattedRealCustomers = realCustomers.map(customer => ({
           id: crypto.randomUUID(),
-          name: customer.client || customer.name,
+          name: customer.name,
           logo: undefined,
           segment: customer.segment || "Unknown Segment",
           region: customer.region || "Unknown Region",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: typeof customer.contractSize !== 'undefined' ? 
-            customer.contractSize : 
-            (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
+          contractSize: customer.contractSize || 0,
           owner: {
             id: "unknown",
             name: customer.owner?.name || "Unassigned",
@@ -160,17 +156,17 @@ const Customers = () => {
         // If no data in database, use real customers data
         const formattedRealCustomers = realCustomers.map(customer => ({
           id: crypto.randomUUID(),
-          name: customer.client,
+          name: customer.name,
           logo: undefined,
-          segment: "Unknown Segment",
-          region: "Unknown Region",
+          segment: customer.segment || "Unknown Segment",
+          region: customer.region || "Unknown Region",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: parseInt(customer.value.replace(/[^0-9]/g, '')) || 0,
+          contractSize: customer.contractSize || 0,
           owner: {
             id: "unknown",
-            name: "Unassigned",
-            role: "Unassigned"
+            name: customer.owner?.name || "Unassigned",
+            role: customer.owner?.role || "Unassigned"
           }
         }));
         
