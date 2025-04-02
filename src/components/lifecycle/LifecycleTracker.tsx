@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -171,7 +170,7 @@ export function LifecycleTracker({
     try {
       const updateData: any = {};
       if (updatedStage.name) updateData.name = updatedStage.name;
-      if (updatedStage.status) updateData.status = updatedStage.status;
+      if (updatedStage.status !== undefined) updateData.status = updatedStage.status;
       if (updatedStage.owner?.id) updateData.owner_id = updatedStage.owner.id;
       if (updatedStage.deadline !== undefined) updateData.deadline = updatedStage.deadline;
       if (updatedStage.notes !== undefined) updateData.notes = updatedStage.notes;
@@ -202,13 +201,15 @@ export function LifecycleTracker({
         onStagesUpdate(updatedStages);
       }
 
-      await createNotification({
-        type: 'lifecycle',
-        title: 'Lifecycle Stage Updated',
-        message: `Stage "${updatedStage.name || currentStage?.name}" for ${customerName} has been updated`,
-        related_id: stageId,
-        related_type: 'lifecycle_stage'
-      });
+      if (updatedStage.name || updatedStage.owner || updatedStage.deadline || updatedStage.notes || updatedStage.category) {
+        await createNotification({
+          type: 'lifecycle',
+          title: 'Lifecycle Stage Updated',
+          message: `Stage "${updatedStage.name || currentStage?.name}" for ${customerName} has been updated`,
+          related_id: stageId,
+          related_type: 'lifecycle_stage'
+        });
+      }
 
       if (updatedStage.owner && (!currentStage?.owner || currentStage.owner.id !== updatedStage.owner.id)) {
         await createNotification({
@@ -240,7 +241,12 @@ export function LifecycleTracker({
         });
       }
 
-      toast.success("Stage updated successfully");
+      if (updatedStage.status && !updatedStage.name && !updatedStage.owner && !updatedStage.deadline && 
+          updatedStage.notes === undefined && updatedStage.category === undefined) {
+        // Status-only update
+      } else {
+        toast.success("Stage updated successfully");
+      }
     } catch (error) {
       console.error("Error updating stage:", error);
       toast.error("Failed to update stage");
@@ -259,7 +265,6 @@ export function LifecycleTracker({
         }
       }
       
-      // First check for existing stages to prevent duplication
       const dbCustomerId = getDbCustomerId();
       
       const { data: existingStages, error: checkError } = await supabase
@@ -274,7 +279,7 @@ export function LifecycleTracker({
       
       const stagesToAdd = defaultLifecycleStages.filter(stage => {
         return !existingStages?.some(
-          existing => existing.name === stage.name && (existing.category || "") === (stage.category || "")
+          existing => existing.name === stage.name && (existing.category ? ds.category === stage.category : true)
         );
       });
       
@@ -283,7 +288,6 @@ export function LifecycleTracker({
         return;
       }
       
-      // Use a fallback staff ID if needed
       const defaultStaffId = validStaffIds[0];
       
       const stagesToInsert = stagesToAdd.map(stage => ({

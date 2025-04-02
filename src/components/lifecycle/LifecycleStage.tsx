@@ -8,11 +8,16 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { CheckCircle, Clock, AlertCircle, Circle, Slash } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Circle, Slash, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReactNode } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { toast } from "sonner";
 
 export interface LifecycleStageProps {
   id: string;
@@ -75,6 +80,25 @@ export function LifecycleStageComponent({
     }
   };
 
+  const handleStatusChange = (newStatus: LifecycleStageProps["status"]) => {
+    if (onUpdate) {
+      onUpdate(id, { status: newStatus });
+      toast.success(`Status updated to ${newStatus.replace("-", " ")}`);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (onUpdate) {
+      if (date) {
+        onUpdate(id, { deadline: format(date, "yyyy-MM-dd") });
+        toast.success("Deadline updated");
+      } else {
+        onUpdate(id, { deadline: undefined });
+        toast.success("Deadline removed");
+      }
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -102,11 +126,28 @@ export function LifecycleStageComponent({
             </div>
           </div>
           
-          {deadline && (
-            <div className="text-sm text-muted-foreground">
-              Deadline: {new Date(deadline).toLocaleDateString()}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground flex items-center">
+              <Calendar className="h-3.5 w-3.5 mr-1" /> 
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="link" className="p-0 h-auto text-xs">
+                    {deadline ? new Date(deadline).toLocaleDateString() : "Set deadline"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3 pointer-events-auto">
+                    <Calendar
+                      mode="single"
+                      selected={deadline ? new Date(deadline) : undefined}
+                      onSelect={handleDateSelect}
+                      initialFocus
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-          )}
+          </div>
           
           {notes && (
             <div className="text-sm">
@@ -117,7 +158,36 @@ export function LifecycleStageComponent({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center">
-        {getStatusBadge(status)}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="px-2">
+              {getStatusBadge(status)}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuItem onClick={() => handleStatusChange("not-started")}>
+              <Circle className="h-4 w-4 mr-2 text-gray-500" />
+              Not Started
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("in-progress")}>
+              <Clock className="h-4 w-4 mr-2 text-blue-500" />
+              In Progress
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("done")}>
+              <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+              Done
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("blocked")}>
+              <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+              Blocked
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("not-applicable")}>
+              <Slash className="h-4 w-4 mr-2 text-gray-400" />
+              Not Applicable
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
         <AddEditStage 
           stage={{ id, name, status, owner, deadline, notes, icon, category }} 
           isEditing 
