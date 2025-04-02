@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
-import { Button } from "@/components/ui/button";
 import { 
   Select,
   SelectContent,
@@ -10,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { customers as realCustomers } from "@/data/realCustomers";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
@@ -47,7 +47,8 @@ const Lifecycle = () => {
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
-
+  const [searchTerm, setSearchTerm] = useState("");
+  
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
       return customerId;
@@ -103,18 +104,13 @@ const Lifecycle = () => {
           setCustomerList(data);
           setSelectedCustomer(data[0].id);
         } else {
-          console.log("No customers found, using real customer data");
-          const convertedCustomers = realCustomers.map(convertMockToCustomer);
-          setCustomerList(convertedCustomers);
-          setSelectedCustomer(convertedCustomers[0].id);
+          console.log("No customers found in the database");
+          setCustomerList([]);
         }
       } catch (error) {
         console.error("Error in fetchCustomers:", error);
-        toast.error("Failed to load customers, using real customer data");
-        
-        const convertedCustomers = realCustomers.map(convertMockToCustomer);
-        setCustomerList(convertedCustomers);
-        setSelectedCustomer(convertedCustomers[0].id);
+        toast.error("Failed to load customers");
+        setCustomerList([]);
       } finally {
         setLoading(false);
       }
@@ -202,44 +198,13 @@ const Lifecycle = () => {
     setCustomerStages(stages);
   };
 
-  const handleMarkAllNotApplicable = async (customerId = selectedCustomer) => {
-    if (!customerId) return;
-    
-    try {
-      setLoading(true);
-      const dbCustomerId = getDbCustomerId(customerId);
-      
-      const { error } = await supabase
-        .from('lifecycle_stages')
-        .update({ status: 'not-applicable' })
-        .eq('customer_id', dbCustomerId)
-        .eq('status', 'not-started');
-      
-      if (error) {
-        console.error("Error updating stages:", error);
-        throw error;
-      }
-      
-      const updatedStages = customerStages.map(stage => {
-        if (stage.status === 'not-started') {
-          return { ...stage, status: 'not-applicable' as const };
-        }
-        return stage;
-      });
-      
-      setCustomerStages(updatedStages);
-      toast.success("All not-started stages marked as Not Applicable");
-    } catch (error) {
-      console.error("Error marking stages as not applicable:", error);
-      toast.error("Failed to update stages");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filteredCustomers = customerList.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const selectedCustomerData = customerList.find(
     (customer) => customer.id === selectedCustomer
-  ) || (selectedCustomer ? convertMockToCustomer(realCustomers.find((c) => c.id === selectedCustomer)) : null);
+  );
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -253,31 +218,37 @@ const Lifecycle = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customer Lifecycle</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={selectedCustomer} onValueChange={handleCustomerChange}>
-              <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {loading ? (
-                  <SelectItem value="loading" disabled>Loading customers...</SelectItem>
-                ) : (
-                  (customerList.length > 0 ? customerList : realCustomers.map(convertMockToCustomer)).map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              onClick={() => handleMarkAllNotApplicable()}
-              disabled={loading || !selectedCustomer}
-            >
-              Mark Not Started as N/A
-            </Button>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search customers..."
+              className="pl-8 pr-4 py-2 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedCustomer} onValueChange={handleCustomerChange}>
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Select customer" />
+            </SelectTrigger>
+            <SelectContent>
+              {loading ? (
+                <SelectItem value="loading" disabled>Loading customers...</SelectItem>
+              ) : filteredCustomers.length > 0 ? (
+                filteredCustomers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-results" disabled>No customers found</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         {selectedCustomerData && (

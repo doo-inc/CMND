@@ -11,9 +11,10 @@ interface StatCardProps {
     type: "increase" | "decrease";
   };
   icon?: React.ReactNode;
+  description?: string;
 }
 
-export function StatCard({ title, value, change, icon }: StatCardProps) {
+export function StatCard({ title, value, change, icon, description }: StatCardProps) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -38,6 +39,9 @@ export function StatCard({ title, value, change, icon }: StatCardProps) {
                   {change.value}%
                 </span>
               </div>
+            )}
+            {description && (
+              <p className="text-xs text-muted-foreground mt-1">{description}</p>
             )}
           </div>
           {icon && <div className="text-blue-500">{icon}</div>}
