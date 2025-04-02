@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -287,17 +286,29 @@ export function LifecycleTracker({
         category: stage.category || null
       }));
       
-      // Delete existing stages first to avoid duplicates
-      const { error: deleteError } = await supabase
+      const { data: existingStages, error: fetchError } = await supabase
         .from('lifecycle_stages')
-        .delete()
+        .select('id')
         .eq('customer_id', dbCustomerId);
-      
-      if (deleteError) {
-        console.error("Error deleting existing stages:", deleteError);
+        
+      if (fetchError) {
+        console.error("Error checking existing stages:", fetchError);
       }
       
-      // Insert new default stages
+      if (existingStages && existingStages.length > 0) {
+        console.log(`Found ${existingStages.length} existing stages, replacing them with defaults`);
+        const { error: deleteError } = await supabase
+          .from('lifecycle_stages')
+          .delete()
+          .eq('customer_id', dbCustomerId);
+        
+        if (deleteError) {
+          console.error("Error deleting existing stages:", deleteError);
+        }
+      } else {
+        console.log("No existing stages found, adding defaults");
+      }
+      
       const { error } = await supabase
         .from('lifecycle_stages')
         .insert(stagesToInsert);
@@ -381,14 +392,12 @@ export function LifecycleTracker({
     }
   };
   
-  // Fetch stages when the component mounts or customer changes
   useEffect(() => {
     if (customerId) {
       fetchLifecycleStages();
     }
   }, [customerId]);
   
-  // Force add default stages if none exist after initial fetch
   useEffect(() => {
     if (initialFetchComplete && stages.length === 0 && !isAddingDefaultStages) {
       console.log("No stages found after initial fetch, adding default stages");

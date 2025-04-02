@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -12,6 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/components/customers/CustomerCard";
 import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 import { toast } from "sonner";
+import { 
+  getLiveCustomers, 
+  getCustomerARRData, 
+  getDealsPipeline, 
+  calculateAverageGoLiveTime,
+  calculateChurnRate,
+  calculateSalesLifecycle
+} from "@/utils/customerUtils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -110,64 +119,26 @@ const Index = () => {
     }
   };
 
-  const calculateTotalARR = () => {
-    const total = customers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
-    return total > 0 ? `$${(total / 1000).toFixed(0)}k` : "$0";
-  };
+  // Calculate dashboard metrics
+  const { totalARR, liveCustomers, growthRate } = getCustomerARRData(customers);
+  const formattedARR = totalARR > 0 ? `$${(totalARR / 1000).toFixed(0)}k` : "$0";
+  const dealsPipeline = getDealsPipeline(customers);
+  const formattedDealsPipeline = dealsPipeline.value > 0 ? `$${(dealsPipeline.value / 1000).toFixed(0)}k` : "$0";
   
   const getTotalCustomersCount = () => {
     return realCustomers.length;
   };
   
-  const getLiveCustomersCount = () => {
-    return customers.filter(c => c.status === "done").length;
-  };
-  
-  const calculateDealsPipeline = () => {
-    const pipelineCustomers = customers.filter(c => 
-      (c.stage === "Proposal Sent" || c.stage === "Invoice Sent" || c.stage === "Demo Completed") &&
-      (c.status !== "done")
-    );
-    
-    const totalValue = pipelineCustomers.reduce((sum, c) => sum + (c.contractSize || 0), 0);
-    const count = pipelineCustomers.length;
-    
-    return {
-      value: totalValue > 0 ? `$${(totalValue / 1000).toFixed(0)}k` : "$0",
-      count: count
-    };
-  };
-  
-  const calculateChurnRate = () => {
-    const totalCustomers = realCustomers.length;
-    const churnedCustomers = Math.floor(totalCustomers * 0.05);
-    return (churnedCustomers / totalCustomers * 100).toFixed(1) + "%";
-  };
-  
-  const calculateAverageGoLiveTime = () => {
-    return "37 days";
-  };
-  
-  const calculateGrowthRate = () => {
-    return "12.5%";
-  };
-  
-  const calculateSalesLifecycle = () => {
-    return "45 days";
-  };
-  
-  const dealsPipeline = calculateDealsPipeline();
-
   const dashboardStats = [
     {
       title: "Total ARR",
-      value: calculateTotalARR(),
+      value: formattedARR,
       change: { value: 14, type: "increase" as const },
       icon: <BarChart3 className="h-6 w-6" />
     },
     {
       title: "Live Customers",
-      value: `${getLiveCustomersCount()}`,
+      value: `${liveCustomers.length}`,
       change: { value: 5, type: "increase" as const },
       icon: <LifeBuoy className="h-6 w-6" />
     },
@@ -178,7 +149,7 @@ const Index = () => {
     },
     {
       title: "Deals Pipeline",
-      value: dealsPipeline.value,
+      value: formattedDealsPipeline,
       description: `${dealsPipeline.count} active deals`,
       icon: <TrendingUp className="h-6 w-6" />
     },
@@ -190,7 +161,7 @@ const Index = () => {
     },
     {
       title: "Growth Rate",
-      value: calculateGrowthRate(),
+      value: `${growthRate}%`,
       description: "Last quarter",
       change: { value: 8, type: "increase" as const },
       icon: <TrendingUp className="h-6 w-6" />
@@ -203,7 +174,7 @@ const Index = () => {
     },
     {
       title: "Churn Rate",
-      value: calculateChurnRate(),
+      value: calculateChurnRate(customers),
       description: "Last 12 months",
       icon: <Activity className="h-6 w-6" />
     }

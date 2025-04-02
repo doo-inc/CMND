@@ -243,6 +243,32 @@ const CustomerDetails = () => {
         } else {
           console.log("No customer found with ID:", id);
           toast.error("Customer not found");
+          
+          const realCustomer = realCustomers.find(c => 
+            c.name.toLowerCase().includes(id.toLowerCase()) || 
+            (c.id && c.id.toLowerCase().includes(id.toLowerCase()))
+          );
+          
+          if (realCustomer) {
+            const formattedCustomer: CustomerData = {
+              id: realCustomer.id || crypto.randomUUID(),
+              name: realCustomer.name,
+              logo: undefined,
+              segment: realCustomer.segment || "Unknown Segment",
+              region: realCustomer.region || "Unknown Region",
+              stage: realCustomer.stage || "New",
+              status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
+              contractSize: realCustomer.contractSize || 0,
+              owner: {
+                id: "unknown",
+                name: realCustomer.owner?.name || "Account Manager",
+                role: realCustomer.owner?.role || "Sales"
+              }
+            };
+            
+            setCustomer(formattedCustomer);
+            toast.success("Customer found by name match");
+          }
         }
       } catch (error) {
         console.error("Error fetching customer:", error);

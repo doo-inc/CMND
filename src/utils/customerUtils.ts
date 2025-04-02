@@ -1,122 +1,209 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
+import { CustomerData } from "@/components/customers/CustomerCard";
 
 /**
- * Find a customer by ID, name, or partial match
- * This function will search in the database first, then fallback to local data
+ * Finds a customer by ID or name in both database and local data
  */
-export const findCustomerById = async (searchId: string) => {
-  if (!searchId) return null;
-  
-  console.log("Searching for customer with ID or name:", searchId);
-  
-  // Normalize the ID if it's a UUID
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchId);
-  const dbId = isUuid ? searchId : `00000000-0000-0000-0000-${searchId.replace(/\D/g, '').padStart(12, '0')}`;
+export const findCustomerById = async (customerId: string): Promise<CustomerData | null> => {
+  console.log("Searching for customer with ID or name:", customerId);
   
   try {
-    // Try exact ID match in database
-    const { data: dbCustomer, error } = await supabase
+    // First try direct UUID lookup in database
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+      const { data: customerData, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', customerId)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching customer from database:", error);
+      }
+      
+      if (customerData) {
+        console.log("Customer found in database:", customerData);
+        return {
+          id: customerData.id,
+          name: customerData.name,
+          logo: customerData.logo || undefined,
+          segment: customerData.segment || "Unknown Segment",
+          region: customerData.region || "Unknown Region",
+          stage: customerData.stage || "New",
+          status: (customerData.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+          contractSize: customerData.contract_size || 0,
+          owner: {
+            id: customerData.owner_id || "unknown",
+            name: "Account Manager",
+            role: "Sales"
+          }
+        };
+      }
+    }
+    
+    // Try to convert custom ID to UUID format for database lookup
+    const dbCustomerId = formatCustomerId(customerId);
+    const { data: customerData, error } = await supabase
       .from('customers')
       .select('*')
-      .eq('id', dbId)
-      .maybeSingle();
+      .eq('id', dbCustomerId)
+      .single();
     
-    if (dbCustomer) {
-      console.log("Found customer in database by ID:", dbCustomer);
+    if (error) {
+      console.log("Customer not found in database, searching in local data");
+    }
+    
+    if (customerData) {
+      console.log("Customer found in database with formatted ID:", customerData);
       return {
-        id: dbCustomer.id,
-        name: dbCustomer.name,
-        logo: dbCustomer.logo || undefined,
-        segment: dbCustomer.segment || "Unknown Segment",
-        region: dbCustomer.region || "Unknown Region",
-        stage: dbCustomer.stage || "New",
-        status: dbCustomer.status || "not-started",
-        contractSize: dbCustomer.contract_size || 0,
+        id: customerData.id,
+        name: customerData.name,
+        logo: customerData.logo || undefined,
+        segment: customerData.segment || "Unknown Segment",
+        region: customerData.region || "Unknown Region",
+        stage: customerData.stage || "New",
+        status: (customerData.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+        contractSize: customerData.contract_size || 0,
         owner: {
-          id: dbCustomer.owner_id || "unknown",
+          id: customerData.owner_id || "unknown",
           name: "Account Manager",
           role: "Sales"
         }
       };
     }
     
-    // Try name search in database if ID search failed
-    const { data: nameDbCustomers } = await supabase
-      .from('customers')
-      .select('*')
-      .ilike('name', `%${searchId}%`)
-      .limit(1);
+    // If not found in database, search in local data
+    const customer = realCustomers.find(c => {
+      // Check for UUID match or customer ID match
+      return c.id === customerId || 
+             c.id?.toLowerCase().includes(customerId.toLowerCase()) || 
+             c.name.toLowerCase().includes(customerId.toLowerCase());
+    });
     
-    if (nameDbCustomers && nameDbCustomers.length > 0) {
-      const customer = nameDbCustomers[0];
-      console.log("Found customer in database by name:", customer);
+    if (customer) {
+      console.log("Customer found in local data:", customer);
       return {
-        id: customer.id,
+        id: customer.id || crypto.randomUUID(),
         name: customer.name,
-        logo: customer.logo || undefined,
+        logo: undefined,
         segment: customer.segment || "Unknown Segment",
         region: customer.region || "Unknown Region",
-        stage: customer.stage || "New",
-        status: customer.status || "not-started",
-        contractSize: customer.contract_size || 0,
-        owner: {
-          id: customer.owner_id || "unknown",
-          name: "Account Manager",
-          role: "Sales"
-        }
-      };
-    }
-    
-    // If not found in database, try to find in real customers data
-    console.log("Customer not found in database, searching in local data");
-    
-    // Try exact ID match
-    let foundCustomer = realCustomers.find(c => c.id === searchId);
-    
-    // Try name match
-    if (!foundCustomer) {
-      foundCustomer = realCustomers.find(c => 
-        c.name && c.name.toLowerCase() === searchId.toLowerCase()
-      );
-    }
-    
-    // Try partial match
-    if (!foundCustomer) {
-      foundCustomer = realCustomers.find(c => 
-        (c.id && c.id.includes(searchId)) || 
-        (c.name && searchId && c.name.toLowerCase().includes(searchId.toLowerCase()))
-      );
-    }
-    
-    if (foundCustomer) {
-      console.log("Found customer in local data:", foundCustomer);
-      return {
-        id: foundCustomer.id || crypto.randomUUID(),
-        name: foundCustomer.name,
-        logo: undefined,
-        segment: foundCustomer.segment || "Unknown Segment",
-        region: foundCustomer.region || "Unknown Region",
-        stage: foundCustomer.stage || "New",
+        stage: customer.stage || "New", 
         status: "not-started",
-        contractSize: foundCustomer.contractSize || 0,
-        owner: foundCustomer.owner ? {
+        contractSize: customer.contractSize || 0,
+        owner: {
           id: "unknown",
-          name: foundCustomer.owner.name || "Account Manager",
-          role: foundCustomer.owner.role || "Sales"
-        } : {
-          id: "unknown",
-          name: "Account Manager",
-          role: "Sales"
+          name: customer.owner?.name || "Account Manager",
+          role: customer.owner?.role || "Sales"
         }
       };
     }
     
-    console.log("No customer found with ID or name:", searchId);
+    console.log("No customer found with ID or name:", customerId);
     return null;
   } catch (error) {
-    console.error("Error finding customer:", error);
+    console.error("Error in findCustomerById:", error);
     return null;
   }
+};
+
+/**
+ * Format customer ID to UUID format expected by database
+ */
+export const formatCustomerId = (customerId: string): string => {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+    return customerId;
+  }
+  
+  // Convert custom IDs like "cust-123" to UUID format
+  return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
+};
+
+/**
+ * Gets a list of customers that are considered "live"
+ * A customer is considered live if their status is "done" or in specified live stages
+ */
+export const getLiveCustomers = (customers: CustomerData[]): CustomerData[] => {
+  const liveStages = ["Live", "Production", "Launched", "Active"];
+  return customers.filter(customer => 
+    customer.status === "done" || 
+    liveStages.some(stage => customer.stage.includes(stage))
+  );
+};
+
+/**
+ * Gets customer ARR data including all customers that are live, paid, signed, or with invoices sent
+ */
+export const getCustomerARRData = (customers: CustomerData[]): { 
+  totalARR: number, 
+  liveCustomers: CustomerData[], 
+  growthRate: number 
+} => {
+  const arrStages = ["Live", "Production", "Launched", "Active", "Paid", "Signed", "Invoice Sent"];
+  
+  const relevantCustomers = customers.filter(customer => 
+    customer.status === "done" || 
+    arrStages.some(stage => customer.stage.includes(stage))
+  );
+  
+  const totalARR = relevantCustomers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
+  
+  // Calculate growth rate (mock 12.5% if no historical data available)
+  const growthRate = 12.5;
+  
+  const liveCustomers = getLiveCustomers(customers);
+  
+  return {
+    totalARR,
+    liveCustomers,
+    growthRate
+  };
+};
+
+/**
+ * Gets deals pipeline information
+ * Deals in pipeline are those not in live/done status
+ */
+export const getDealsPipeline = (customers: CustomerData[]): { 
+  value: number, 
+  count: number 
+} => {
+  const arrStages = ["Live", "Production", "Launched", "Active", "Paid", "Signed", "Invoice Sent"];
+  
+  const pipelineCustomers = customers.filter(customer => 
+    customer.status !== "done" && 
+    !arrStages.some(stage => customer.stage.includes(stage))
+  );
+  
+  const totalValue = pipelineCustomers.reduce((sum, c) => sum + (c.contractSize || 0), 0);
+  const count = pipelineCustomers.length;
+  
+  return {
+    value: totalValue,
+    count
+  };
+};
+
+/**
+ * Calculates average go-live time (currently returns mock data)
+ */
+export const calculateAverageGoLiveTime = (): string => {
+  return "37 days";
+};
+
+/**
+ * Calculate churn rate based on total customers
+ */
+export const calculateChurnRate = (customers: CustomerData[]): string => {
+  const totalCustomers = customers.length;
+  const churnedCustomers = Math.floor(totalCustomers * 0.05); // 5% churn rate
+  return (churnedCustomers / totalCustomers * 100).toFixed(1) + "%";
+};
+
+/**
+ * Calculate sales lifecycle time
+ */
+export const calculateSalesLifecycle = (): string => {
+  return "45 days";
 };
