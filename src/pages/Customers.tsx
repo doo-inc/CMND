@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard, CustomerData } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, ArrowUpDown, RefreshCw } from "lucide-react";
+import { Plus, Search, ArrowUpDown } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer, CustomerWithOwner } from "@/types/customers";
 import { toast } from "sonner";
 import { customers as realCustomers } from "@/data/realCustomers";
+import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -67,50 +69,36 @@ const Customers = () => {
   };
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setIsLoading(true);
-        
-        console.log("Fetching customers...");
-        const { data, error } = await supabase
-          .from('customers')
-          .select('*');
+    const initialSetup = async () => {
+      // Ensure customer data is synced on first load
+      await syncCustomersToDatabase();
+      fetchCustomers();
+    };
+    
+    initialSetup();
+  }, []);
 
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
-        }
+  const fetchCustomers = async () => {
+    try {
+      setIsLoading(true);
+      
+      console.log("Fetching customers...");
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*');
 
-        console.log("Customers data fetched:", data);
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
-        if (data && data.length > 0) {
-          const formattedCustomers = data.map(formatDatabaseCustomer);
-          setCustomers(formattedCustomers);
-        } else {
-          console.log("No customers found in database, using real customer data");
-          
-          // Map real customers into the expected format
-          const formattedRealCustomers = realCustomers.map(customer => ({
-            id: crypto.randomUUID(),
-            name: customer.name,
-            logo: undefined,
-            segment: customer.segment || "Unknown Segment",
-            region: customer.region || "Unknown Region",
-            stage: customer.stage,
-            status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: customer.contractSize || 0,
-            owner: {
-              id: "unknown",
-              name: customer.owner?.name || "Unassigned",
-              role: customer.owner?.role || "Unassigned"
-            }
-          }));
-          
-          setCustomers(formattedRealCustomers);
-        }
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-        toast.error("Failed to load customers, using real customer data");
+      console.log("Customers data fetched:", data);
+
+      if (data && data.length > 0) {
+        const formattedCustomers = data.map(formatDatabaseCustomer);
+        setCustomers(formattedCustomers);
+      } else {
+        console.log("No customers found in database, using real customer data");
         
         // Map real customers into the expected format
         const formattedRealCustomers = realCustomers.map(customer => ({
@@ -130,52 +118,29 @@ const Customers = () => {
         }));
         
         setCustomers(formattedRealCustomers);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCustomers();
-  }, []);
-
-  const refreshCustomers = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*');
-
-      if (error) {
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        const formattedCustomers = data.map(formatDatabaseCustomer);
-        setCustomers(formattedCustomers);
-      } else {
-        // If no data in database, use real customers data
-        const formattedRealCustomers = realCustomers.map(customer => ({
-          id: crypto.randomUUID(),
-          name: customer.name,
-          logo: undefined,
-          segment: customer.segment || "Unknown Segment",
-          region: customer.region || "Unknown Region",
-          stage: customer.stage,
-          status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: customer.contractSize || 0,
-          owner: {
-            id: "unknown",
-            name: customer.owner?.name || "Unassigned",
-            role: customer.owner?.role || "Unassigned"
-          }
-        }));
-        
-        setCustomers(formattedRealCustomers);
-        toast.info("Using real customer data (not stored in database)");
       }
     } catch (error) {
-      console.error("Error refreshing customers:", error);
-      toast.error("Failed to refresh customers");
+      console.error("Error fetching customers:", error);
+      toast.error("Failed to load customers, using real customer data");
+      
+      // Map real customers into the expected format
+      const formattedRealCustomers = realCustomers.map(customer => ({
+        id: crypto.randomUUID(),
+        name: customer.name,
+        logo: undefined,
+        segment: customer.segment || "Unknown Segment",
+        region: customer.region || "Unknown Region",
+        stage: customer.stage,
+        status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
+        contractSize: customer.contractSize || 0,
+        owner: {
+          id: "unknown",
+          name: customer.owner?.name || "Unassigned",
+          role: customer.owner?.role || "Unassigned"
+        }
+      }));
+      
+      setCustomers(formattedRealCustomers);
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +148,7 @@ const Customers = () => {
 
   React.useEffect(() => {
     const handleFocus = () => {
-      refreshCustomers();
+      fetchCustomers();
     };
 
     window.addEventListener('focus', handleFocus);
@@ -245,10 +210,6 @@ const Customers = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customers</h1>
           <div className="flex gap-2">
-            <Button onClick={refreshCustomers} variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
             <Button onClick={() => navigate("/customers/new")}>
               <Plus className="mr-2 h-4 w-4" /> Add Customer
             </Button>

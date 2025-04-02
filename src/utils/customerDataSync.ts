@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 /**
  * Syncs all customers from the local data to the database
- * This function can be called from any page to ensure customer data is in the database
+ * This function is called automatically on application startup
  */
 export const syncCustomersToDatabase = async (): Promise<boolean> => {
   try {

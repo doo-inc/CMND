@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { CustomerData } from "@/components/customers/CustomerCard";
@@ -153,8 +154,20 @@ export const getLiveCustomers = (customers: CustomerData[]): CustomerData[] => {
   const liveStages = ["Live", "Production", "Launched", "Active"];
   return customers.filter(customer => 
     customer.status === "done" || 
-    liveStages.some(stage => customer.stage.includes(stage))
+    liveStages.some(stage => customer.stage?.includes(stage))
   );
+};
+
+/**
+ * Format a number as a currency with K (thousands) or M (millions) suffix
+ */
+export const formatCurrency = (amount: number): string => {
+  if (amount >= 1000000) {
+    return `$${(amount / 1000000).toFixed(1)}M`;
+  } else if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(0)}k`;
+  }
+  return `$${amount}`;
 };
 
 /**
@@ -188,7 +201,7 @@ export const getCustomerARRData = (customers: CustomerData[]): {
 
 /**
  * Gets deals pipeline information
- * Deals in pipeline are those not in live/done status
+ * Deals in pipeline are those not in ARR-counted stages
  */
 export const getDealsPipeline = (customers: CustomerData[]): { 
   value: number, 

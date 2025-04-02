@@ -18,7 +18,8 @@ import {
   getDealsPipeline, 
   calculateAverageGoLiveTime,
   calculateChurnRate,
-  calculateSalesLifecycle
+  calculateSalesLifecycle,
+  formatCurrency
 } from "@/utils/customerUtils";
 
 const Index = () => {
@@ -28,7 +29,7 @@ const Index = () => {
   
   useEffect(() => {
     const initialSync = async () => {
-      // Try to sync customers automatically on first load
+      // Sync customers automatically on first load
       await syncCustomersToDatabase();
     };
     
@@ -116,22 +117,11 @@ const Index = () => {
     fetchCustomers();
   }, []);
 
-  const handleSyncData = async () => {
-    toast.loading("Syncing customer data to database...");
-    const success = await syncCustomersToDatabase();
-    if (success) {
-      toast.success("Customer data synced successfully!");
-      window.location.reload();
-    } else {
-      toast.error("Failed to sync customer data. Please try again.");
-    }
-  };
-
   // Calculate dashboard metrics
   const { totalARR, liveCustomers, growthRate } = getCustomerARRData(customers);
-  const formattedARR = totalARR > 0 ? `$${(totalARR / 1000).toFixed(0)}k` : "$0";
+  const formattedARR = formatCurrency(totalARR);
   const dealsPipeline = getDealsPipeline(customers);
-  const formattedDealsPipeline = dealsPipeline.value > 0 ? `$${(dealsPipeline.value / 1000).toFixed(0)}k` : "$0";
+  const formattedDealsPipeline = formatCurrency(dealsPipeline.value);
   
   const getTotalCustomersCount = () => {
     return realCustomers.length;
@@ -194,9 +184,6 @@ const Index = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleSyncData}>
-              Sync Data
-            </Button>
             <Button onClick={() => navigate("/customers/new")}>
               <Plus className="mr-2 h-4 w-4" /> Add Customer
             </Button>
