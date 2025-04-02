@@ -28,17 +28,22 @@ export const syncCustomersToDatabase = async (): Promise<boolean> => {
       return true;
     }
     
-    // Format customers for database insertion
-    const customersToInsert = realCustomers.map(customer => ({
-      id: customer.id || crypto.randomUUID(),
-      name: customer.name,
-      segment: customer.segment || null,
-      region: customer.region || null,
-      stage: customer.stage || null,
-      status: "not-started",
-      contract_size: customer.contractSize || 0,
-      owner_id: "00000000-0000-0000-0000-000000000001" // Default owner
-    }));
+    // Format customers for database insertion, ensuring IDs are proper UUIDs
+    const customersToInsert = realCustomers.map(customer => {
+      // Generate a valid UUID for each customer instead of using custom IDs
+      const validUuid = crypto.randomUUID();
+      
+      return {
+        id: validUuid,
+        name: customer.name,
+        segment: customer.segment || null,
+        region: customer.region || null,
+        stage: customer.stage || null,
+        status: "not-started",
+        contract_size: customer.contractSize || 0,
+        owner_id: "00000000-0000-0000-0000-000000000001" // Default owner
+      };
+    });
     
     // Insert all customers
     const { error: insertError } = await supabase
@@ -64,34 +69,38 @@ export const syncCustomersToDatabase = async (): Promise<boolean> => {
  */
 export const ensureCustomerExists = async (customerId: string): Promise<boolean> => {
   try {
-    // Normalize the customer ID
-    const dbCustomerId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)
-      ? customerId
-      : `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
-    
-    // Check if customer exists
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('id', dbCustomerId);
-    
-    if (error) {
-      console.error("Error checking customer:", error);
-      return false;
+    // For existing UUIDs in the database, we'll use them directly
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
+      // Check if customer exists
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', customerId);
+      
+      if (error) {
+        console.error("Error checking customer:", error);
+        return false;
+      }
+      
+      // If customer exists, return true
+      if (data && data.length > 0) {
+        return true;
+      }
     }
     
-    // If customer exists, return true
-    if (data && data.length > 0) {
-      return true;
-    }
-    
-    // Find the customer in real data
-    const customer = realCustomers.find(c => c.id === customerId);
+    // For non-UUID identifiers, we need to look up by name in the real data
+    const customer = realCustomers.find(c => 
+      c.id === customerId || 
+      c.name.toLowerCase().includes(customerId.toLowerCase())
+    );
     
     if (!customer) {
       console.error("Customer not found in real data:", customerId);
       return false;
     }
+    
+    // Create a new valid UUID for this customer
+    const dbCustomerId = crypto.randomUUID();
     
     // Insert the customer
     const { error: insertError } = await supabase

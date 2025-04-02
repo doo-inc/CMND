@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { CustomerData } from "@/components/customers/CustomerCard";
@@ -42,31 +41,31 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
       }
     }
     
-    // Try to convert custom ID to UUID format for database lookup
-    const dbCustomerId = formatCustomerId(customerId);
-    const { data: customerData, error } = await supabase
+    // Try to find by name in database
+    const { data: nameSearchData, error: nameSearchError } = await supabase
       .from('customers')
       .select('*')
-      .eq('id', dbCustomerId)
-      .single();
+      .ilike('name', `%${customerId}%`)
+      .limit(1);
     
-    if (error) {
-      console.log("Customer not found in database, searching in local data");
+    if (nameSearchError) {
+      console.error("Error searching by name:", nameSearchError);
     }
     
-    if (customerData) {
-      console.log("Customer found in database with formatted ID:", customerData);
+    if (nameSearchData && nameSearchData.length > 0) {
+      const customer = nameSearchData[0];
+      console.log("Customer found in database by name:", customer);
       return {
-        id: customerData.id,
-        name: customerData.name,
-        logo: customerData.logo || undefined,
-        segment: customerData.segment || "Unknown Segment",
-        region: customerData.region || "Unknown Region",
-        stage: customerData.stage || "New",
-        status: (customerData.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
-        contractSize: customerData.contract_size || 0,
+        id: customer.id,
+        name: customer.name,
+        logo: customer.logo || undefined,
+        segment: customer.segment || "Unknown Segment",
+        region: customer.region || "Unknown Region",
+        stage: customer.stage || "New",
+        status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+        contractSize: customer.contract_size || 0,
         owner: {
-          id: customerData.owner_id || "unknown",
+          id: customer.owner_id || "unknown",
           name: "Account Manager",
           role: "Sales"
         }
@@ -83,8 +82,34 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
     
     if (customer) {
       console.log("Customer found in local data:", customer);
+      // Try to insert this customer into the database for future use
+      const newCustomerId = crypto.randomUUID();
+      
+      try {
+        const { error: insertError } = await supabase
+          .from('customers')
+          .insert({
+            id: newCustomerId,
+            name: customer.name,
+            segment: customer.segment || null,
+            region: customer.region || null,
+            stage: customer.stage || null,
+            status: "not-started",
+            contract_size: customer.contractSize || 0,
+            owner_id: "00000000-0000-0000-0000-000000000001" // Default owner
+          });
+          
+        if (insertError) {
+          console.error("Error inserting customer from local data:", insertError);
+        } else {
+          console.log("Inserted customer into database from local data");
+        }
+      } catch (insertErr) {
+        console.error("Exception inserting customer:", insertErr);
+      }
+      
       return {
-        id: customer.id || crypto.randomUUID(),
+        id: newCustomerId,
         name: customer.name,
         logo: undefined,
         segment: customer.segment || "Unknown Segment",
@@ -116,8 +141,8 @@ export const formatCustomerId = (customerId: string): string => {
     return customerId;
   }
   
-  // Convert custom IDs like "cust-123" to UUID format
-  return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
+  // For custom IDs, return a new valid UUID
+  return crypto.randomUUID();
 };
 
 /**
@@ -144,7 +169,7 @@ export const getCustomerARRData = (customers: CustomerData[]): {
   
   const relevantCustomers = customers.filter(customer => 
     customer.status === "done" || 
-    arrStages.some(stage => customer.stage.includes(stage))
+    arrStages.some(stage => customer.stage?.includes(stage))
   );
   
   const totalARR = relevantCustomers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
@@ -173,7 +198,7 @@ export const getDealsPipeline = (customers: CustomerData[]): {
   
   const pipelineCustomers = customers.filter(customer => 
     customer.status !== "done" && 
-    !arrStages.some(stage => customer.stage.includes(stage))
+    !arrStages.some(stage => customer.stage?.includes(stage))
   );
   
   const totalValue = pipelineCustomers.reduce((sum, c) => sum + (c.contractSize || 0), 0);

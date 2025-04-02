@@ -5,8 +5,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Calendar, FileText, Link, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy } from "lucide-react";
-import { customers as mockCustomers } from "@/data/mockData";
+import { Plus, Users, Calendar, FileText, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy } from "lucide-react";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +25,15 @@ const Index = () => {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const initialSync = async () => {
+      // Try to sync customers automatically on first load
+      await syncCustomersToDatabase();
+    };
+    
+    initialSync();
+  }, []);
   
   useEffect(() => {
     const fetchCustomers = async () => {

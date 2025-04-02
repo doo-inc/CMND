@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import {
   FileWarning,
   MoreHorizontal,
   Download,
-  Edit
+  Edit,
+  RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { 
@@ -34,61 +35,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AddEditContract, ContractData } from "@/components/contracts/AddEditContract";
 import { toast } from "sonner";
-
-const contractsData = [
-  {
-    id: "con_1",
-    customer: "Acme Corporation",
-    customerId: "cust_1",
-    status: "active",
-    type: "Service Agreement",
-    startDate: "2023-06-01",
-    endDate: "2024-06-01",
-    value: "$25,000",
-    documentUrl: "/contract-template.pdf",
-    documentName: "Acme_Service_Agreement.pdf"
-  },
-  {
-    id: "con_2",
-    customer: "TechNova Inc",
-    customerId: "cust_2",
-    status: "pending",
-    type: "Implementation",
-    startDate: "2023-07-15",
-    endDate: "2023-10-15",
-    value: "$15,500"
-  },
-  {
-    id: "con_3",
-    customer: "Global Solutions",
-    customerId: "cust_3",
-    status: "expired",
-    type: "Support",
-    startDate: "2022-12-01",
-    endDate: "2023-12-01",
-    value: "$12,000"
-  },
-  {
-    id: "con_4",
-    customer: "MegaRetail",
-    customerId: "cust_4",
-    status: "draft",
-    type: "Service Agreement",
-    startDate: "-",
-    endDate: "-",
-    value: "$32,000"
-  },
-  {
-    id: "con_5",
-    customer: "NextGen Startup",
-    customerId: "cust_5",
-    status: "active",
-    type: "Implementation",
-    startDate: "2023-11-15",
-    endDate: "2024-02-15",
-    value: "$8,500"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 const getStatusBadge = (status: string) => {
   switch(status) {
@@ -119,45 +66,154 @@ const getContractIcon = (type: string) => {
 };
 
 const ContractsPage = () => {
-  const [contracts, setContracts] = useState<ContractData[]>(contractsData as ContractData[]);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const handleAddContract = (newContract: Partial<ContractData>) => {
-    const contractWithId: ContractData = {
-      id: `con_${Date.now()}`,
-      customer: newContract.customer || "",
-      customerId: newContract.customerId,
-      status: newContract.status || "draft",
-      type: newContract.type || "Service Agreement",
-      startDate: newContract.startDate || "-",
-      endDate: newContract.endDate || "-",
-      value: newContract.value || "$0",
-      documentUrl: newContract.documentUrl,
-      documentName: newContract.documentName
-    };
-    
-    setContracts([...contracts, contractWithId]);
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch contracts from the database
+      const { data, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          customers (name)
+        `);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        // Map database contracts to our ContractData format
+        const formattedContracts: ContractData[] = data.map(contract => ({
+          id: contract.id,
+          customer: contract.customers?.name || "Unknown Customer",
+          customerId: contract.customer_id,
+          status: (contract.status as "active" | "pending" | "expired" | "draft") || "draft",
+          type: contract.name || "Service Agreement",
+          startDate: contract.start_date ? new Date(contract.start_date).toISOString().split('T')[0] : "-",
+          endDate: contract.end_date ? new Date(contract.end_date).toISOString().split('T')[0] : "-",
+          value: `$${contract.value.toLocaleString()}`,
+          documentUrl: undefined,
+          documentName: undefined
+        }));
+        
+        setContracts(formattedContracts);
+      } else {
+        // No contracts found, use empty array
+        setContracts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      toast.error("Failed to fetch contracts");
+      setContracts([]);
+    } finally {
+      setLoading(false);
+    }
   };
   
-  const handleUpdateContract = (contractId: string, updatedContract: Partial<ContractData>) => {
-    const updatedContracts = contracts.map(contract => {
-      if (contract.id === contractId) {
-        return { ...contract, ...updatedContract };
+  useEffect(() => {
+    fetchContracts();
+  }, []);
+  
+  const handleAddContract = async (newContract: Partial<ContractData>) => {
+    try {
+      if (!newContract.customerId) {
+        toast.error("Customer ID is required");
+        return;
       }
-      return contract;
-    });
-    
-    setContracts(updatedContracts);
+      
+      // Insert into database
+      const { data, error } = await supabase
+        .from('contracts')
+        .insert({
+          customer_id: newContract.customerId,
+          name: newContract.type || "Service Agreement",
+          status: newContract.status || "draft",
+          start_date: newContract.startDate && newContract.startDate !== "-" 
+            ? new Date(newContract.startDate).toISOString() 
+            : null,
+          end_date: newContract.endDate && newContract.endDate !== "-" 
+            ? new Date(newContract.endDate).toISOString() 
+            : null,
+          value: parseInt(newContract.value?.replace(/[^0-9.-]+/g, "") || "0"),
+          terms: null
+        })
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        const newContractData: ContractData = {
+          id: data[0].id,
+          customer: newContract.customer || "Unknown Customer",
+          customerId: newContract.customerId,
+          status: newContract.status || "draft",
+          type: newContract.type || "Service Agreement",
+          startDate: newContract.startDate || "-",
+          endDate: newContract.endDate || "-",
+          value: newContract.value || "$0",
+          documentUrl: newContract.documentUrl,
+          documentName: newContract.documentName
+        };
+        
+        setContracts(prevContracts => [...prevContracts, newContractData]);
+        toast.success("Contract created successfully");
+      }
+    } catch (error) {
+      console.error("Error adding contract:", error);
+      toast.error("Failed to add contract");
+    }
+  };
+  
+  const handleUpdateContract = async (contractId: string, updatedContract: Partial<ContractData>) => {
+    try {
+      // Update in database
+      const { error } = await supabase
+        .from('contracts')
+        .update({
+          name: updatedContract.type,
+          status: updatedContract.status,
+          start_date: updatedContract.startDate && updatedContract.startDate !== "-" 
+            ? new Date(updatedContract.startDate).toISOString() 
+            : null,
+          end_date: updatedContract.endDate && updatedContract.endDate !== "-" 
+            ? new Date(updatedContract.endDate).toISOString() 
+            : null,
+          value: parseInt(updatedContract.value?.replace(/[^0-9.-]+/g, "") || "0")
+        })
+        .eq('id', contractId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
+      const updatedContracts = contracts.map(contract => {
+        if (contract.id === contractId) {
+          return { ...contract, ...updatedContract };
+        }
+        return contract;
+      });
+      
+      setContracts(updatedContracts);
+      toast.success("Contract updated successfully");
+    } catch (error) {
+      console.error("Error updating contract:", error);
+      toast.error("Failed to update contract");
+    }
   };
   
   const handleDownloadContract = (contract: ContractData) => {
     if (contract.documentUrl) {
-      // In a real app, this would download the actual file
-      // Here we just show a toast
       toast.success(`Downloading ${contract.documentName || 'contract'}`);
       
-      // Simulate a download
       const link = document.createElement('a');
       link.href = contract.documentUrl;
       link.download = contract.documentName || 'contract.pdf';
@@ -187,6 +243,11 @@ const ContractsPage = () => {
     setStatusFilter(status);
   };
 
+  const refreshContracts = () => {
+    fetchContracts();
+    toast.success("Contracts refreshed");
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -203,6 +264,10 @@ const ContractsPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Button variant="outline" onClick={refreshContracts}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="glass-input">
@@ -296,78 +361,57 @@ const ContractsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredContracts.map((contract, index) => (
-                    <TableRow key={contract.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
-                      <TableCell className="font-medium">{contract.customer}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {getContractIcon(contract.type)}
-                          <span className="ml-2">{contract.type}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                      <TableCell>{contract.startDate}</TableCell>
-                      <TableCell>{contract.endDate}</TableCell>
-                      <TableCell>{contract.value}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => {
-                              // This would open the edit dialog in a real app
-                              const updatedContract = { ...contract };
-                              handleUpdateContract(contract.id, updatedContract);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => handleDownloadContract(contract)}
-                          >
-                            <Download className="h-4 w-4" />
-                            <span className="sr-only">Download</span>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass-card">
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  // Handle view action
-                                  toast.info(`Viewing contract: ${contract.id}`);
-                                }}
-                              >
-                                View
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <AddEditContract 
-                                  contract={contract}
-                                  isEditing={true}
-                                  onSave={(updatedContract) => handleUpdateContract(contract.id, updatedContract)}
-                                />
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDownloadContract(contract)}
-                              >
-                                Download
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  
-                  {filteredContracts.length === 0 && (
+                  {loading ? (
+                    Array(3).fill(0).map((_, index) => (
+                      <TableRow key={`loading-${index}`}>
+                        <TableCell colSpan={7}>
+                          <div className="h-12 bg-gray-100 animate-pulse rounded"></div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredContracts.length > 0 ? (
+                    filteredContracts.map((contract, index) => (
+                      <TableRow key={contract.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
+                        <TableCell className="font-medium">{contract.customer}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            {getContractIcon(contract.type)}
+                            <span className="ml-2">{contract.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                        <TableCell>{contract.startDate}</TableCell>
+                        <TableCell>{contract.endDate}</TableCell>
+                        <TableCell>{contract.value}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="glass-card">
+                                <DropdownMenuItem>
+                                  <AddEditContract 
+                                    contract={contract}
+                                    isEditing={true}
+                                    onSave={(updatedContract) => handleUpdateContract(contract.id, updatedContract)}
+                                  />
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDownloadContract(contract)}
+                                  disabled={!contract.documentUrl}
+                                >
+                                  Download
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No contracts found. Try adjusting your filters or create a new contract.
