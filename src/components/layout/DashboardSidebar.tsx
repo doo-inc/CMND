@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Home, Users, Calendar, BarChart, FileText, Bell } from "lucide-react";
@@ -38,7 +37,7 @@ const secondaryNavItems = [
 export function DashboardSidebar() {
   return (
     <Sidebar className="glass-sidebar border-0 transition-all duration-300 bg-gray-200 dark:bg-gray-800">
-      <SidebarHeader className="p-4 bg-gray-300/80 dark:bg-gray-700/80 backdrop-blur-md border-b border-gray-300/20 dark:border-gray-600/20">
+      <SidebarHeader className="p-4 bg-gray-200/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-300/20 dark:border-gray-600/20">
         <div className="flex items-center space-x-2">
           <img src="/lovable-uploads/7103ec49-9766-44ba-a938-b218c15a85e7.png" alt="DOO Command" className="h-10 w-10" />
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Customer Center</h2>
