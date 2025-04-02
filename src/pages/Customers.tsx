@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard, CustomerData } from "@/components/customers/CustomerCard";
@@ -16,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer, CustomerWithOwner } from "@/types/customers";
 import { toast } from "sonner";
-import { realCustomers } from "@/data/realCustomers";
+import { customers as realCustomers } from "@/data/realCustomers";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -93,17 +92,19 @@ const Customers = () => {
           // Map real customers into the expected format
           const formattedRealCustomers = realCustomers.map(customer => ({
             id: crypto.randomUUID(),
-            name: customer.client,
+            name: customer.client || customer.name,
             logo: undefined,
-            segment: "Unknown Segment",
-            region: "Unknown Region",
+            segment: customer.segment || "Unknown Segment",
+            region: customer.region || "Unknown Region",
             stage: customer.stage,
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: parseInt(customer.value.replace(/[^0-9]/g, '')) || 0,
+            contractSize: typeof customer.contractSize !== 'undefined' ? 
+              customer.contractSize : 
+              (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
             owner: {
               id: "unknown",
-              name: "Unassigned",
-              role: "Unassigned"
+              name: customer.owner?.name || "Unassigned",
+              role: customer.owner?.role || "Unassigned"
             }
           }));
           
@@ -116,17 +117,19 @@ const Customers = () => {
         // Map real customers into the expected format
         const formattedRealCustomers = realCustomers.map(customer => ({
           id: crypto.randomUUID(),
-          name: customer.client,
+          name: customer.client || customer.name,
           logo: undefined,
-          segment: "Unknown Segment",
-          region: "Unknown Region",
+          segment: customer.segment || "Unknown Segment",
+          region: customer.region || "Unknown Region",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: parseInt(customer.value.replace(/[^0-9]/g, '')) || 0,
+          contractSize: typeof customer.contractSize !== 'undefined' ? 
+            customer.contractSize : 
+            (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
           owner: {
             id: "unknown",
-            name: "Unassigned",
-            role: "Unassigned"
+            name: customer.owner?.name || "Unassigned",
+            role: customer.owner?.role || "Unassigned"
           }
         }));
         

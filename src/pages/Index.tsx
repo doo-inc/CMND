@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, Calendar, FileText, Link, BarChart3, TrendingUp } from "lucide-react";
 import { customers as mockCustomers } from "@/data/mockData";
-import { realCustomers } from "@/data/realCustomers";
+import { customers as realCustomers } from "@/data/realCustomers";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/components/customers/CustomerCard";
@@ -54,13 +54,15 @@ const Index = () => {
           
           const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
             id: crypto.randomUUID(),
-            name: customer.client,
+            name: customer.client || customer.name,
             logo: undefined,
-            segment: "Unknown Segment", 
-            region: "Unknown Region",
+            segment: customer.segment || "Unknown Segment", 
+            region: customer.region || "Unknown Region",
             stage: customer.stage,
             status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-            contractSize: parseInt(customer.value.replace(/[^0-9]/g, '')) || 0,
+            contractSize: typeof customer.contractSize !== 'undefined' ? 
+              customer.contractSize : 
+              (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
             owner: {
               id: "unknown",
               name: "Account Manager",
@@ -76,13 +78,15 @@ const Index = () => {
         // Use real customers data instead of mock data
         const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
           id: crypto.randomUUID(),
-          name: customer.client,
+          name: customer.client || customer.name,
           logo: undefined,
-          segment: "Unknown Segment",
-          region: "Unknown Region",
+          segment: customer.segment || "Unknown Segment",
+          region: customer.region || "Unknown Region",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
-          contractSize: parseInt(customer.value.replace(/[^0-9]/g, '')) || 0,
+          contractSize: typeof customer.contractSize !== 'undefined' ? 
+            customer.contractSize : 
+            (customer.value ? parseInt(customer.value.replace(/[^0-9]/g, '')) : 0),
           owner: {
             id: "unknown",
             name: "Account Manager",
