@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
@@ -189,10 +188,8 @@ export function LifecycleTracker({
 
       const currentStage = stages.find(stage => stage.id === stageId);
       
-      // Important: We maintain the position of the stage in the array
       const updatedStages = stages.map(stage => {
         if (stage.id === stageId) {
-          // Preserve the existing stage position and only update the properties that changed
           return { ...stage, ...updatedStage };
         }
         return stage;
@@ -246,7 +243,6 @@ export function LifecycleTracker({
 
       if (updatedStage.status && !updatedStage.name && !updatedStage.owner && !updatedStage.deadline && 
           updatedStage.notes === undefined && updatedStage.category === undefined) {
-        // Status-only update
         toast.success(`Status updated to ${updatedStage.status.replace("-", " ")}`);
       } else {
         toast.success("Stage updated successfully");
@@ -259,49 +255,42 @@ export function LifecycleTracker({
 
   const handleAddDefaultStages = async () => {
     try {
+      console.log("Adding default lifecycle stages for customer:", customerId);
+      
       if (validStaffIds.length === 0) {
         const ids = await fetchValidStaffIds();
         setValidStaffIds(ids);
-        
-        if (ids.length === 0) {
-          toast.error("No staff members found in the database. Please add staff members first.");
-          return;
-        }
       }
       
       const dbCustomerId = getDbCustomerId();
       
-      const { data: existingStages, error: checkError } = await supabase
-        .from('lifecycle_stages')
-        .select('name, category')
-        .eq('customer_id', dbCustomerId);
-      
-      if (checkError) {
-        console.error("Error checking existing stages:", checkError);
-        throw checkError;
-      }
-      
-      const stagesToAdd = defaultCustomerLifecycleStages.filter(stage => {
-        return !existingStages?.some(
-          existing => existing.name === stage.name && (existing.category ? existing.category === stage.category : true)
-        );
-      });
+      const stagesToAdd = defaultCustomerLifecycleStages;
       
       if (stagesToAdd.length === 0) {
-        console.log("All default stages already exist");
+        console.log("No default stages to add");
         return;
       }
       
-      const defaultStaffId = validStaffIds[0];
+      const defaultStaffId = validStaffIds.length > 0 ? 
+        validStaffIds[0] : "00000000-0000-0000-0000-000000000001";
       
       const stagesToInsert = stagesToAdd.map(stage => ({
         customer_id: dbCustomerId,
         name: stage.name,
-        status: stage.status,
-        owner_id: validStaffIds.includes(stage.owner.id) ? stage.owner.id : defaultStaffId,
-        notes: stage.notes,
+        status: stage.status || "not-started",
+        owner_id: defaultStaffId,
+        notes: stage.notes || null,
         category: stage.category || null
       }));
+      
+      const { error: deleteError } = await supabase
+        .from('lifecycle_stages')
+        .delete()
+        .eq('customer_id', dbCustomerId);
+      
+      if (deleteError) {
+        console.error("Error deleting existing stages:", deleteError);
+      }
       
       const { error } = await supabase
         .from('lifecycle_stages')
@@ -313,6 +302,7 @@ export function LifecycleTracker({
       }
       
       await fetchLifecycleStages();
+      toast.success("Default lifecycle stages added");
     } catch (error) {
       console.error("Error adding default stages:", error);
       toast.error("Failed to add default stages");
@@ -382,16 +372,24 @@ export function LifecycleTracker({
   };
   
   useEffect(() => {
-    if (customerId) {
-      fetchLifecycleStages();
-    }
-  }, [customerId, onStagesUpdate]);
+    const timer = setTimeout(() => {
+      if (customerId) {
+        fetchLifecycleStages();
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [customerId]);
   
   useEffect(() => {
-    if (hasFetchedStages && stages.length === 0) {
-      console.log("No stages found after fetch, using default stages");
-      handleAddDefaultStages();
-    }
+    const timer = setTimeout(() => {
+      if (hasFetchedStages && stages.length === 0) {
+        console.log("No stages found after fetch, using default stages");
+        handleAddDefaultStages();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, [hasFetchedStages, stages.length]);
 
   const filteredStages = activeCategory === 'All' 

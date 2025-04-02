@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Calendar, FileText, Link, BarChart3, TrendingUp } from "lucide-react";
+import { Plus, Users, Calendar, FileText, Link, BarChart3, TrendingUp, Activity, Clock, Briefcase } from "lucide-react";
 import { customers as mockCustomers } from "@/data/mockData";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { useNavigate } from "react-router-dom";
@@ -102,6 +103,10 @@ const Index = () => {
     const total = customers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
     return total > 0 ? `$${(total / 1000).toFixed(0)}k` : "$0";
   };
+  
+  const getTotalCustomersCount = () => {
+    return realCustomers.length;
+  };
 
   const dashboardStats = [
     {
@@ -117,6 +122,11 @@ const Index = () => {
       icon: <Users className="h-6 w-6" />
     },
     {
+      title: "Total Customers",
+      value: `${getTotalCustomersCount()}`,
+      icon: <Briefcase className="h-6 w-6" />
+    },
+    {
       title: "Deals Pipeline",
       value: `$${(customers.filter(c => c.stage === "Proposal Sent" || c.stage === "Invoice Sent").reduce((sum, c) => sum + (c.contractSize || 0), 0) / 1000).toFixed(0)}k`,
       description: `${customers.filter(c => c.stage === "Proposal Sent" || c.stage === "Invoice Sent").length} active deals`,
@@ -127,7 +137,13 @@ const Index = () => {
       value: "23%",
       change: { value: 7, type: "increase" as const },
       description: "Year-over-year",
-      icon: <TrendingUp className="h-6 w-6" />
+      icon: <Activity className="h-6 w-6" />
+    },
+    {
+      title: "Avg. Sales Cycle",
+      value: "45 days",
+      description: "From lead to close",
+      icon: <Clock className="h-6 w-6" />
     }
   ];
   
@@ -141,7 +157,7 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dashboardStats.map((stat, index) => (
             <StatCard key={index} {...stat} />
           ))}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -268,18 +269,74 @@ const CustomerDetails = () => {
           return;
         }
         
-        // Fallback to mock data if not found in database
-        const mockCustomer = customers.find(c => c.id === id);
+        // Fallback to the customers data if not found in database
+        const { data: customersData } = await supabase
+          .from('customers')
+          .select('*');
+          
+        if (customersData && customersData.length > 0) {
+          // Check if any of the customers match by name or other criteria
+          const matchedCustomer = customersData.find(c => 
+            c.id === id || 
+            c.name.toLowerCase() === id.toLowerCase()
+          );
+          
+          if (matchedCustomer) {
+            const customerData = {
+              id: matchedCustomer.id,
+              name: matchedCustomer.name,
+              logo: matchedCustomer.logo,
+              segment: matchedCustomer.segment || "Unknown Segment",
+              region: matchedCustomer.region || "Unknown Region",
+              stage: matchedCustomer.stage || "Unknown Stage",
+              status: matchedCustomer.status || "not-started",
+              contractSize: matchedCustomer.contract_size || 0,
+              owner: {
+                id: matchedCustomer.owner_id || "unknown",
+                name: "Unknown Owner",
+                role: "Unknown Role"
+              }
+            };
+            setCustomer(customerData);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Fallback to imported customer data
+        const { customers } = await import("@/data/realCustomers");
+        const mockCustomer = customers.find(c => 
+          c.id === id || 
+          c.name.toLowerCase() === id.toLowerCase() ||
+          id.includes(c.name.toLowerCase().replace(/\s+/g, ''))
+        );
+        
         if (mockCustomer) {
-          setCustomer(mockCustomer);
+          const customerData = {
+            id: mockCustomer.id || crypto.randomUUID(),
+            name: mockCustomer.name,
+            logo: undefined,
+            segment: mockCustomer.segment || "Unknown Segment",
+            region: mockCustomer.region || "Unknown Region",
+            stage: mockCustomer.stage || "New",
+            status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
+            contractSize: mockCustomer.contractSize || 0,
+            owner: mockCustomer.owner ? {
+              id: "unknown",
+              name: mockCustomer.owner.name || "Account Manager",
+              role: mockCustomer.owner.role || "Sales"
+            } : {
+              id: "unknown",
+              name: "Account Manager",
+              role: "Sales"
+            }
+          };
+          setCustomer(customerData);
+        } else {
+          console.error("Customer not found with ID:", id);
         }
       } catch (error) {
         console.error("Error fetching customer:", error);
-        // Still try to use mock data
-        const mockCustomer = customers.find(c => c.id === id);
-        if (mockCustomer) {
-          setCustomer(mockCustomer);
-        }
       } finally {
         setLoading(false);
       }
