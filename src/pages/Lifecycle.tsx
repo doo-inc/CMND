@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
+import { removeDuplicateCustomers } from "@/utils/customerDataSync";
 
 const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
   const IconComponent = icons[defaultStage.iconName];
@@ -32,6 +33,7 @@ const Lifecycle = () => {
   const [loading, setLoading] = useState(true);
   const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -72,6 +74,9 @@ const Lifecycle = () => {
       try {
         setLoading(true);
         
+        // First, remove any duplicate customers that might be in the database
+        await removeDuplicateCustomers();
+        
         console.log("Fetching customers for lifecycle...");
         const { data, error } = await supabase
           .from('customers')
@@ -86,13 +91,8 @@ const Lifecycle = () => {
         console.log("Lifecycle - fetched customers:", data);
 
         if (data && data.length > 0) {
-          // Remove any duplicates based on name
-          const uniqueCustomers = data.filter((customer, index, self) =>
-            index === self.findIndex((c) => c.name === customer.name)
-          );
-          
-          setCustomerList(uniqueCustomers);
-          setSelectedCustomer(uniqueCustomers[0].id);
+          setCustomerList(data);
+          setSelectedCustomer(data[0].id);
         } else {
           console.log("No customers found in the database");
           setCustomerList([]);
@@ -108,6 +108,18 @@ const Lifecycle = () => {
 
     fetchCustomers();
   }, []);
+
+  // Effect to filter customers when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredCustomers(customerList);
+    } else {
+      const filtered = customerList.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredCustomers(filtered);
+    }
+  }, [searchTerm, customerList]);
 
   const handleCustomerChange = async (value: string) => {
     console.log("Selected customer changed to:", value);
@@ -188,9 +200,9 @@ const Lifecycle = () => {
     setCustomerStages(stages);
   };
 
-  const filteredCustomers = customerList.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   const selectedCustomerData = customerList.find(
     (customer) => customer.id === selectedCustomer
@@ -216,7 +228,7 @@ const Lifecycle = () => {
                 placeholder="Search customers..."
                 className="pl-8 pr-4 py-2 w-full"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
               />
             </div>
           </div>

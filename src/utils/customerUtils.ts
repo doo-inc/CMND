@@ -174,31 +174,22 @@ export const formatCurrency = (amount: number): string => {
 
 /**
  * Gets customer ARR data including all customers that are live, paid, or with invoices sent
- * Signed customers are now in pipeline, not in ARR
+ * Include signed customers in ARR now
  */
 export const getCustomerARRData = (customers: CustomerData[]): { 
   totalARR: number, 
   liveCustomers: CustomerData[], 
   growthRate: number 
 } => {
-  const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent"];
+  const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent", "signed"];
   
   const relevantCustomers = customers.filter(customer => {
     if (customer.status === "done") return true;
     if (!customer.stage) return false;
     
-    // Check if customer stage contains any of the ARR stages
-    // Explicitly exclude "signed" status
-    const stageLower = customer.stage.toLowerCase();
-    if (stageLower.includes("signed") && !arrStages.some(stage => 
-      stageLower.includes(stage.toLowerCase())
-    )) {
-      return false;
-    }
-    
-    // Check if customer stage contains any of the ARR stages
+    // Check if customer stage contains any of the ARR stages (including "signed" now)
     return arrStages.some(stage => 
-      stageLower.includes(stage.toLowerCase())
+      customer.stage?.toLowerCase().includes(stage.toLowerCase())
     );
   });
   
@@ -218,23 +209,19 @@ export const getCustomerARRData = (customers: CustomerData[]): {
 
 /**
  * Gets deals pipeline information
- * Deals in pipeline are those not in ARR-counted stages
- * Signed customers are now included in the pipeline
+ * Deals in pipeline are those not in ARR-counted stages (but NOT including signed now)
  */
 export const getDealsPipeline = (customers: CustomerData[]): { 
   value: number, 
   count: number 
 } => {
-  const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent"];
+  const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent", "signed"];
   
   const pipelineCustomers = customers.filter(customer => {
-    // Include signed customers in pipeline
-    if (customer.stage?.toLowerCase().includes("signed")) return true;
-    
     if (customer.status === "done") return false;
     if (!customer.stage) return true;
     
-    // Check if customer stage does NOT contain any of the ARR stages
+    // Check if customer stage does NOT contain any of the ARR stages (signed is in ARR now)
     return !arrStages.some(stage => 
       customer.stage?.toLowerCase().includes(stage.toLowerCase())
     );

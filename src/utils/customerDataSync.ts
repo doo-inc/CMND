@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
 
@@ -58,9 +57,83 @@ export const syncCustomersToDatabase = async (): Promise<boolean> => {
     }
     
     console.log(`Successfully synced new customers to the database`);
+    
+    // After sync, remove any duplicates in the database
+    await removeDuplicateCustomers();
+    
     return true;
   } catch (error) {
     console.error("Error in syncCustomersToDatabase:", error);
+    return false;
+  }
+};
+
+/**
+ * Remove duplicate customers from the database based on name
+ */
+export const removeDuplicateCustomers = async (): Promise<boolean> => {
+  try {
+    console.log("Checking for duplicate customers...");
+    
+    // Get all customers
+    const { data: allCustomers, error: fetchError } = await supabase
+      .from('customers')
+      .select('id, name')
+      .order('created_at', { ascending: true });
+      
+    if (fetchError) {
+      console.error("Error fetching customers for deduplication:", fetchError);
+      return false;
+    }
+
+    if (!allCustomers || allCustomers.length === 0) {
+      console.log("No customers found to check for duplicates");
+      return true;
+    }
+    
+    // Group customers by lowercase name
+    const customersByName: Record<string, any[]> = {};
+    allCustomers.forEach(customer => {
+      const lowerName = customer.name.toLowerCase();
+      if (!customersByName[lowerName]) {
+        customersByName[lowerName] = [];
+      }
+      customersByName[lowerName].push(customer);
+    });
+    
+    // Find duplicate sets (more than one customer with same name)
+    const duplicateSets = Object.values(customersByName).filter(set => set.length > 1);
+    
+    if (duplicateSets.length === 0) {
+      console.log("No duplicate customers found");
+      return true;
+    }
+    
+    console.log(`Found ${duplicateSets.length} sets of duplicate customers`);
+    
+    // For each set of duplicates, keep the first one and delete the rest
+    for (const duplicateSet of duplicateSets) {
+      // The first customer in each set is the one we'll keep
+      const toKeep = duplicateSet[0];
+      const toDelete = duplicateSet.slice(1).map(cust => cust.id);
+      
+      console.log(`Keeping customer "${toKeep.name}" (${toKeep.id}) and removing ${toDelete.length} duplicates`);
+      
+      // Delete duplicates
+      const { error: deleteError } = await supabase
+        .from('customers')
+        .delete()
+        .in('id', toDelete);
+        
+      if (deleteError) {
+        console.error("Error deleting duplicate customers:", deleteError);
+      }
+    }
+    
+    console.log("Duplicate customer removal completed");
+    return true;
+  } catch (error) {
+    console.error("Error in removeDuplicateCustomers:", error);
     return false;
   }
 };
