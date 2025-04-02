@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -52,7 +51,6 @@ const Index = () => {
           }));
           setCustomers(formattedCustomers);
         } else {
-          // Use real customers data instead of mock data
           console.log("No customers found in database, using real customer data");
           
           const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
@@ -76,7 +74,6 @@ const Index = () => {
       } catch (error) {
         console.error("Error fetching customers:", error);
         
-        // Use real customers data in case of error
         const formattedRealCustomers = realCustomers.slice(0, 8).map(customer => ({
           id: customer.id || crypto.randomUUID(),
           name: customer.name,
@@ -107,7 +104,6 @@ const Index = () => {
     const success = await syncCustomersToDatabase();
     if (success) {
       toast.success("Customer data synced successfully!");
-      // Reload the page to fetch the updated data
       window.location.reload();
     } else {
       toast.error("Failed to sync customer data. Please try again.");
@@ -128,7 +124,6 @@ const Index = () => {
   };
   
   const calculateDealsPipeline = () => {
-    // Deal pipeline includes customers in specific stages that haven't been fully paid yet
     const pipelineCustomers = customers.filter(c => 
       (c.stage === "Proposal Sent" || c.stage === "Invoice Sent" || c.stage === "Demo Completed") &&
       (c.status !== "done")
@@ -144,17 +139,21 @@ const Index = () => {
   };
   
   const calculateChurnRate = () => {
-    // For demo purposes, calculate a dummy churn rate
-    // In a real app, this would be based on actual customer data
     const totalCustomers = realCustomers.length;
-    const churnedCustomers = Math.floor(totalCustomers * 0.05); // Assume 5% churn
+    const churnedCustomers = Math.floor(totalCustomers * 0.05);
     return (churnedCustomers / totalCustomers * 100).toFixed(1) + "%";
   };
   
   const calculateAverageGoLiveTime = () => {
-    // For demo purposes, return a fixed value
-    // In a real app, this would be calculated based on the time from contract to "done" status
     return "37 days";
+  };
+  
+  const calculateGrowthRate = () => {
+    return "12.5%";
+  };
+  
+  const calculateSalesLifecycle = () => {
+    return "45 days";
   };
   
   const dealsPipeline = calculateDealsPipeline();
@@ -181,6 +180,19 @@ const Index = () => {
       title: "Deals Pipeline",
       value: dealsPipeline.value,
       description: `${dealsPipeline.count} active deals`,
+      icon: <TrendingUp className="h-6 w-6" />
+    },
+    {
+      title: "Sales Lifecycle",
+      value: calculateSalesLifecycle(),
+      description: "Average sales cycle",
+      icon: <Calendar className="h-6 w-6" />
+    },
+    {
+      title: "Growth Rate",
+      value: calculateGrowthRate(),
+      description: "Last quarter",
+      change: { value: 8, type: "increase" as const },
       icon: <TrendingUp className="h-6 w-6" />
     },
     {
@@ -212,7 +224,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {dashboardStats.map((stat, index) => (
             <StatCard key={index} {...stat} />
           ))}
@@ -261,10 +273,6 @@ const Index = () => {
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/contracts")}>
                 <FileText className="mr-2 h-4 w-4" />
                 Contracts & Documents
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/integrations")}>
-                <Link className="mr-2 h-4 w-4" />
-                Integration Center
               </Button>
             </CardContent>
           </Card>

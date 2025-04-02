@@ -1,12 +1,9 @@
-
 import React from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Bell, 
-  Search,
-  HelpCircle,
   Moon,
   Sun,
   Calendar,
@@ -23,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,15 +168,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="backdrop-blur-lg bg-white/70 dark:bg-black/50 border-b border-white/10 dark:border-white/5 h-16 flex items-center justify-between px-6 z-10 shadow-sm">
             <div className="flex items-center">
-              <SidebarTrigger className="mr-4 hover:bg-white/10 p-2 rounded-md transition-colors text-gray-700 dark:text-gray-200" />
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search..."
-                  className="pl-8 pr-4 py-2 glass-input w-full"
-                />
-              </div>
+              <SidebarTrigger className="hover:bg-white/10 p-2 rounded-md transition-colors text-gray-700 dark:text-gray-200" />
             </div>
             <div className="flex items-center space-x-4">
               <Button 
