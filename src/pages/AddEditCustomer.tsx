@@ -95,23 +95,24 @@ const AddEditCustomer = () => {
     }
   });
 
+  // Fetch team members assigned to this customer
   const { data: customerTeamMembers = [] } = useQuery({
-    queryKey: ['customer-team-members', id],
+    queryKey: ['customer-team-members-ids', id],
     queryFn: async () => {
       if (!id) return [];
       
       const dbCustomerId = getDbCustomerId();
-      const response = await supabase
-        .from('customer_team_members' as any)
+      const { data, error } = await supabase
+        .from('customer_team_members')
         .select('staff_id')
         .eq('customer_id', dbCustomerId);
         
-      if (response.error) {
-        console.error("Error fetching customer team members:", response.error);
+      if (error) {
+        console.error("Error fetching customer team members:", error);
         return [];
       }
       
-      return response.data?.map(item => item.staff_id) || [];
+      return data?.map(item => item.staff_id) || [];
     },
     enabled: !!id
   });
@@ -263,7 +264,7 @@ const AddEditCustomer = () => {
       
       if (customerId) {
         const { error: deleteError } = await supabase
-          .from('customer_team_members' as any)
+          .from('customer_team_members')
           .delete()
           .eq('customer_id', customerId);
         
@@ -278,8 +279,8 @@ const AddEditCustomer = () => {
           }));
           
           const { error: insertError } = await supabase
-            .from('customer_team_members' as any)
-            .insert(teamAssignments as any);
+            .from('customer_team_members')
+            .insert(teamAssignments);
           
           if (insertError) {
             console.error("Error assigning team members:", insertError);

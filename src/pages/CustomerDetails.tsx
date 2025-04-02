@@ -50,7 +50,7 @@ const CustomerDetails = () => {
           </Button>
         </div>
         
-        <CustomerCard customer={customer} isDetailed />
+        <CustomerCard customer={customer} isDetailed={true} />
         <CustomerTeamMembers customerId={getDbCustomerId()} />
         
         <LifecycleTracker 

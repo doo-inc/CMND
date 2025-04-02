@@ -23,29 +23,43 @@ export function CustomerTeamMembers({ customerId }: CustomerTeamMembersProps) {
   const { data: teamMembers = [], isLoading } = useQuery({
     queryKey: ['customer-team-members', customerId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get the staff IDs assigned to this customer
+      const { data: teamAssignments, error: assignmentError } = await supabase
         .from('customer_team_members')
-        .select(`
-          staff_id,
-          staff:staff_id (id, name, role, avatar, email)
-        `)
+        .select('staff_id')
         .eq('customer_id', customerId);
         
-      if (error) {
-        console.error("Error fetching team members:", error);
-        throw new Error(error.message);
+      if (assignmentError) {
+        console.error("Error fetching team assignments:", assignmentError);
+        throw new Error(assignmentError.message);
       }
       
-      // Extract staff data from the result and handle types properly
-      const members: TeamMember[] = data
-        .filter(item => item.staff) // Filter out any null staff references
-        .map(item => ({
-          id: item.staff.id,
-          name: item.staff.name,
-          role: item.staff.role,
-          avatar: item.staff.avatar,
-          email: item.staff.email
-        }));
+      // If there are no team members assigned, return empty array
+      if (!teamAssignments || teamAssignments.length === 0) {
+        return [] as TeamMember[];
+      }
+      
+      // Get the staff information for the IDs
+      const staffIds = teamAssignments.map(item => item.staff_id);
+      
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, name, role, avatar, email')
+        .in('id', staffIds);
+        
+      if (staffError) {
+        console.error("Error fetching staff details:", staffError);
+        throw new Error(staffError.message);
+      }
+      
+      // Map the staff data to our TeamMember interface
+      const members: TeamMember[] = staffData.map(staff => ({
+        id: staff.id,
+        name: staff.name,
+        role: staff.role,
+        avatar: staff.avatar,
+        email: staff.email
+      }));
         
       return members;
     }

@@ -33,9 +33,10 @@ export interface CustomerData {
 interface CustomerCardProps {
   customer: CustomerData;
   showEditOptions?: boolean;
+  isDetailed?: boolean;
 }
 
-export function CustomerCard({ customer, showEditOptions = false }: CustomerCardProps) {
+export function CustomerCard({ customer, showEditOptions = false, isDetailed = false }: CustomerCardProps) {
   const navigate = useNavigate();
   
   const getStatusClass = (status: string) => {
