@@ -60,6 +60,7 @@ export function CustomerReferrals({ customerId }: CustomerReferralsProps) {
         return [];
       }
       
+      // Explicitly cast the data to Referral[] to solve the type issue
       return (data || []) as Referral[];
     },
     enabled: !!customerId
