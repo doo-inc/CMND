@@ -31,6 +31,7 @@ const App = () => {
               <Route path="/customers" element={<Customers />} />
               <Route path="/customers/new" element={<AddEditCustomer />} />
               <Route path="/customers/:id/edit" element={<AddEditCustomer />} />
+              <Route path="/customers/edit/:id" element={<AddEditCustomer />} /> {/* Add this route as a fallback for any existing links */}
               <Route path="/customers/:id" element={<CustomerDetails />} />
               <Route path="/lifecycle" element={<Lifecycle />} />
               <Route path="/contracts" element={<Contracts />} />
