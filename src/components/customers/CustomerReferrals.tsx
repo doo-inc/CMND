@@ -48,11 +48,12 @@ export function CustomerReferrals({ customerId }: CustomerReferralsProps) {
     queryFn: async () => {
       if (!customerId) return [];
       
+      // Using 'any' type assertion to work around the missing referrals table in types
       const { data, error } = await supabase
-        .from("referrals")
-        .select("*")
-        .eq("customer_id", customerId)
-        .order("created_at", { ascending: false });
+        .from('referrals' as any)
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
         
       if (error) {
         console.error("Error fetching referrals:", error);
@@ -77,7 +78,7 @@ export function CustomerReferrals({ customerId }: CustomerReferralsProps) {
 
     try {
       const { error } = await supabase
-        .from("referrals")
+        .from('referrals' as any)
         .insert({
           customer_id: customerId,
           name,
@@ -107,7 +108,7 @@ export function CustomerReferrals({ customerId }: CustomerReferralsProps) {
   const handleUpdateStatus = async (referralId: string, status: Referral["status"]) => {
     try {
       const { error } = await supabase
-        .from("referrals")
+        .from('referrals' as any)
         .update({ status })
         .eq("id", referralId);
 
@@ -128,7 +129,7 @@ export function CustomerReferrals({ customerId }: CustomerReferralsProps) {
   const handleDeleteReferral = async (referralId: string) => {
     try {
       const { error } = await supabase
-        .from("referrals")
+        .from('referrals' as any)
         .delete()
         .eq("id", referralId);
 
