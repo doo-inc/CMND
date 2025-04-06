@@ -7,7 +7,7 @@ import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, FileText, Plus, MessageSquare, Clock, User } from "lucide-react";
+import { Pencil, FileText, Plus, MessageSquare, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCustomerId, findCustomerById } from "@/utils/customerUtils";
 import { useQuery } from "@tanstack/react-query";
@@ -115,10 +115,10 @@ const CustomerDetails = () => {
       region: customer.region || "Unknown Region",
       stage: customer.stage || "New",
       status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
-      contractSize: (customer as Customer).contract_size || 0,
+      contractSize: customer.contract_size || 0,
       description: customer.description || undefined,
       owner: {
-        id: (customer as Customer).owner_id || "unknown",
+        id: customer.owner_id || "unknown",
         name: accountManager?.name || "Account Manager",
         role: accountManager?.role || "Sales"
       },

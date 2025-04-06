@@ -3,25 +3,13 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TimelineEvent } from "@/types/customers";
+import { toast } from "sonner";
 
 interface CustomerTimelineProps {
   customerId: string | null;
-}
-
-interface TimelineEvent {
-  id: string;
-  customer_id: string;
-  event_type: string;
-  event_description: string;
-  created_at: string;
-  created_by?: string;
-  created_by_name?: string;
-  created_by_avatar?: string;
-  related_id?: string;
-  related_type?: string;
 }
 
 export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
@@ -45,7 +33,7 @@ export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
       // Combine with customer_feedback events
       const { data: feedbackEvents, error: feedbackError } = await supabase
         .from('customer_feedback')
-        .select('id, customer_id, created_at, created_by, created_by_name, created_by_avatar')
+        .select('id, customer_id, content, created_at, created_by, created_by_name, created_by_avatar')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
         
@@ -57,7 +45,7 @@ export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
           id: `feedback-${feedback.id}`,
           customer_id: feedback.customer_id,
           event_type: 'feedback',
-          event_description: 'New feedback added',
+          event_description: `New feedback added: "${feedback.content.substring(0, 50)}${feedback.content.length > 50 ? '...' : ''}"`,
           created_at: feedback.created_at,
           created_by: feedback.created_by,
           created_by_name: feedback.created_by_name,
@@ -143,7 +131,7 @@ export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
             </div>
           ) : timelineEvents.length > 0 ? (
             <div className="relative space-y-4 pl-6 before:absolute before:inset-y-0 before:left-2 before:w-px before:bg-muted">
-              {timelineEvents.map((event) => (
+              {timelineEvents.map((event: TimelineEvent) => (
                 <div key={event.id} className="relative pb-4">
                   <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-lg">
                     {getEventIcon(event.event_type)}

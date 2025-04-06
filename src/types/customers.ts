@@ -1,3 +1,4 @@
+
 // Define basic types without relying on Supabase generated types
 // These types match our database schema but don't depend on the generated types
 
@@ -70,6 +71,24 @@ export interface Contract {
 export type ContractInsert = Omit<Contract, 'id' | 'created_at' | 'updated_at'>;
 export type ContractUpdate = Partial<ContractInsert>;
 
+// Timeline events types
+export interface TimelineEvent {
+  id: string;
+  customer_id: string;
+  event_type: string;
+  event_description: string;
+  created_at: string;
+  created_by?: string | null;
+  created_by_name?: string | null;
+  created_by_avatar?: string | null;
+  related_id?: string | null;
+  related_type?: string | null;
+  updated_at: string;
+}
+
+export type TimelineEventInsert = Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'>;
+export type TimelineEventUpdate = Partial<TimelineEventInsert>;
+
 // Renewal activities types
 export interface RenewalActivity {
   id: string;
@@ -103,6 +122,37 @@ export interface Document {
 
 export type DocumentInsert = Omit<Document, 'id' | 'created_at' | 'updated_at'>;
 export type DocumentUpdate = Partial<DocumentInsert>;
+
+// Feedback types
+export interface Feedback {
+  id: string;
+  customer_id: string;
+  content: string;
+  created_by: string;
+  created_by_name?: string | null;
+  created_by_avatar?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FeedbackInsert = Omit<Feedback, 'id' | 'created_at' | 'updated_at'>;
+export type FeedbackUpdate = Partial<FeedbackInsert>;
+
+// Tasks types
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  due_date?: string | null;
+  customer_id?: string | null;
+  assigned_to?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TaskInsert = Omit<Task, 'id' | 'created_at' | 'updated_at'>;
+export type TaskUpdate = Partial<TaskInsert>;
 
 // Enhanced types with additional fields for UI components
 export interface CustomerWithOwner extends Customer {

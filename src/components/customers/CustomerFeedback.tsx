@@ -1,90 +1,82 @@
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Send, Plus } from "lucide-react";
+import { MessageSquare, Plus, PlusCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { createNotification } from "@/utils/notificationHelpers";
-import { Feedback } from "@/types/tasks";
+import { Feedback } from "@/types/customers";
 
 interface CustomerFeedbackProps {
   customerId: string | null;
 }
 
 export function CustomerFeedback({ customerId }: CustomerFeedbackProps) {
-  const [comment, setComment] = useState("");
+  const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: feedbackComments = [], isLoading, refetch } = useQuery({
+  const { data: feedback = [], isLoading, refetch } = useQuery({
     queryKey: ['customer-feedback', customerId],
     queryFn: async () => {
       if (!customerId) return [];
-
+      
       const { data, error } = await supabase
         .from('customer_feedback')
         .select('*')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
-
+        
       if (error) {
-        console.error("Error fetching feedback:", error);
+        console.error("Error fetching customer feedback:", error);
         return [];
       }
-
+      
       return data as Feedback[];
     },
     enabled: !!customerId
   });
 
-  const handleSubmitFeedback = async () => {
-    if (!comment.trim() || !customerId) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newComment.trim() || !customerId) return;
     
     setIsSubmitting(true);
     
     try {
-      const { data, error } = await supabase
+      // Add feedback to database
+      const { error } = await supabase
         .from('customer_feedback')
         .insert({
           customer_id: customerId,
-          content: comment.trim(),
-          created_by: 'current-user-id', // Replace with actual user ID from auth
-          created_by_name: 'Current User' // Replace with actual user name
-        })
-        .select();
-        
+          content: newComment,
+          created_by: "current-user", // In a real app, this would be the current user's ID
+          created_by_name: "Demo User", // In a real app, this would be the current user's name
+          created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png` // Example avatar
+        });
+      
       if (error) throw error;
       
-      await createNotification({
-        type: 'customer',
-        title: 'New Feedback Added',
-        message: `New feedback has been added for a customer`,
-        related_id: customerId,
-        related_type: 'customer'
-      });
-      
-      setComment("");
-      toast.success("Feedback added successfully");
-      refetch();
-      
-      // Also create a timeline event for this feedback
+      // Add to timeline
       await supabase
         .from('customer_timeline')
         .insert({
           customer_id: customerId,
           event_type: 'feedback',
-          event_description: `New feedback added by ${data?.[0]?.created_by_name || 'Current User'}`,
-          created_by: data?.[0]?.created_by || 'current-user-id',
-          created_by_name: data?.[0]?.created_by_name || 'Current User',
-          related_id: data?.[0]?.id,
-          related_type: 'feedback'
+          event_description: `New feedback added: "${newComment.substring(0, 50)}${newComment.length > 50 ? '...' : ''}"`,
+          created_by: "current-user", // In a real app, this would be the current user's ID
+          created_by_name: "Demo User", // In a real app, this would be the current user's name
+          created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png` // Example avatar
         });
       
+      setNewComment("");
+      toast.success("Feedback added successfully");
+      refetch();
     } catch (error) {
-      console.error("Error adding feedback:", error);
+      console.error("Error submitting feedback:", error);
       toast.error("Failed to add feedback");
     } finally {
       setIsSubmitting(false);
@@ -92,8 +84,6 @@ export function CustomerFeedback({ customerId }: CustomerFeedbackProps) {
   };
 
   const convertToTask = async (feedback: Feedback) => {
-    if (!customerId) return;
-    
     try {
       const { data, error } = await supabase
         .from('tasks')
@@ -101,115 +91,101 @@ export function CustomerFeedback({ customerId }: CustomerFeedbackProps) {
           title: `Follow up on customer feedback`,
           description: feedback.content,
           status: "todo",
-          customer_id: customerId,
+          customer_id: feedback.customer_id,
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 1 week due date
         })
         .select();
         
       if (error) throw error;
       
-      toast.success("Task created from feedback");
-      
-      // Create a timeline event for this action
+      // Add to timeline
       await supabase
         .from('customer_timeline')
         .insert({
-          customer_id: customerId,
+          customer_id: feedback.customer_id,
           event_type: 'task',
-          event_description: `Task created from feedback`,
-          created_by: 'current-user-id',
-          created_by_name: 'Current User',
-          related_id: data?.[0]?.id,
+          event_description: 'Task created from customer feedback',
+          related_id: data[0].id,
           related_type: 'task'
         });
+      
+      toast.success("Task created successfully");
     } catch (error) {
-      console.error("Error creating task:", error);
-      toast.error("Failed to create task from feedback");
+      console.error("Error creating task from feedback:", error);
+      toast.error("Failed to create task");
     }
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric'
     });
   };
 
   return (
-    <Card className="w-full glass-card">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center">
-          <MessageSquare className="mr-2 h-5 w-5 text-doo-purple-500" />
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center text-lg font-semibold">
+          <MessageSquare className="mr-2 h-5 w-5" />
           Customer Feedback
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          <div className="border rounded-lg p-4">
-            <Textarea
-              placeholder="Add your feedback or comments about this customer..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="mb-3 min-h-[100px]"
-            />
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleSubmitFeedback} 
-                disabled={!comment.trim() || isSubmitting}
-                className="bg-doo-purple-500 hover:bg-doo-purple-600"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Submit Feedback
-              </Button>
-            </div>
+        <form onSubmit={handleSubmit} className="mb-6">
+          <Textarea
+            placeholder="Add your feedback or customer comments here..."
+            className="min-h-[100px] mb-2"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting || !newComment.trim()}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Feedback
+            </Button>
           </div>
-          
-          <div className="space-y-4">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-pulse">Loading comments...</div>
-              </div>
-            ) : feedbackComments.length > 0 ? (
-              feedbackComments.map((item) => (
-                <div key={item.id} className="border rounded-lg p-4 bg-muted/30">
-                  <div className="flex items-start space-x-3">
-                    <Avatar>
-                      <AvatarImage src={item.created_by_avatar} />
-                      <AvatarFallback className="bg-doo-purple-100 text-doo-purple-800">
-                        {item.created_by_name?.split(' ').map(n => n[0]).join('') || 'U'}
+        </form>
+        
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-pulse">Loading feedback...</div>
+            </div>
+          ) : feedback.length > 0 ? (
+            feedback.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 bg-muted/20">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center">
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage src={item.created_by_avatar || undefined} />
+                      <AvatarFallback>
+                        {item.created_by_name ? item.created_by_name.charAt(0) : 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center mb-1">
-                        <p className="font-medium">{item.created_by_name || 'User'}</p>
-                        <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap">{item.content}</p>
-                      <div className="flex justify-end mt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs"
-                          onClick={() => convertToTask(item)}
-                        >
-                          <Plus className="mr-1 h-3 w-3" />
-                          Create Task
-                        </Button>
-                      </div>
+                    <div>
+                      <div className="font-medium">{item.created_by_name || "User"}</div>
+                      <div className="text-xs text-muted-foreground">{formatDate(item.created_at)}</div>
                     </div>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => convertToTask(item)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Create Task
+                  </Button>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-2">No feedback available yet.</p>
-                <p className="text-sm text-muted-foreground">Add the first comment about this customer above.</p>
+                <p className="text-sm">{item.content}</p>
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              No feedback available yet.
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

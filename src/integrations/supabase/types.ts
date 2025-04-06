@@ -149,10 +149,61 @@ export type Database = {
           },
         ]
       }
+      customer_timeline: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_avatar: string | null
+          created_by_name: string | null
+          customer_id: string
+          event_description: string
+          event_type: string
+          id: string
+          related_id: string | null
+          related_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_avatar?: string | null
+          created_by_name?: string | null
+          customer_id: string
+          event_description: string
+          event_type: string
+          id?: string
+          related_id?: string | null
+          related_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_avatar?: string | null
+          created_by_name?: string | null
+          customer_id?: string
+          event_description?: string
+          event_type?: string
+          id?: string
+          related_id?: string | null
+          related_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_timeline_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           contract_size: number | null
           created_at: string
+          description: string | null
           id: string
           logo: string | null
           name: string
@@ -166,6 +217,7 @@ export type Database = {
         Insert: {
           contract_size?: number | null
           created_at?: string
+          description?: string | null
           id?: string
           logo?: string | null
           name: string
@@ -179,6 +231,7 @@ export type Database = {
         Update: {
           contract_size?: number | null
           created_at?: string
+          description?: string | null
           id?: string
           logo?: string | null
           name?: string

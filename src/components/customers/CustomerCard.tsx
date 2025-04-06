@@ -2,15 +2,7 @@
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, User } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
+import { User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export interface CustomerOwner {
@@ -40,8 +32,6 @@ interface CustomerCardProps {
 }
 
 export function CustomerCard({ customer, showEditOptions = false, isDetailed = false }: CustomerCardProps) {
-  const navigate = useNavigate();
-  
   const getStatusClass = (status: string) => {
     switch (status) {
       case "not-started":
@@ -63,10 +53,6 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
       .map((n) => n[0])
       .join("")
       .toUpperCase();
-  };
-
-  const handleViewDetails = () => {
-    navigate(`/customers/${customer.id}`);
   };
 
   return (
@@ -124,13 +110,6 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
             </div>
           </div>
         </div>
-        {!isDetailed && (
-          <div className="border-t p-3 bg-muted/50 flex justify-end">
-            <Button variant="ghost" size="sm" className="text-sm" onClick={handleViewDetails}>
-              View Details <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
