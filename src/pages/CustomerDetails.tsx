@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -6,7 +7,7 @@ import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, FileText, Plus } from "lucide-react";
+import { Pencil, FileText, Plus, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCustomerId, findCustomerById } from "@/utils/customerUtils";
 import { CustomerTeamMembers } from "@/components/customers/CustomerTeamMembers";
@@ -17,6 +18,7 @@ import { Customer } from "@/types/customers";
 import { CustomerReferrals } from "@/components/customers/CustomerReferrals";
 import { AddContractDialog } from "@/components/contracts/AddContractDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 
 const CustomerDetails = () => {
   const { id } = useParams();
@@ -95,7 +97,8 @@ const CustomerDetails = () => {
         id: (customer as Customer).owner_id || "unknown",
         name: "Account Manager",
         role: "Sales"
-      }
+      },
+      lifecyclePercentage: 65 // Example percentage, will be calculated dynamically
     };
   }, [customer]);
 
@@ -149,6 +152,7 @@ const CustomerDetails = () => {
             <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
             <TabsTrigger value="referrals">Referrals</TabsTrigger>
             <TabsTrigger value="contracts">Contracts</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
           
           <TabsContent value="team" className="space-y-4">
@@ -158,7 +162,7 @@ const CustomerDetails = () => {
           <TabsContent value="lifecycle" className="space-y-4">
             <LifecycleTracker 
               customerId={getDbCustomerId()}
-              customerName={customer.name}
+              customerName={customer?.name}
               stages={[]}
             />
           </TabsContent>
@@ -171,7 +175,7 @@ const CustomerDetails = () => {
             <Card className="w-full glass-card">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
+                  <FileText className="mr-2 h-5 w-5 text-doo-purple-500" />
                   Contracts
                 </CardTitle>
                 <div className="space-x-2">
@@ -236,6 +240,10 @@ const CustomerDetails = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="feedback" className="space-y-4">
+            <CustomerFeedback customerId={getDbCustomerId()} />
           </TabsContent>
         </Tabs>
       </div>

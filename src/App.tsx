@@ -9,10 +9,9 @@ import Index from "./pages/Index";
 import Customers from "./pages/Customers";
 import CustomerDetails from "./pages/CustomerDetails";
 import AddEditCustomer from "./pages/AddEditCustomer";
-import Lifecycle from "./pages/Lifecycle";
-import Contracts from "./pages/Contracts";
 import Notifications from "./pages/Notifications";
 import TeamManagement from "./pages/TeamManagement";
+import TasksBoard from "./pages/TasksBoard";
 import NotFound from "./pages/NotFound";
 
 // Create a client
@@ -33,13 +32,12 @@ const App = () => {
               <Route path="/customers/:id/edit" element={<AddEditCustomer />} />
               <Route path="/customers/edit/:id" element={<AddEditCustomer />} />
               <Route path="/customers/:id" element={<CustomerDetails />} />
-              
-              {/* These routes will eventually be removed as requested */}
-              <Route path="/lifecycle" element={<Navigate to="/customers" replace />} />
-              <Route path="/contracts" element={<Contracts />} />
-              
+              <Route path="/tasks" element={<TasksBoard />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/team" element={<TeamManagement />} />
+              {/* Redirect the old routes to customers */}
+              <Route path="/lifecycle" element={<Navigate to="/customers" replace />} />
+              <Route path="/contracts" element={<Navigate to="/customers" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

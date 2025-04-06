@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 export interface CustomerOwner {
   id: string;
@@ -28,6 +29,7 @@ export interface CustomerData {
   status: "not-started" | "in-progress" | "done" | "blocked";
   contractSize: number;
   owner: CustomerOwner;
+  lifecyclePercentage?: number;
 }
 
 interface CustomerCardProps {
@@ -67,13 +69,20 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 bg-card">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 bg-card relative">
+      {customer.lifecyclePercentage !== undefined && (
+        <div className="absolute top-0 right-0 m-3">
+          <Badge variant="outline" className="bg-doo-purple-100 text-doo-purple-800 dark:bg-doo-purple-900/30 dark:text-doo-purple-300 border-doo-purple-200">
+            {customer.lifecyclePercentage}% Complete
+          </Badge>
+        </div>
+      )}
       <CardContent className="p-0">
         <div className="p-4">
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={customer.logo} alt={customer.name} />
-              <AvatarFallback className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+              <AvatarFallback className="bg-doo-purple-100 text-doo-purple-800 dark:bg-doo-purple-800 dark:text-doo-purple-100">
                 {getInitials(customer.name)}
               </AvatarFallback>
             </Avatar>

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -104,7 +105,7 @@
   }
   
   .status-in-progress {
-    @apply bg-primary/20 text-primary;
+    @apply bg-doo-purple-400/20 text-doo-purple-700 dark:bg-doo-purple-500/30 dark:text-doo-purple-300;
   }
   
   .status-done {
@@ -129,7 +130,7 @@
   }
   
   .glass-button {
-    @apply bg-primary/80 hover:bg-primary/90 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 border border-primary/20 text-white;
+    @apply bg-doo-purple-500/80 hover:bg-doo-purple-500/90 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 border border-doo-purple-500/20 text-white;
   }
   
   .glass-sidebar {

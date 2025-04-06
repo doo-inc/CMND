@@ -1,6 +1,7 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
-import { Home, Users, Calendar, BarChart, FileText, Bell } from "lucide-react";
+import { Home, Users, Bell, Kanban } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 const mainNavItems = [
@@ -15,14 +16,9 @@ const mainNavItems = [
     path: "/customers"
   },
   {
-    title: "Lifecycle",
-    icon: Calendar,
-    path: "/lifecycle"
-  },
-  {
-    title: "Contracts",
-    icon: FileText,
-    path: "/contracts"
+    title: "Tasks",
+    icon: Kanban,
+    path: "/tasks"
   }
 ];
 
@@ -52,7 +48,7 @@ export function DashboardSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="transition-all duration-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70">
                     <Link to={item.path} className="flex items-center group">
-                      <item.icon className="mr-2 h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                      <item.icon className="mr-2 h-5 w-5 text-doo-purple-600 dark:text-doo-purple-400 group-hover:text-doo-purple-800 dark:group-hover:text-doo-purple-200" />
                       <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -70,7 +66,7 @@ export function DashboardSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="transition-all duration-200 hover:bg-gray-200/70 dark:hover:bg-gray-700/70">
                     <Link to={item.path} className="flex items-center group">
-                      <item.icon className="mr-2 h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                      <item.icon className="mr-2 h-5 w-5 text-doo-purple-600 dark:text-doo-purple-400 group-hover:text-doo-purple-800 dark:group-hover:text-doo-purple-200" />
                       <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
