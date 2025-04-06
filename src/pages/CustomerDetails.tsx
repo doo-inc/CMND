@@ -2,7 +2,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { CustomerCard } from "@/components/customers/CustomerCard";
+import { CustomerCard, CustomerData } from "@/components/customers/CustomerCard";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ const CustomerDetails = () => {
   const customerCardData = React.useMemo(() => {
     if (!customer) return null;
     
-    return {
+    const customerData: CustomerData = {
       id: customer.id,
       name: customer.name,
       logo: customer.logo || undefined,
@@ -122,8 +122,12 @@ const CustomerDetails = () => {
         name: accountManager?.name || "Account Manager",
         role: accountManager?.role || "Sales"
       },
+      owner_id: customer.owner_id,
+      contract_size: customer.contract_size,
       lifecyclePercentage: 65 // Example percentage, will be calculated dynamically
     };
+    
+    return customerData;
   }, [customer, accountManager]);
 
   const handleContractSuccess = () => {

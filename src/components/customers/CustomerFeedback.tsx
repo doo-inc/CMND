@@ -60,17 +60,19 @@ export function CustomerFeedback({ customerId }: CustomerFeedbackProps) {
       
       if (error) throw error;
       
-      // Add to timeline
+      // Add timeline entry for the feedback
+      const timelineEntry = {
+        customer_id: customerId,
+        event_type: 'feedback',
+        event_description: `New feedback added: "${newComment.substring(0, 50)}${newComment.length > 50 ? '...' : ''}"`,
+        created_by: "current-user", // In a real app, this would be the current user's ID
+        created_by_name: "Demo User", // In a real app, this would be the current user's name
+        created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png` // Example avatar
+      };
+      
       await supabase
         .from('customer_timeline')
-        .insert({
-          customer_id: customerId,
-          event_type: 'feedback',
-          event_description: `New feedback added: "${newComment.substring(0, 50)}${newComment.length > 50 ? '...' : ''}"`,
-          created_by: "current-user", // In a real app, this would be the current user's ID
-          created_by_name: "Demo User", // In a real app, this would be the current user's name
-          created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png` // Example avatar
-        });
+        .insert(timelineEntry);
       
       setNewComment("");
       toast.success("Feedback added successfully");
@@ -98,16 +100,18 @@ export function CustomerFeedback({ customerId }: CustomerFeedbackProps) {
         
       if (error) throw error;
       
-      // Add to timeline
+      // Add timeline entry for the task creation
+      const timelineEntry = {
+        customer_id: feedback.customer_id,
+        event_type: 'task',
+        event_description: 'Task created from customer feedback',
+        related_id: data[0].id,
+        related_type: 'task'
+      };
+      
       await supabase
         .from('customer_timeline')
-        .insert({
-          customer_id: feedback.customer_id,
-          event_type: 'task',
-          event_description: 'Task created from customer feedback',
-          related_id: data[0].id,
-          related_type: 'task'
-        });
+        .insert(timelineEntry);
       
       toast.success("Task created successfully");
     } catch (error) {

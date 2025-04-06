@@ -22,6 +22,8 @@ export interface CustomerData {
   contractSize: number;
   owner: CustomerOwner;
   description?: string;
+  owner_id?: string;
+  contract_size?: number;
   lifecyclePercentage?: number;
 }
 

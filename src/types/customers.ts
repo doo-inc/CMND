@@ -147,6 +147,8 @@ export interface Task {
   due_date?: string | null;
   customer_id?: string | null;
   assigned_to?: string | null;
+  customer_name?: string;
+  assigned_to_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -169,4 +171,25 @@ export interface LifecycleStageWithOwner extends LifecycleStage {
     name: string;
     role?: string;
   };
+}
+
+// Update the CustomerData interface to include owner_id and description
+export interface CustomerData {
+  id: string;
+  name: string;
+  logo?: string;
+  segment: string;
+  region: string;
+  stage: string;
+  status: "not-started" | "in-progress" | "done" | "blocked";
+  contractSize: number;
+  owner: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  owner_id?: string;
+  description?: string;
+  contract_size?: number;
+  lifecyclePercentage?: number;
 }

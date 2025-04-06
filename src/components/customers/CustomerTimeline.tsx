@@ -18,49 +18,55 @@ export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
     queryFn: async () => {
       if (!customerId) return [];
 
-      // Get timeline events specific to this customer
-      const { data: events, error } = await supabase
-        .from('customer_timeline')
-        .select('*')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
+      try {
+        // Get timeline events specific to this customer
+        const { data: events, error } = await supabase
+          .from('customer_timeline')
+          .select('*')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("Error fetching timeline events:", error);
+        if (error) {
+          console.error("Error fetching timeline events:", error);
+          return [];
+        }
+
+        // Combine with customer_feedback events
+        const { data: feedbackEvents, error: feedbackError } = await supabase
+          .from('customer_feedback')
+          .select('id, customer_id, content, created_at, created_by, created_by_name, created_by_avatar')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+          
+        if (feedbackError) {
+          console.error("Error fetching feedback events:", feedbackError);
+        } else if (feedbackEvents) {
+          // Convert feedback to timeline format
+          const formattedFeedback = feedbackEvents.map(feedback => ({
+            id: `feedback-${feedback.id}`,
+            customer_id: feedback.customer_id,
+            event_type: 'feedback',
+            event_description: `New feedback added: "${feedback.content.substring(0, 50)}${feedback.content.length > 50 ? '...' : ''}"`,
+            created_at: feedback.created_at,
+            created_by: feedback.created_by,
+            created_by_name: feedback.created_by_name,
+            created_by_avatar: feedback.created_by_avatar,
+            related_id: feedback.id,
+            related_type: 'feedback',
+            updated_at: feedback.created_at
+          }));
+          
+          // Combine and sort all events
+          return [...(events || []), ...formattedFeedback].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        }
+
+        return events || [];
+      } catch (err) {
+        console.error("Error in timeline query:", err);
         return [];
       }
-
-      // Combine with customer_feedback events
-      const { data: feedbackEvents, error: feedbackError } = await supabase
-        .from('customer_feedback')
-        .select('id, customer_id, content, created_at, created_by, created_by_name, created_by_avatar')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
-        
-      if (feedbackError) {
-        console.error("Error fetching feedback events:", feedbackError);
-      } else if (feedbackEvents) {
-        // Convert feedback to timeline format
-        const formattedFeedback = feedbackEvents.map(feedback => ({
-          id: `feedback-${feedback.id}`,
-          customer_id: feedback.customer_id,
-          event_type: 'feedback',
-          event_description: `New feedback added: "${feedback.content.substring(0, 50)}${feedback.content.length > 50 ? '...' : ''}"`,
-          created_at: feedback.created_at,
-          created_by: feedback.created_by,
-          created_by_name: feedback.created_by_name,
-          created_by_avatar: feedback.created_by_avatar,
-          related_id: feedback.id,
-          related_type: 'feedback'
-        }));
-        
-        // Combine and sort all events
-        return [...(events || []), ...formattedFeedback].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      }
-
-      return events || [];
     },
     enabled: !!customerId
   });
@@ -131,7 +137,7 @@ export function CustomerTimeline({ customerId }: CustomerTimelineProps) {
             </div>
           ) : timelineEvents.length > 0 ? (
             <div className="relative space-y-4 pl-6 before:absolute before:inset-y-0 before:left-2 before:w-px before:bg-muted">
-              {timelineEvents.map((event: TimelineEvent) => (
+              {timelineEvents.map((event) => (
                 <div key={event.id} className="relative pb-4">
                   <div className="absolute -left-6 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-lg">
                     {getEventIcon(event.event_type)}
