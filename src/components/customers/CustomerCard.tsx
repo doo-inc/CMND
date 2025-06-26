@@ -26,6 +26,7 @@ export interface CustomerData {
   owner_id?: string;
   contract_size?: number;
   lifecyclePercentage?: number;
+  industry?: string;
 }
 
 interface CustomerCardProps {
