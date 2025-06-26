@@ -4,11 +4,15 @@ import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
 import { AddEditStage } from "./AddEditStage";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
+import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LifecycleProgress } from "./LifecycleProgress";
 import { createNotification } from "@/utils/notificationHelpers";
 import { checkForDuplicateStages } from "@/utils/customerDataSync";
+import { 
+  FileCheck, Users, Briefcase, DollarSign, Calendar,
+  BookOpen, HeartHandshake, Medal, Zap, CheckSquare
+} from "lucide-react";
 
 interface LifecycleTrackerProps {
   customerId: string;
@@ -19,13 +23,28 @@ interface LifecycleTrackerProps {
 
 const STAGE_CATEGORIES = [
   "All",
-  "Sales",
-  "Finance",
-  "Onboarding",
-  "Integration",
-  "Training",
-  "Success"
+  "Pre-Sales",
+  "Sales", 
+  "Implementation",
+  "Finance"
 ];
+
+// Icon mapping for stages
+const stageIcons: Record<string, React.ReactNode> = {
+  "Prospect": <Users className="h-5 w-5" />,
+  "Qualified Lead": <CheckSquare className="h-5 w-5" />,
+  "Meeting Set": <Calendar className="h-5 w-5" />,
+  "Discovery Call": <Calendar className="h-5 w-5" />,
+  "Proposal Sent": <FileCheck className="h-5 w-5" />,
+  "Proposal Approved": <CheckSquare className="h-5 w-5" />,
+  "Contract Sent": <FileCheck className="h-5 w-5" />,
+  "Contract Signed": <CheckSquare className="h-5 w-5" />,
+  "Onboarding": <Users className="h-5 w-5" />,
+  "Technical Setup": <Zap className="h-5 w-5" />,
+  "Training": <BookOpen className="h-5 w-5" />,
+  "Go Live": <Zap className="h-5 w-5" />,
+  "Payment Processed": <DollarSign className="h-5 w-5" />
+};
 
 export function LifecycleTracker({
   customerId,
@@ -48,10 +67,9 @@ export function LifecycleTracker({
   };
 
   const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
-    const IconComponent = icons[defaultStage.iconName];
     return {
       ...defaultStage,
-      icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
+      icon: stageIcons[defaultStage.name] || <FileCheck className="h-5 w-5" />
     };
   };
 
@@ -108,12 +126,6 @@ export function LifecycleTracker({
       }
 
       if (data && data.length > 0) {
-        const matchingDefaultStage = defaultCustomerLifecycleStages.find(
-          ds => ds.name === data[0].name && (data[0].category ? ds.category === data[0].category : true)
-        );
-        
-        const IconComponent = matchingDefaultStage ? icons[matchingDefaultStage.iconName] : undefined;
-        
         const newStageData: LifecycleStageProps = {
           id: data[0].id,
           name: data[0].name,
@@ -122,7 +134,7 @@ export function LifecycleTracker({
           owner: stageWithId.owner,
           deadline: data[0].deadline,
           notes: data[0].notes,
-          icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
+          icon: stageIcons[data[0].name] || <FileCheck className="h-5 w-5" />
         };
 
         const updatedStages = [...stages, newStageData];
@@ -267,7 +279,7 @@ export function LifecycleTracker({
       
       const dbCustomerId = getDbCustomerId();
       
-      const stagesToAdd = defaultCustomerLifecycleStages;
+      const stagesToAdd = defaultLifecycleStages;
       
       if (stagesToAdd.length === 0) {
         console.log("No default stages to add");
@@ -282,7 +294,7 @@ export function LifecycleTracker({
         name: stage.name,
         status: stage.status || "not-started",
         owner_id: defaultStaffId,
-        notes: stage.notes || null,
+        notes: null,
         category: stage.category || null
       }));
       
@@ -345,17 +357,11 @@ export function LifecycleTracker({
       if (data && Array.isArray(data)) {
         console.log("Fetched lifecycle stages:", data);
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          const defaultStage = defaultCustomerLifecycleStages.find(
-            ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
-          );
-          
-          const IconComponent = defaultStage ? icons[defaultStage.iconName] : undefined;
-          
           return {
             id: stage.id,
             name: stage.name,
             status: stage.status as LifecycleStageProps["status"],
-            category: stage.category || defaultStage?.category || "",
+            category: stage.category || "",
             owner: stage.staff ? {
               id: stage.staff.id,
               name: stage.staff.name,
@@ -367,7 +373,7 @@ export function LifecycleTracker({
             },
             deadline: stage.deadline,
             notes: stage.notes,
-            icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
+            icon: stageIcons[stage.name] || <FileCheck className="h-5 w-5" />
           };
         });
 
@@ -403,7 +409,7 @@ export function LifecycleTracker({
 
   const filteredStages = activeCategory === 'All' 
     ? stages 
-    : stages.filter(stage => stage.category === activeCategory);
+    : stages.filter(stage => stage.category === activeCategory.toLowerCase().replace('-', ''));
 
   return (
     <Card className="w-full glass-card">

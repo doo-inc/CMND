@@ -15,14 +15,34 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
-import { defaultCustomerLifecycleStages, icons } from "@/data/realCustomers";
+import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
 import { removeDuplicateCustomers } from "@/utils/customerDataSync";
+import { 
+  FileCheck, Users, Briefcase, DollarSign, Calendar,
+  BookOpen, HeartHandshake, Medal, Zap, CheckSquare
+} from "lucide-react";
+
+// Icon mapping for stages
+const stageIcons: Record<string, React.ReactNode> = {
+  "Prospect": <Users className="h-5 w-5" />,
+  "Qualified Lead": <CheckSquare className="h-5 w-5" />,
+  "Meeting Set": <Calendar className="h-5 w-5" />,
+  "Discovery Call": <Calendar className="h-5 w-5" />,
+  "Proposal Sent": <FileCheck className="h-5 w-5" />,
+  "Proposal Approved": <CheckSquare className="h-5 w-5" />,
+  "Contract Sent": <FileCheck className="h-5 w-5" />,
+  "Contract Signed": <CheckSquare className="h-5 w-5" />,
+  "Onboarding": <Users className="h-5 w-5" />,
+  "Technical Setup": <Zap className="h-5 w-5" />,
+  "Training": <BookOpen className="h-5 w-5" />,
+  "Go Live": <Zap className="h-5 w-5" />,
+  "Payment Processed": <DollarSign className="h-5 w-5" />
+};
 
 const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
-  const IconComponent = icons[defaultStage.iconName];
   return {
     ...defaultStage,
-    icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
+    icon: stageIcons[defaultStage.name] || <FileCheck className="h-5 w-5" />
   };
 };
 
@@ -155,17 +175,11 @@ const Lifecycle = () => {
       
       if (data && Array.isArray(data)) {
         const formattedStages: LifecycleStageProps[] = data.map((stage: any) => {
-          const defaultStage = defaultCustomerLifecycleStages.find(
-            ds => ds.name === stage.name && (stage.category ? ds.category === stage.category : true)
-          );
-          
-          const IconComponent = defaultStage ? icons[defaultStage.iconName] : undefined;
-          
           return {
             id: stage.id,
             name: stage.name,
             status: stage.status as LifecycleStageProps["status"],
-            category: stage.category || defaultStage?.category || "",
+            category: stage.category || "",
             owner: stage.staff ? {
               id: stage.staff.id,
               name: stage.staff.name,
@@ -177,7 +191,7 @@ const Lifecycle = () => {
             },
             deadline: stage.deadline,
             notes: stage.notes,
-            icon: IconComponent ? <IconComponent className="h-5 w-5" /> : undefined
+            icon: stageIcons[stage.name] || <FileCheck className="h-5 w-5" />
           };
         });
 
