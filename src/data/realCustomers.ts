@@ -17,6 +17,7 @@ export const customers = [
     stage: "Integration Setup",
     status: "in-progress" as const,
     contractSize: 75000,
+    industry: "Media & Broadcasting",
     owner: {
       id: "user-001",
       name: "Ahmed Abdullah",
@@ -32,6 +33,7 @@ export const customers = [
     stage: "Contract Signed",
     status: "done" as const,
     contractSize: 120000,
+    industry: "Logistics & Shipping",
     owner: {
       id: "user-002",
       name: "Fatima Hassan",
@@ -47,6 +49,7 @@ export const customers = [
     stage: "Demo Completed",
     status: "not-started" as const,
     contractSize: 45000,
+    industry: "E-commerce",
     owner: {
       id: "user-003",
       name: "Khalid Al-Farsi",
@@ -62,6 +65,7 @@ export const customers = [
     stage: "Go Live",
     status: "blocked" as const,
     contractSize: 85000,
+    industry: "Food & Delivery",
     owner: {
       id: "user-004",
       name: "Mohammed Rahman",
@@ -77,6 +81,7 @@ export const customers = [
     stage: "Proposal Sent",
     status: "in-progress" as const,
     contractSize: 95000,
+    industry: "Transportation",
     owner: {
       id: "user-001",
       name: "Ahmed Abdullah",
@@ -92,6 +97,7 @@ export const customers = [
     stage: "Interest Captured",
     status: "not-started" as const,
     contractSize: 200000,
+    industry: "Aviation",
     owner: {
       id: "user-002",
       name: "Fatima Hassan",
