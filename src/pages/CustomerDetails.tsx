@@ -99,12 +99,15 @@ const CustomerDetails = () => {
     name: customer.name,
     logo: customer.logo || undefined,
     segment: customer.segment || "Unknown Segment",
-    region: customer.region || "Unknown Region", 
+    country: customer.country || "Unknown Country", 
     stage: customer.stage || "New",
     status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
     contractSize: customer.contract_size || 0,
     description: customer.description || undefined,
     industry: customer.industry || undefined,
+    contact_name: customer.contact_name || undefined,
+    contact_email: customer.contact_email || undefined,
+    contact_phone: customer.contact_phone || undefined,
     owner: {
       id: customer.owner_id || "unknown",
       name: "Account Manager",
@@ -146,7 +149,7 @@ const CustomerDetails = () => {
                   {(customer.status || "not-started").replace("-", " ")}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  {customer.segment} • {customer.region}
+                  {customer.segment} • {customer.country}
                   {customer.industry && ` • ${customer.industry}`}
                 </span>
               </div>
@@ -220,6 +223,37 @@ const CustomerDetails = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Contact Information Card */}
+        {(customer.contact_name || customer.contact_email || customer.contact_phone) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {customer.contact_name && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contact Name</p>
+                    <p className="font-medium">{customer.contact_name}</p>
+                  </div>
+                )}
+                {customer.contact_email && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contact Email</p>
+                    <p className="font-medium">{customer.contact_email}</p>
+                  </div>
+                )}
+                {customer.contact_phone && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contact Phone</p>
+                    <p className="font-medium">{customer.contact_phone}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Description Card */}
         {customer.description && (

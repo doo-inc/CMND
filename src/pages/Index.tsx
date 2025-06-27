@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -57,7 +56,7 @@ const Index = () => {
             name: customer.name,
             logo: customer.logo || undefined,
             segment: customer.segment || "Unknown Segment",
-            region: customer.region || "Unknown Region",
+            country: customer.country || "Unknown Country",
             stage: customer.stage || "New",
             status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
             contractSize: customer.contract_size || 0,
@@ -91,7 +90,7 @@ const Index = () => {
               name: customer.name,
               logo: customer.logo || undefined,
               segment: customer.segment || "Unknown Segment",
-              region: customer.region || "Unknown Region",
+              country: customer.country || "Unknown Country",
               stage: customer.stage || "New",
               status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
               contractSize: customer.contract_size || 0,
