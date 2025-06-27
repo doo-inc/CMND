@@ -476,25 +476,23 @@ export function LifecycleTracker({
     }
   }, [initialFetchComplete, stages.length, isAddingDefaultStages]);
 
-  // Add missing pre-sales stages when component loads
   useEffect(() => {
     if (initialFetchComplete && stages.length > 0 && validStaffIds.length > 0) {
-      addMissingPreSalesStages();
+      // Since we've already populated all stages via SQL migration, we don't need this anymore
+      console.log("Stages already exist, skipping pre-sales stage addition");
     }
   }, [initialFetchComplete, stages.length, validStaffIds]);
 
-  // Fixed category filtering logic to properly map UI tabs to database categories
   const getCategoryKey = (tabCategory: string): string[] => {
     switch (tabCategory) {
       case "Pre-Sales":
-        return ["Pre-Sales", "pre-sales"];
+        return ["Pre-Sales"];
       case "Sales":
-        return ["Sales", "sales", "Contract Approval"];
+        return ["Sales"];
       case "Implementation":
-        // Map Implementation tab to all implementation-related categories
-        return ["Implementation", "implementation", "Integration", "Training", "Success", "Onboarding"];
+        return ["Implementation"];
       case "Finance":
-        return ["Finance", "finance"];
+        return ["Finance"];
       default:
         return [];
     }
@@ -505,14 +503,8 @@ export function LifecycleTracker({
     : stages.filter(stage => {
         const categoryKeys = getCategoryKey(activeCategory);
         const stageCategory = stage.category || "";
-        console.log(`Filtering stage "${stage.name}" with category "${stageCategory}" against keys:`, categoryKeys);
         return categoryKeys.includes(stageCategory);
       });
-
-  console.log("Active category:", activeCategory);
-  console.log("Category keys:", getCategoryKey(activeCategory));
-  console.log("All stages:", stages.map(s => ({ name: s.name, category: s.category })));
-  console.log("Filtered stages:", filteredStages.map(s => ({ name: s.name, category: s.category })));
 
   return (
     <Card className="w-full glass-card">

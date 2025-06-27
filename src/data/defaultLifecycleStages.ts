@@ -1,105 +1,72 @@
 
 export const defaultLifecycleStages = [
-  // Pre-Sales Stages
+  // Pre-Sales stages
   {
     name: "Prospect",
-    category: "pre-sales",
     status: "not-started",
-    order: 1
+    category: "Pre-Sales"
   },
   {
-    name: "Qualified Lead",
-    category: "pre-sales", 
+    name: "Qualified Lead", 
     status: "not-started",
-    order: 2
+    category: "Pre-Sales"
   },
   {
     name: "Meeting Set",
-    category: "pre-sales",
     status: "not-started", 
-    order: 3
+    category: "Pre-Sales"
   },
-  
-  // Sales Stages
+  // Sales stages
   {
     name: "Discovery Call",
-    category: "sales",
     status: "not-started",
-    order: 4
+    category: "Sales"
   },
   {
     name: "Proposal Sent",
-    category: "sales",
     status: "not-started",
-    order: 5
+    category: "Sales"
   },
   {
-    name: "Proposal Approved", 
-    category: "sales",
+    name: "Proposal Approved",
     status: "not-started",
-    order: 6
+    category: "Sales"
   },
   {
     name: "Contract Sent",
-    category: "sales",
     status: "not-started",
-    order: 7
+    category: "Sales"
   },
   {
     name: "Contract Signed",
-    category: "sales", 
     status: "not-started",
-    order: 8
+    category: "Sales"
   },
-  
-  // Implementation Stages
+  // Implementation stages
   {
     name: "Onboarding",
-    category: "implementation",
     status: "not-started",
-    order: 9
+    category: "Implementation"
   },
   {
     name: "Technical Setup",
-    category: "implementation",
     status: "not-started",
-    order: 10
+    category: "Implementation"
   },
   {
     name: "Training",
-    category: "implementation",
     status: "not-started",
-    order: 11
+    category: "Implementation"
   },
   {
     name: "Go Live",
-    category: "implementation",
     status: "not-started",
-    order: 12
+    category: "Implementation"
   },
-  
-  // Finance Stages
+  // Finance stages
   {
     name: "Payment Processed",
-    category: "finance",
     status: "not-started",
-    order: 13
+    category: "Finance"
   }
-];
-
-export const industryOptions = [
-  "Technology",
-  "Healthcare", 
-  "Financial Services",
-  "Manufacturing",
-  "Retail",
-  "Education",
-  "Real Estate",
-  "Professional Services",
-  "Media & Entertainment",
-  "Transportation",
-  "Energy",
-  "Government",
-  "Non-Profit",
-  "Other"
 ];
