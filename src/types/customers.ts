@@ -1,4 +1,5 @@
 
+
 // Define basic types without relying on Supabase generated types
 // These types match our database schema but don't depend on the generated types
 
@@ -201,3 +202,4 @@ export interface CustomerData {
   contact_email?: string;
   contact_phone?: string;
 }
+
