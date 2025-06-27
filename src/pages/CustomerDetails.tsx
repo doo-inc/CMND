@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -13,7 +12,7 @@ import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { findCustomerById } from "@/utils/customerUtils";
-import { CustomerData } from "@/components/customers/CustomerCard";
+import { CustomerData } from "@/types/customers";
 
 const CustomerDetails = () => {
   const { id } = useParams<{ id: string }>();
