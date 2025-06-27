@@ -5,28 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { CustomerData } from "@/types/customers";
 
 export interface CustomerOwner {
   id: string;
   name: string;
   role: string;
-}
-
-export interface CustomerData {
-  id: string;
-  name: string;
-  logo?: string;
-  segment: string;
-  region: string;
-  stage: string;
-  status: "not-started" | "in-progress" | "done" | "blocked";
-  contractSize: number;
-  owner: CustomerOwner;
-  description?: string;
-  owner_id?: string;
-  contract_size?: number;
-  lifecyclePercentage?: number;
-  industry?: string;
 }
 
 interface CustomerCardProps {
@@ -91,7 +75,7 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>{customer.segment}</span>
                 <span>•</span>
-                <span>{customer.region}</span>
+                <span>{customer.country}</span>
                 {customer.industry && (
                   <>
                     <span>•</span>

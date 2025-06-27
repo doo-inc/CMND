@@ -1,7 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
-import { CustomerData } from "@/components/customers/CustomerCard";
+import { CustomerData } from "@/types/customers";
 
 /**
  * Finds a customer by ID or name in both database and local data

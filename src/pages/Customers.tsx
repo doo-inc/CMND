@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { CustomerCard, CustomerData } from "@/components/customers/CustomerCard";
+import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, ArrowUpDown } from "lucide-react";
 import { 
@@ -14,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Customer, CustomerWithOwner } from "@/types/customers";
+import { CustomerData } from "@/types/customers";
 import { toast } from "sonner";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { syncCustomersToDatabase, checkForDuplicateStages, removeDuplicateCustomers } from "@/utils/customerDataSync";
@@ -34,7 +33,7 @@ const Customers = () => {
       name: customer.name,
       logo: customer.logo || undefined,
       segment: customer.segment || "Unknown Segment",
-      country: customer.country || "Unknown Country",
+      country: customer.country || customer.region || "Unknown Country",
       stage: customer.stage || "New",
       status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
       contractSize: customer.contractSize || 0,
@@ -111,7 +110,7 @@ const Customers = () => {
           name: customer.name,
           logo: undefined,
           segment: customer.segment || "Unknown Segment",
-          region: customer.region || "Unknown Region",
+          country: customer.region || "Unknown Country",
           stage: customer.stage,
           status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
           contractSize: customer.contractSize || 0,
@@ -134,7 +133,7 @@ const Customers = () => {
         name: customer.name,
         logo: undefined,
         segment: customer.segment || "Unknown Segment",
-        region: customer.region || "Unknown Region",
+        country: customer.region || "Unknown Country",
         stage: customer.stage,
         status: "not-started" as "not-started" | "in-progress" | "done" | "blocked",
         contractSize: customer.contractSize || 0,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Users, Calendar, FileText, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CustomerData } from "@/components/customers/CustomerCard";
+import { CustomerData } from "@/types/customers";
 import { syncCustomersToDatabase, checkForDuplicateStages } from "@/utils/customerDataSync";
 import { toast } from "sonner";
 import { 
