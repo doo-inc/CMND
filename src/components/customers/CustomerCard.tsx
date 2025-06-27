@@ -22,7 +22,7 @@ interface CustomerCardProps {
 export function CustomerCard({ customer, showEditOptions = false, isDetailed = false }: CustomerCardProps) {
   const navigate = useNavigate();
   
-  const getStatusClass = (status: string) => {
+  const getStatusClass = (status?: string) => {
     switch (status) {
       case "not-started":
         return "status-badge status-not-started";
@@ -73,9 +73,9 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
             <div>
               <h3 className="font-medium">{customer.name}</h3>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <span>{customer.segment}</span>
+                <span>{customer.segment || "Unknown Segment"}</span>
                 <span>•</span>
-                <span>{customer.country}</span>
+                <span>{customer.country || "Unknown Country"}</span>
                 {customer.industry && (
                   <>
                     <span>•</span>
@@ -95,7 +95,7 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
           <div className="mt-4 grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm text-muted-foreground">Current Stage</p>
-              <p className="font-medium">{customer.stage}</p>
+              <p className="font-medium">{customer.stage || "New"}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Contract Size</p>
@@ -105,7 +105,7 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
           
           <div className="mt-3 flex items-center justify-between">
             <span className={getStatusClass(customer.status)}>
-              {customer.status.replace("-", " ")}
+              {(customer.status || "not-started").replace("-", " ")}
             </span>
             <div className="flex items-center text-xs text-muted-foreground">
               <User className="h-3 w-3 mr-1" />

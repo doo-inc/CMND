@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -97,10 +98,10 @@ const CustomerDetails = () => {
     id: customer.id,
     name: customer.name,
     logo: customer.logo || undefined,
-    segment: customer.segment || "Unknown Segment",
-    country: customer.country || "Unknown Country", 
-    stage: customer.stage || "New",
-    status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+    segment: customer.segment || undefined,
+    country: customer.country || undefined, 
+    stage: customer.stage || undefined,
+    status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || undefined,
     contractSize: customer.contract_size || 0,
     description: customer.description || undefined,
     industry: customer.industry || undefined,
@@ -148,7 +149,7 @@ const CustomerDetails = () => {
                   {(customer.status || "not-started").replace("-", " ")}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  {customer.segment} • {customer.country}
+                  {customer.segment || "Unknown Segment"} • {customer.country || "Unknown Country"}
                   {customer.industry && ` • ${customer.industry}`}
                 </span>
               </div>

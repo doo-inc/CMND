@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { customers as realCustomers } from "@/data/realCustomers";
 import { CustomerData } from "@/types/customers";
@@ -27,10 +28,10 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
           id: customerData.id,
           name: customerData.name,
           logo: customerData.logo || undefined,
-          segment: customerData.segment || "Unknown Segment",
-          country: customerData.country || "Unknown Country",
-          stage: customerData.stage || "New",
-          status: (customerData.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+          segment: customerData.segment || undefined,
+          country: customerData.country || undefined,
+          stage: customerData.stage || undefined,
+          status: (customerData.status as "not-started" | "in-progress" | "done" | "blocked") || undefined,
           contractSize: customerData.contract_size || 0,
           owner: {
             id: customerData.owner_id || "unknown",
@@ -59,10 +60,10 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
         id: customer.id,
         name: customer.name,
         logo: customer.logo || undefined,
-        segment: customer.segment || "Unknown Segment",
-        country: customer.country || "Unknown Country",
-        stage: customer.stage || "New",
-        status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+        segment: customer.segment || undefined,
+        country: customer.country || undefined,
+        stage: customer.stage || undefined,
+        status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || undefined,
         contractSize: customer.contract_size || 0,
         owner: {
           id: customer.owner_id || "unknown",
@@ -92,7 +93,7 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
             id: newCustomerId,
             name: customer.name,
             segment: customer.segment || null,
-            country: customer.region || null,
+            country: customer.country || null,
             stage: customer.stage || null,
             status: "not-started",
             contract_size: customer.contractSize || 0,
@@ -112,9 +113,9 @@ export const findCustomerById = async (customerId: string): Promise<CustomerData
         id: newCustomerId,
         name: customer.name,
         logo: undefined,
-        segment: customer.segment || "Unknown Segment",
-        country: customer.region || "Unknown Country",
-        stage: customer.stage || "New", 
+        segment: customer.segment || undefined,
+        country: customer.country || undefined,
+        stage: customer.stage || undefined, 
         status: "not-started",
         contractSize: customer.contractSize || 0,
         owner: {

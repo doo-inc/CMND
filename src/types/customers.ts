@@ -177,15 +177,15 @@ export interface LifecycleStageWithOwner extends LifecycleStage {
   };
 }
 
-// CustomerData interface for UI components - matches what components expect
+// CustomerData interface for UI components - updated to make fields optional that can be null
 export interface CustomerData {
   id: string;
   name: string;
   logo?: string;
-  segment: string;
-  country: string;
-  stage: string;
-  status: "not-started" | "in-progress" | "done" | "blocked";
+  segment?: string;
+  country?: string;
+  stage?: string;
+  status?: "not-started" | "in-progress" | "done" | "blocked";
   contractSize: number;
   owner: {
     id: string;
