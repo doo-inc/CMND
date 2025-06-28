@@ -407,6 +407,198 @@ export type Database = {
         }
         Relationships: []
       }
+      partnership_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          partnership_id: string
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          partnership_id: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          partnership_id?: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_contacts_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partnership_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          partnership_id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          partnership_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          partnership_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_documents_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partnership_timeline: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_avatar: string | null
+          created_by_name: string | null
+          event_description: string
+          event_type: string
+          id: string
+          partnership_id: string
+          related_id: string | null
+          related_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_avatar?: string | null
+          created_by_name?: string | null
+          event_description: string
+          event_type: string
+          id?: string
+          partnership_id: string
+          related_id?: string | null
+          related_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_avatar?: string | null
+          created_by_name?: string | null
+          event_description?: string
+          event_type?: string
+          id?: string
+          partnership_id?: string
+          related_id?: string | null
+          related_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_timeline_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partnerships: {
+        Row: {
+          country: string | null
+          created_at: string
+          description: string | null
+          expected_value: number | null
+          expiry_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string | null
+          partnership_type: Database["public"]["Enums"]["partnership_type"]
+          region: string | null
+          renewal_date: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["partnership_status"]
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          expected_value?: number | null
+          expiry_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          partnership_type: Database["public"]["Enums"]["partnership_type"]
+          region?: string | null
+          renewal_date?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["partnership_status"]
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          expected_value?: number | null
+          expiry_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          partnership_type?: Database["public"]["Enums"]["partnership_type"]
+          region?: string | null
+          renewal_date?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["partnership_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           company: string
@@ -597,7 +789,18 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      partnership_status:
+        | "in_discussion"
+        | "signed"
+        | "active"
+        | "inactive"
+        | "expired"
+      partnership_type:
+        | "reseller"
+        | "consultant"
+        | "platform_partner"
+        | "education_partner"
+        | "mou_partner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -712,6 +915,21 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      partnership_status: [
+        "in_discussion",
+        "signed",
+        "active",
+        "inactive",
+        "expired",
+      ],
+      partnership_type: [
+        "reseller",
+        "consultant",
+        "platform_partner",
+        "education_partner",
+        "mou_partner",
+      ],
+    },
   },
 } as const
