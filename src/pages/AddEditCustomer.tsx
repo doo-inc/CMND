@@ -7,9 +7,9 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { customers } from "@/data/mockData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerInsert } from "@/types/customers";
-import { useQuery } from "@tanstack/react-query";
 import { CustomerForm, CustomerFormData } from "@/components/customers/CustomerForm";
 
 const AddEditCustomer = () => {
@@ -17,6 +17,9 @@ const AddEditCustomer = () => {
   const navigate = useNavigate();
   const isEditing = !!id;
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(isEditing);
+  const [customer, setCustomer] = React.useState<any>(null);
+  const [error, setError] = React.useState<string | null>(null);
   
   const getDbCustomerId = () => {
     if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
@@ -25,47 +28,57 @@ const AddEditCustomer = () => {
     return id ? `00000000-0000-0000-0000-${id.replace(/\D/g, '').padStart(12, '0')}` : null;
   };
   
-  const [customer, setCustomer] = React.useState<any>(null);
-  
   React.useEffect(() => {
     const fetchCustomer = async () => {
-      if (isEditing) {
-        const dbCustomerId = getDbCustomerId();
+      if (!isEditing) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      
+      const dbCustomerId = getDbCustomerId();
+      
+      try {
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', dbCustomerId)
+          .single();
         
-        try {
-          const { data, error } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('id', dbCustomerId)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching customer:", error);
-            const mockCustomer = customers.find(c => c.id === id);
+        if (error) {
+          console.error("Error fetching customer:", error);
+          // Fallback to mock data if database fetch fails
+          const mockCustomer = customers.find(c => c.id === id);
+          if (mockCustomer) {
             setCustomer(mockCustomer);
           } else {
-            // Convert database dates to Date objects
-            const customerData = {
-              ...data,
-              contractSize: data.contract_size,
-              contract_size: data.contract_size,
-              setup_fee: data.setup_fee || 0,
-              annual_rate: data.annual_rate || 0,
-              go_live_date: data.go_live_date ? new Date(data.go_live_date) : undefined,
-              subscription_end_date: data.subscription_end_date ? new Date(data.subscription_end_date) : undefined,
-              owner: {
-                id: data.owner_id,
-                name: "Unknown",
-                role: "Unknown"
-              }
-            };
-            setCustomer(customerData);
+            setError("Customer not found");
           }
-        } catch (error) {
-          console.error("Error in fetch operation:", error);
-          const mockCustomer = customers.find(c => c.id === id);
-          setCustomer(mockCustomer);
+        } else {
+          // Convert database data to form format
+          const customerData = {
+            ...data,
+            contractSize: data.contract_size,
+            contract_size: data.contract_size,
+            setup_fee: data.setup_fee || 0,
+            annual_rate: data.annual_rate || 0,
+            go_live_date: data.go_live_date ? new Date(data.go_live_date) : undefined,
+            subscription_end_date: data.subscription_end_date ? new Date(data.subscription_end_date) : undefined,
+            owner: {
+              id: data.owner_id,
+              name: "Unknown",
+              role: "Unknown"
+            }
+          };
+          setCustomer(customerData);
         }
+      } catch (error) {
+        console.error("Error in fetch operation:", error);
+        setError("Failed to load customer data");
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -144,6 +157,73 @@ const AddEditCustomer = () => {
     contact_email: customer.contact_email || "",
     contact_phone: customer.contact_phone || "",
   } : {};
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => navigate("/customers")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            <Skeleton className="h-8 w-48" />
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-64" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-start gap-6">
+                <Skeleton className="h-20 w-20 rounded-full" />
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => navigate("/customers")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold text-destructive">Error Loading Customer</h1>
+          </div>
+          
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <p className="text-lg text-muted-foreground mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   return (
     <DashboardLayout>
