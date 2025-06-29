@@ -45,14 +45,14 @@ function Calendar({
     const today = new Date();
     setCurrentMonth(today);
     // Check if onSelect exists and mode is single before calling
-    if (props.onSelect && props.mode === "single") {
+    if ('onSelect' in props && props.onSelect && props.mode === "single") {
       (props.onSelect as (date: Date | undefined) => void)(today);
     }
   };
 
   const handleClear = () => {
     // Check if onSelect exists and mode is single before calling
-    if (props.onSelect && props.mode === "single") {
+    if ('onSelect' in props && props.onSelect && props.mode === "single") {
       (props.onSelect as (date: Date | undefined) => void)(undefined);
     }
   };
