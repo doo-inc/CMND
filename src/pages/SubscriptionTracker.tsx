@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { toast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, addYears } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const SubscriptionTracker = () => {
@@ -91,6 +91,15 @@ const SubscriptionTracker = () => {
       customerId: selectedCustomer.id,
       endDate: endDateString
     });
+  };
+
+  // Quick date shortcuts for subscription dates
+  const handleQuickDateSelect = (years: number) => {
+    if (!selectedCustomer?.go_live_date) return;
+    
+    const startDate = new Date(selectedCustomer.go_live_date);
+    const endDate = addYears(startDate, years);
+    setSelectedEndDate(endDate);
   };
 
   // Calculate time left and status for each customer
@@ -412,11 +421,11 @@ const SubscriptionTracker = () => {
 
         {/* Set End Date Dialog */}
         <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Set Subscription End Date</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
               <div className="space-y-2">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Customer: <span className="font-medium text-gray-900 dark:text-gray-100">{selectedCustomer?.name}</span>
@@ -427,6 +436,51 @@ const SubscriptionTracker = () => {
                   </p>
                 )}
               </div>
+
+              {/* Quick Duration Shortcuts */}
+              {selectedCustomer?.go_live_date && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Quick Select Duration</label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickDateSelect(1)}
+                      className="text-xs"
+                    >
+                      1 Year
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickDateSelect(2)}
+                      className="text-xs"
+                    >
+                      2 Years
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickDateSelect(3)}
+                      className="text-xs"
+                    >
+                      3 Years
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickDateSelect(5)}
+                      className="text-xs"
+                    >
+                      5 Years
+                    </Button>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Subscription End Date</label>
@@ -451,13 +505,27 @@ const SubscriptionTracker = () => {
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
+                        
+                        // If there's a start date, prevent selecting before it
+                        if (selectedCustomer?.go_live_date) {
+                          const startDate = new Date(selectedCustomer.go_live_date);
+                          startDate.setHours(0, 0, 0, 0);
+                          return date < startDate;
+                        }
+                        
+                        // Otherwise, just prevent past dates
                         return date < today;
                       }}
                       initialFocus
-                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
+                
+                {selectedEndDate && selectedCustomer?.go_live_date && (
+                  <p className="text-xs text-muted-foreground">
+                    Duration: {Math.ceil((selectedEndDate.getTime() - new Date(selectedCustomer.go_live_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25))} year(s)
+                  </p>
+                )}
               </div>
             </div>
             
