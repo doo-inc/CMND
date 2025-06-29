@@ -1,4 +1,3 @@
-
 import React, { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,10 +78,8 @@ export function CustomerForm({
   });
 
   const handleFormSubmit = (data: CustomerFormData) => {
-    // Apply pending avatar changes before submitting
+    // Get the final logo value from the avatar component
     if (avatarUploadRef.current) {
-      avatarUploadRef.current.applyPendingChanges();
-      // Get the updated logo value
       const finalLogoValue = avatarUploadRef.current.getPendingValue();
       data.logo = finalLogoValue;
     }
@@ -125,26 +122,19 @@ export function CustomerForm({
         {/* Customer Profile Section */}
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-start gap-6">
-            {/* Profile Image */}
+            {/* Profile Image - NO LONGER WRAPPED IN FormField */}
             <div className="flex-shrink-0">
-              <FormField
-                control={form.control}
-                name="logo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer Profile Image</FormLabel>
-                    <FormControl>
-                      <CustomerAvatarUpload
-                        ref={avatarUploadRef}
-                        value={field.value}
-                        onChange={field.onChange}
-                        customerName={customerName || "New Customer"}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Customer Profile Image
+                </label>
+                <CustomerAvatarUpload
+                  ref={avatarUploadRef}
+                  value={initialData?.logo || ""}
+                  onChange={() => {}} // Empty function - we don't need to update form state
+                  customerName={customerName || "New Customer"}
+                />
+              </div>
             </div>
 
             {/* Basic Information */}

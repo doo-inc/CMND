@@ -15,8 +15,6 @@ interface CustomerAvatarUploadProps {
 
 export interface CustomerAvatarUploadRef {
   getPendingValue: () => string;
-  hasPendingChanges: () => boolean;
-  applyPendingChanges: () => void;
 }
 
 export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, CustomerAvatarUploadProps>(({ 
@@ -26,31 +24,12 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
   className = "" 
 }, ref) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
-  const [pendingRemoval, setPendingRemoval] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState<string>(value || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    getPendingValue: () => {
-      if (pendingRemoval) return "";
-      if (pendingUrl) return pendingUrl;
-      return value || "";
-    },
-    hasPendingChanges: () => {
-      return !!(pendingUrl || pendingRemoval);
-    },
-    applyPendingChanges: () => {
-      if (pendingUrl) {
-        onChange(pendingUrl);
-        setPendingUrl(null);
-        setPendingRemoval(false);
-      } else if (pendingRemoval) {
-        onChange("");
-        setPendingUrl(null);
-        setPendingRemoval(false);
-      }
-    }
+    getPendingValue: () => currentUrl,
   }));
 
   const getInitials = (name: string) => {
@@ -107,10 +86,9 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
 
       const publicUrl = data.publicUrl;
       
-      // Store the uploaded URL temporarily - DO NOT call onChange
-      setPendingUrl(publicUrl);
-      setPendingRemoval(false);
-      toast.success("Profile image uploaded successfully! Changes will be saved when you submit the form.");
+      // Update the current URL - this will be applied when form is submitted
+      setCurrentUrl(publicUrl);
+      toast.success("Profile image uploaded successfully!");
       
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -121,12 +99,10 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
   };
 
   const handleRemove = async () => {
-    const urlToRemove = pendingUrl || value;
-    
-    if (urlToRemove) {
+    if (currentUrl) {
       try {
         // Extract filename from URL to delete from storage
-        const url = new URL(urlToRemove);
+        const url = new URL(currentUrl);
         const filePath = url.pathname.split('/').pop();
         
         if (filePath) {
@@ -139,25 +115,20 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
       }
     }
     
-    // Set pending removal state - DO NOT call onChange
-    setPendingUrl(null);
-    setPendingRemoval(true);
-    toast.success("Profile image will be removed when you submit the form.");
+    // Clear the current URL
+    setCurrentUrl("");
+    toast.success("Profile image removed!");
   };
 
   const handleClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Determine what image to show
-  const currentImage = pendingRemoval ? null : (pendingUrl || value);
-  const hasPendingChanges = pendingUrl || pendingRemoval;
-
   return (
     <div className={`flex flex-col items-center space-y-3 ${className}`}>
       <div className="relative">
         <Avatar className="h-20 w-20 cursor-pointer border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors" onClick={handleClick}>
-          <AvatarImage src={currentImage} alt={customerName} />
+          <AvatarImage src={currentUrl} alt={customerName} />
           <AvatarFallback className="bg-gradient-to-br from-purple-400 to-blue-500 text-white text-lg">
             {customerName ? getInitials(customerName) : "?"}
           </AvatarFallback>
@@ -169,7 +140,7 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
           </div>
         )}
         
-        {currentImage && !isUploading && (
+        {currentUrl && !isUploading && (
           <Button
             variant="destructive"
             size="sm"
@@ -190,17 +161,8 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
           className="flex items-center space-x-2"
         >
           <Upload className="h-4 w-4" />
-          <span>{currentImage ? "Change Image" : "Upload Image"}</span>
+          <span>{currentUrl ? "Change Image" : "Upload Image"}</span>
         </Button>
-        
-        {hasPendingChanges && (
-          <div className="text-xs text-orange-600 dark:text-orange-400 text-center font-medium">
-            {pendingUrl && "New image ready"}
-            {pendingRemoval && "Image will be removed"}
-            <br />
-            Submit form to apply changes
-          </div>
-        )}
         
         <p className="text-xs text-muted-foreground text-center">
           PNG, JPG, SVG up to 2MB<br />
