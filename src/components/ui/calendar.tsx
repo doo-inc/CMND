@@ -17,7 +17,7 @@ function Calendar({
   ...props
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(
-    props.defaultMonth || props.selected as Date || new Date()
+    props.defaultMonth || (props.selected as Date) || new Date()
   );
 
   // Generate year options (10 years back, 10 years forward)
@@ -44,14 +44,16 @@ function Calendar({
   const handleToday = () => {
     const today = new Date();
     setCurrentMonth(today);
+    // Check if onSelect exists and mode is single before calling
     if (props.onSelect && props.mode === "single") {
-      props.onSelect(today);
+      (props.onSelect as (date: Date | undefined) => void)(today);
     }
   };
 
   const handleClear = () => {
+    // Check if onSelect exists and mode is single before calling
     if (props.onSelect && props.mode === "single") {
-      props.onSelect(undefined);
+      (props.onSelect as (date: Date | undefined) => void)(undefined);
     }
   };
 
