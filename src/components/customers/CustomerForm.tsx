@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -209,7 +208,7 @@ export function CustomerForm({
         {/* Contract Details Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            💼 Contract Details
+            Contract Details
           </h3>
           
           {/* Show Total Contract Value if we have setup fee or annual rate */}
@@ -290,7 +289,7 @@ export function CustomerForm({
         {/* Timeline / Dates Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            📆 Timeline / Dates
+            Timeline / Dates
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
