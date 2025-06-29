@@ -20,7 +20,7 @@ export function CustomerAvatarUpload({
   className = "" 
 }: CustomerAvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getInitials = (name: string) => {
@@ -77,10 +77,9 @@ export function CustomerAvatarUpload({
 
       const publicUrl = data.publicUrl;
       
-      // Update the form with the new URL
-      onChange(publicUrl);
-      setPreview(publicUrl);
-      toast.success("Profile image uploaded successfully!");
+      // Store the uploaded URL temporarily instead of immediately updating the form
+      setPendingUrl(publicUrl);
+      toast.success("Profile image uploaded successfully! Click 'Update Customer' to save changes.");
       
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -91,10 +90,12 @@ export function CustomerAvatarUpload({
   };
 
   const handleRemove = async () => {
-    if (value) {
+    const urlToRemove = pendingUrl || value;
+    
+    if (urlToRemove) {
       try {
         // Extract filename from URL to delete from storage
-        const url = new URL(value);
+        const url = new URL(urlToRemove);
         const filePath = url.pathname.split('/').pop();
         
         if (filePath) {
@@ -107,8 +108,8 @@ export function CustomerAvatarUpload({
       }
     }
     
+    setPendingUrl(null);
     onChange("");
-    setPreview(null);
     toast.success("Profile image removed");
   };
 
@@ -116,7 +117,16 @@ export function CustomerAvatarUpload({
     fileInputRef.current?.click();
   };
 
-  const currentImage = preview || value;
+  const handleSave = () => {
+    if (pendingUrl) {
+      onChange(pendingUrl);
+      setPendingUrl(null);
+      toast.success("Profile image updated!");
+    }
+  };
+
+  // Use pending URL if available, otherwise use the current value
+  const currentImage = pendingUrl || value;
 
   return (
     <div className={`flex flex-col items-center space-y-3 ${className}`}>
@@ -157,6 +167,17 @@ export function CustomerAvatarUpload({
           <Upload className="h-4 w-4" />
           <span>{currentImage ? "Change Image" : "Upload Image"}</span>
         </Button>
+        
+        {pendingUrl && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            className="flex items-center space-x-2"
+          >
+            <span>Apply Changes</span>
+          </Button>
+        )}
         
         <p className="text-xs text-muted-foreground text-center">
           PNG, JPG, SVG up to 2MB<br />
