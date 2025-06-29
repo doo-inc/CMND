@@ -1,79 +1,22 @@
+
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Upload } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { customers } from "@/data/mockData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerInsert } from "@/types/customers";
 import { useQuery } from "@tanstack/react-query";
-import { countryOptions } from "@/data/defaultLifecycleStages";
-
-const STAGE_OPTIONS = [
-  "New",
-  "Onboarding",
-  "Integration",
-  "Training",
-  "Went Live",
-  "Signed",
-  "Invoice Sent",
-  "Paid",
-  "WhatsApp Integration",
-  "Instagram Integration",
-  "Facebook Integration",
-  "Website Integration",
-  "Agent Setup",
-  "Account Setup",
-  "Training Completed"
-];
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Customer name must be at least 2 characters.",
-  }),
-  segment: z.string(),
-  country: z.string(),
-  stage: z.string(),
-  status: z.enum(["not-started", "in-progress", "done", "blocked"]),
-  contractSize: z.coerce.number().min(0),
-  ownerId: z.string(),
-  industry: z.string().optional(),
-  logo: z.any().optional(),
-  teamMembers: z.array(z.string()).optional(),
-  contact_name: z.string().optional(),
-  contact_email: z.string().email("Invalid email format").optional().or(z.literal("")),
-  contact_phone: z.string().optional(),
-});
+import { CustomerForm, CustomerFormData } from "@/components/customers/CustomerForm";
 
 const AddEditCustomer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
-  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [selectedTeamMembers, setSelectedTeamMembers] = React.useState<string[]>([]);
   
   const getDbCustomerId = () => {
     if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
@@ -83,50 +26,6 @@ const AddEditCustomer = () => {
   };
   
   const [customer, setCustomer] = React.useState<any>(null);
-  
-  const { data: staffMembers = [] } = useQuery({
-    queryKey: ['staff-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*')
-        .order('name');
-        
-      if (error) {
-        console.error("Error fetching staff:", error);
-        throw new Error(error.message);
-      }
-      return data || [];
-    }
-  });
-
-  // Fetch team members assigned to this customer
-  const { data: customerTeamMembers = [] } = useQuery({
-    queryKey: ['customer-team-members-ids', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const dbCustomerId = getDbCustomerId();
-      const { data, error } = await supabase
-        .from('customer_team_members')
-        .select('staff_id')
-        .eq('customer_id', dbCustomerId);
-        
-      if (error) {
-        console.error("Error fetching customer team members:", error);
-        return [];
-      }
-      
-      return data?.map(item => item.staff_id) || [];
-    },
-    enabled: !!id
-  });
-  
-  React.useEffect(() => {
-    if (customerTeamMembers.length > 0) {
-      setSelectedTeamMembers(customerTeamMembers);
-    }
-  }, [customerTeamMembers]);
   
   React.useEffect(() => {
     const fetchCustomer = async () => {
@@ -145,15 +44,22 @@ const AddEditCustomer = () => {
             const mockCustomer = customers.find(c => c.id === id);
             setCustomer(mockCustomer);
           } else {
-            setCustomer({
+            // Convert database dates to Date objects
+            const customerData = {
               ...data,
               contractSize: data.contract_size,
+              contract_size: data.contract_size,
+              setup_fee: data.setup_fee || 0,
+              annual_rate: data.annual_rate || 0,
+              go_live_date: data.go_live_date ? new Date(data.go_live_date) : undefined,
+              subscription_end_date: data.subscription_end_date ? new Date(data.subscription_end_date) : undefined,
               owner: {
                 id: data.owner_id,
                 name: "Unknown",
                 role: "Unknown"
               }
-            });
+            };
+            setCustomer(customerData);
           }
         } catch (error) {
           console.error("Error in fetch operation:", error);
@@ -166,72 +72,7 @@ const AddEditCustomer = () => {
     fetchCustomer();
   }, [id, isEditing]);
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: customer?.name || "",
-      segment: customer?.segment || "Enterprise",
-      country: customer?.country || "",
-      stage: customer?.stage || "Onboarding",
-      status: customer?.status || "not-started",
-      contractSize: customer?.contractSize || 0,
-      ownerId: customer?.owner?.id || "user-001",
-      teamMembers: [],
-      contact_name: customer?.contact_name || "",
-      contact_email: customer?.contact_email || "",
-      contact_phone: customer?.contact_phone || "",
-    },
-  });
-  
-  React.useEffect(() => {
-    if (customer) {
-      form.reset({
-        name: customer.name || "",
-        segment: customer.segment || "Enterprise",
-        country: customer.country || "",
-        stage: customer.stage || "Onboarding",
-        status: customer.status || "not-started",
-        contractSize: customer.contractSize || customer.contract_size || 0,
-        ownerId: customer.owner?.id || customer.owner_id || "user-001",
-        industry: customer.industry || "",
-        teamMembers: selectedTeamMembers,
-        contact_name: customer.contact_name || "",
-        contact_email: customer.contact_email || "",
-        contact_phone: customer.contact_phone || "",
-      });
-      
-      if (customer.logo) {
-        setLogoPreview(customer.logo);
-      }
-    }
-  }, [customer, form, selectedTeamMembers]);
-  
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setLogoPreview(result);
-        form.setValue("logo", result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  const handleTeamMemberToggle = (staffId: string) => {
-    setSelectedTeamMembers(prev => {
-      if (prev.includes(staffId)) {
-        return prev.filter(id => id !== staffId);
-      } else {
-        return [...prev, staffId];
-      }
-    });
-    
-    form.setValue("teamMembers", selectedTeamMembers);
-  };
-  
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: CustomerFormData) {
     setIsSubmitting(true);
     
     try {
@@ -239,18 +80,21 @@ const AddEditCustomer = () => {
         name: values.name,
         segment: values.segment,
         country: values.country,
-        stage: values.stage,
-        status: values.status,
-        contract_size: values.contractSize,
-        owner_id: values.ownerId,
+        stage: "New",
+        status: "not-started",
+        contract_size: values.contract_size || 0,
+        setup_fee: values.setup_fee || 0,
+        annual_rate: values.annual_rate || 0,
+        go_live_date: values.go_live_date ? values.go_live_date.toISOString().split('T')[0] : null,
+        subscription_end_date: values.subscription_end_date ? values.subscription_end_date.toISOString().split('T')[0] : null,
+        owner_id: "user-001", // Default owner
         industry: values.industry || null,
         logo: values.logo || null,
         contact_name: values.contact_name || null,
         contact_email: values.contact_email || null,
         contact_phone: values.contact_phone || null,
+        description: values.description || null,
       };
-      
-      let customerId = id;
       
       if (isEditing) {
         const dbCustomerId = getDbCustomerId();
@@ -260,8 +104,6 @@ const AddEditCustomer = () => {
           .eq('id', dbCustomerId);
         
         if (error) throw error;
-        
-        customerId = dbCustomerId;
         
         toast.success("Customer updated successfully");
       } else {
@@ -273,36 +115,7 @@ const AddEditCustomer = () => {
         
         if (error) throw error;
         
-        customerId = data.id;
-        
         toast.success("Customer added successfully");
-      }
-      
-      if (customerId) {
-        const { error: deleteError } = await supabase
-          .from('customer_team_members')
-          .delete()
-          .eq('customer_id', customerId);
-        
-        if (deleteError) {
-          console.error("Error deleting existing team assignments:", deleteError);
-        }
-        
-        if (selectedTeamMembers.length > 0) {
-          const teamAssignments = selectedTeamMembers.map(staffId => ({
-            customer_id: customerId,
-            staff_id: staffId
-          }));
-          
-          const { error: insertError } = await supabase
-            .from('customer_team_members')
-            .insert(teamAssignments);
-          
-          if (insertError) {
-            console.error("Error assigning team members:", insertError);
-            toast.error("Failed to assign team members");
-          }
-        }
       }
       
       navigate("/customers");
@@ -313,6 +126,24 @@ const AddEditCustomer = () => {
       setIsSubmitting(false);
     }
   }
+  
+  // Prepare initial data for the form
+  const initialData: Partial<CustomerFormData> = customer ? {
+    name: customer.name || "",
+    segment: customer.segment || "Enterprise",
+    country: customer.country || "",
+    industry: customer.industry || "",
+    contract_size: customer.contract_size || 0,
+    setup_fee: customer.setup_fee || 0,
+    annual_rate: customer.annual_rate || 0,
+    go_live_date: customer.go_live_date,
+    subscription_end_date: customer.subscription_end_date,
+    description: customer.description || "",
+    logo: customer.logo || "",
+    contact_name: customer.contact_name || "",
+    contact_email: customer.contact_email || "",
+    contact_phone: customer.contact_phone || "",
+  } : {};
   
   return (
     <DashboardLayout>
@@ -330,333 +161,12 @@ const AddEditCustomer = () => {
             <CardTitle>{isEditing ? "Edit Customer Details" : "Enter Customer Details"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="flex flex-col items-center mb-6">
-                  <Avatar className="h-32 w-32 mb-4">
-                    <AvatarImage src={logoPreview || ""} alt="Customer logo" />
-                    <AvatarFallback className="text-2xl bg-primary/10">
-                      {customer?.name ? customer.name.substring(0, 2).toUpperCase() : "CL"}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="logo-upload" className="cursor-pointer">
-                      <div className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium">
-                        <Upload className="h-4 w-4" />
-                        Upload Logo
-                      </div>
-                      <input 
-                        id="logo-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleLogoChange}
-                      />
-                    </label>
-                    {logoPreview && (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => {
-                          setLogoPreview(null);
-                          form.setValue("logo", undefined);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Customer name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="segment"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Segment</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select segment" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Enterprise">Enterprise</SelectItem>
-                            <SelectItem value="Mid-Market">Mid-Market</SelectItem>
-                            <SelectItem value="SMB">SMB</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {countryOptions.map(country => (
-                              <SelectItem key={country} value={country}>{country}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="industry"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Industry</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select industry" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Technology">Technology</SelectItem>
-                            <SelectItem value="Healthcare">Healthcare</SelectItem>
-                            <SelectItem value="Finance">Finance</SelectItem>
-                            <SelectItem value="Retail">Retail</SelectItem>
-                            <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                            <SelectItem value="Education">Education</SelectItem>
-                            <SelectItem value="Government">Government</SelectItem>
-                            <SelectItem value="Non-Profit">Non-Profit</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Contact Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="contact_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Contact name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="contact_email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="Contact email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="contact_phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Phone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Contact phone" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="stage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Stage</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select stage" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {STAGE_OPTIONS.map(stage => (
-                              <SelectItem key={stage} value={stage}>{stage}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="not-started">Not Started</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="done">Done</SelectItem>
-                            <SelectItem value="blocked">Blocked</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="contractSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contract Size ($)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Contract size" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="ownerId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Owner</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select owner" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="user-001">Ahmed Abdullah (Account Executive)</SelectItem>
-                            <SelectItem value="user-002">Fatima Hassan (Customer Success Manager)</SelectItem>
-                            <SelectItem value="user-003">Khalid Al-Farsi (Finance Manager)</SelectItem>
-                            <SelectItem value="user-004">Mohammed Rahman (Integration Engineer)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="space-y-4">
-                  <FormLabel>Team Members</FormLabel>
-                  <div className="border rounded-md p-4 max-h-48 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {staffMembers.map(staff => (
-                        <div key={staff.id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`staff-${staff.id}`}
-                            checked={selectedTeamMembers.includes(staff.id)}
-                            onChange={() => handleTeamMemberToggle(staff.id)}
-                            className="h-4 w-4 rounded"
-                          />
-                          <label htmlFor={`staff-${staff.id}`} className="flex items-center gap-2 cursor-pointer">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={staff.avatar || `https://avatar.vercel.sh/${staff.name}.png`} alt={staff.name} />
-                              <AvatarFallback className="text-xs">{staff.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm">{staff.name} ({staff.role})</span>
-                          </label>
-                        </div>
-                      ))}
-                      
-                      {staffMembers.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No team members available</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : isEditing ? "Update Customer" : "Add Customer"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+            <CustomerForm
+              initialData={initialData}
+              onSubmit={onSubmit}
+              isSubmitting={isSubmitting}
+              submitLabel={isEditing ? "Update Customer" : "Add Customer"}
+            />
           </CardContent>
         </Card>
       </div>

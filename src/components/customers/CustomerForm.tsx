@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
@@ -24,6 +29,10 @@ const customerFormSchema = z.object({
   country: z.string().min(1, "Country is required"),
   industry: z.string().optional(),
   contract_size: z.number().min(0, "Contract size must be positive").optional(),
+  setup_fee: z.number().min(0, "Setup fee must be positive").optional(),
+  annual_rate: z.number().min(0, "Annual rate must be positive").optional(),
+  go_live_date: z.date().optional(),
+  subscription_end_date: z.date().optional(),
   description: z.string().optional(),
   logo: z.string().optional(),
   contact_name: z.string().optional(),
@@ -54,6 +63,10 @@ export function CustomerForm({
       country: initialData?.country || "",
       industry: initialData?.industry || "",
       contract_size: initialData?.contract_size || 0,
+      setup_fee: initialData?.setup_fee || 0,
+      annual_rate: initialData?.annual_rate || 0,
+      go_live_date: initialData?.go_live_date,
+      subscription_end_date: initialData?.subscription_end_date,
       description: initialData?.description || "",
       logo: initialData?.logo || "",
       contact_name: initialData?.contact_name || "",
@@ -73,6 +86,20 @@ export function CustomerForm({
     value: country,
     label: country
   }));
+
+  // Calculate total contract value
+  const setupFee = form.watch("setup_fee") || 0;
+  const annualRate = form.watch("annual_rate") || 0;
+  const totalContractValue = setupFee + annualRate;
+
+  // Currency formatting helper
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
 
   return (
     <Form {...form}>
@@ -166,25 +193,6 @@ export function CustomerForm({
 
           <FormField
             control={form.control}
-            name="contract_size"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contract Size ($)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="Enter contract size" 
-                    {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="logo"
             render={({ field }) => (
               <FormItem>
@@ -196,6 +204,179 @@ export function CustomerForm({
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Contract Details Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            💼 Contract Details
+          </h3>
+          
+          {/* Show Total Contract Value if we have setup fee or annual rate */}
+          {totalContractValue > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                Total Contract Value
+              </div>
+              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
+                {formatCurrency(totalContractValue)}
+              </div>
+              <div className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                Setup Fee + Annual Rate
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+              control={form.control}
+              name="setup_fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Setup Fee ($)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="0.00" 
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="annual_rate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Annual Rate ($)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contract_size"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Legacy Contract Size ($)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="Enter contract size" 
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Timeline / Dates Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            📆 Timeline / Dates
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="go_live_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Go Live Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subscription_end_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Subscription End Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date < new Date()
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         {/* Contact Information Section */}

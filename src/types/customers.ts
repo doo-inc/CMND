@@ -1,4 +1,3 @@
-
 // Define basic types without relying on Supabase generated types
 // These types match our database schema but don't depend on the generated types
 
@@ -12,6 +11,10 @@ export interface Customer {
   stage?: string | null;
   status?: string | null;
   contract_size?: number | null;
+  setup_fee?: number | null;
+  annual_rate?: number | null;
+  go_live_date?: string | null;
+  subscription_end_date?: string | null;
   owner_id?: string | null;
   description?: string | null;
   industry?: string | null;
@@ -177,7 +180,7 @@ export interface LifecycleStageWithOwner extends LifecycleStage {
   };
 }
 
-// CustomerData interface for UI components - updated to make fields optional that can be null
+// CustomerData interface for UI components - updated to include new contract fields
 export interface CustomerData {
   id: string;
   name: string;
@@ -187,6 +190,10 @@ export interface CustomerData {
   stage?: string;
   status?: "not-started" | "in-progress" | "done" | "blocked";
   contractSize: number;
+  setup_fee?: number;
+  annual_rate?: number;
+  go_live_date?: string;
+  subscription_end_date?: string;
   owner: {
     id: string;
     name: string;

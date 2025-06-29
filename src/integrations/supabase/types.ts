@@ -201,6 +201,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          annual_rate: number | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -208,17 +209,21 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          go_live_date: string | null
           id: string
           industry: string | null
           logo: string | null
           name: string
           owner_id: string | null
           segment: string | null
+          setup_fee: number | null
           stage: string | null
           status: string | null
+          subscription_end_date: string | null
           updated_at: string
         }
         Insert: {
+          annual_rate?: number | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -226,17 +231,21 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          go_live_date?: string | null
           id?: string
           industry?: string | null
           logo?: string | null
           name: string
           owner_id?: string | null
           segment?: string | null
+          setup_fee?: number | null
           stage?: string | null
           status?: string | null
+          subscription_end_date?: string | null
           updated_at?: string
         }
         Update: {
+          annual_rate?: number | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -244,14 +253,17 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          go_live_date?: string | null
           id?: string
           industry?: string | null
           logo?: string | null
           name?: string
           owner_id?: string | null
           segment?: string | null
+          setup_fee?: number | null
           stage?: string | null
           status?: string | null
+          subscription_end_date?: string | null
           updated_at?: string
         }
         Relationships: []
