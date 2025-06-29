@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { industryOptions, countryOptions } from "@/data/defaultLifecycleStages";
+import { CustomerAvatarUpload } from "./CustomerAvatarUpload";
 
 const customerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -91,6 +93,9 @@ export function CustomerForm({
   const annualRate = form.watch("annual_rate") || 0;
   const totalContractValue = setupFee + annualRate;
 
+  // Watch customer name for avatar component
+  const customerName = form.watch("name");
+
   // Currency formatting helper
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -103,106 +108,119 @@ export function CustomerForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Customer Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter customer name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Customer Profile Section */}
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-start gap-6">
+            {/* Profile Image */}
+            <div className="flex-shrink-0">
+              <FormField
+                control={form.control}
+                name="logo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Profile Image</FormLabel>
+                    <FormControl>
+                      <CustomerAvatarUpload
+                        value={field.value}
+                        onChange={field.onChange}
+                        customerName={customerName || "New Customer"}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <FormField
-            control={form.control}
-            name="segment"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Segment</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select segment" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {segmentOptions.map((segment) => (
-                      <SelectItem key={segment} value={segment}>
-                        {segment}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            {/* Basic Information */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter customer name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="country"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Country</FormLabel>
-                <FormControl>
-                  <Combobox
-                    options={countryComboboxOptions}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select country"
-                    searchPlaceholder="Search countries..."
-                    emptyMessage="No country found."
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="segment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Segment</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select segment" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {segmentOptions.map((segment) => (
+                          <SelectItem key={segment} value={segment}>
+                            {segment}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="industry"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Industry</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {industryOptions.map((industry) => (
-                      <SelectItem key={industry} value={industry}>
-                        {industry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={countryComboboxOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select country"
+                        searchPlaceholder="Search countries..."
+                        emptyMessage="No country found."
+                        className="w-full"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="logo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Logo URL (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter logo URL" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Industry</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {industryOptions.map((industry) => (
+                          <SelectItem key={industry} value={industry}>
+                            {industry}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Contract Details Section */}
