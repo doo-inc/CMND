@@ -421,7 +421,7 @@ const SubscriptionTracker = () => {
 
         {/* Set End Date Dialog */}
         <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Set Subscription End Date</DialogTitle>
             </DialogHeader>
@@ -497,7 +497,7 @@ const SubscriptionTracker = () => {
                       {selectedEndDate ? format(selectedEndDate, "PPP") : <span>Select end date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="center" side="top">
                     <Calendar
                       mode="single"
                       selected={selectedEndDate}
@@ -517,6 +517,7 @@ const SubscriptionTracker = () => {
                         return date < today;
                       }}
                       initialFocus
+                      compact={true}
                     />
                   </PopoverContent>
                 </Popover>
