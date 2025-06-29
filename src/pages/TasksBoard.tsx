@@ -116,14 +116,14 @@ const TasksBoard = () => {
           description: newTask.description,
           status: newTask.status,
           due_date: newTask.due_date,
-          customer_id: newTask.customer_id,
-          assigned_to: newTask.assigned_to
+          customer_id: newTask.customer_id === 'none' ? null : newTask.customer_id,
+          assigned_to: newTask.assigned_to === 'unassigned' ? null : newTask.assigned_to
         })
         .select();
         
       if (error) throw error;
       
-      if (newTask.assigned_to) {
+      if (newTask.assigned_to && newTask.assigned_to !== 'unassigned') {
         await createNotification({
           type: 'team',
           title: 'Task Assigned',
@@ -163,8 +163,8 @@ const TasksBoard = () => {
           description: editingTask.description,
           status: editingTask.status,
           due_date: editingTask.due_date,
-          customer_id: editingTask.customer_id,
-          assigned_to: editingTask.assigned_to
+          customer_id: editingTask.customer_id === 'none' ? null : editingTask.customer_id,
+          assigned_to: editingTask.assigned_to === 'unassigned' ? null : editingTask.assigned_to
         })
         .eq('id', editingTask.id)
         .select();
@@ -393,14 +393,14 @@ const TasksBoard = () => {
                   <div className="grid gap-2">
                     <Label htmlFor="customer">Customer</Label>
                     <Select
-                      value={newTask.customer_id || ""}
-                      onValueChange={(value) => setNewTask({...newTask, customer_id: value || null})}
+                      value={newTask.customer_id || "none"}
+                      onValueChange={(value) => setNewTask({...newTask, customer_id: value === "none" ? null : value})}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select customer" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {customers.map((customer) => (
                           <SelectItem key={customer.id} value={customer.id}>
                             {customer.name}
@@ -412,14 +412,14 @@ const TasksBoard = () => {
                   <div className="grid gap-2">
                     <Label htmlFor="assignee">Assignee</Label>
                     <Select
-                      value={newTask.assigned_to || ""}
-                      onValueChange={(value) => setNewTask({...newTask, assigned_to: value || null})}
+                      value={newTask.assigned_to || "unassigned"}
+                      onValueChange={(value) => setNewTask({...newTask, assigned_to: value === "unassigned" ? null : value})}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {staff.map((person) => (
                           <SelectItem key={person.id} value={person.id}>
                             {person.name}
@@ -518,14 +518,14 @@ const TasksBoard = () => {
                 <div className="grid gap-2">
                   <Label htmlFor="edit-customer">Customer</Label>
                   <Select
-                    value={editingTask.customer_id || ""}
-                    onValueChange={(value) => setEditingTask({...editingTask, customer_id: value || null})}
+                    value={editingTask.customer_id || "none"}
+                    onValueChange={(value) => setEditingTask({...editingTask, customer_id: value === "none" ? null : value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {customers.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.name}
@@ -537,14 +537,14 @@ const TasksBoard = () => {
                 <div className="grid gap-2">
                   <Label htmlFor="edit-assignee">Assignee</Label>
                   <Select
-                    value={editingTask.assigned_to || ""}
-                    onValueChange={(value) => setEditingTask({...editingTask, assigned_to: value || null})}
+                    value={editingTask.assigned_to || "unassigned"}
+                    onValueChange={(value) => setEditingTask({...editingTask, assigned_to: value === "unassigned" ? null : value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {staff.map((person) => (
                         <SelectItem key={person.id} value={person.id}>
                           {person.name}
