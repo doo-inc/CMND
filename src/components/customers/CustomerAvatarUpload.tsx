@@ -142,6 +142,7 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
         
         {currentUrl && !isUploading && (
           <Button
+            type="button"
             variant="destructive"
             size="sm"
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
@@ -154,6 +155,7 @@ export const CustomerAvatarUpload = forwardRef<CustomerAvatarUploadRef, Customer
       
       <div className="flex flex-col items-center space-y-2">
         <Button
+          type="button"
           variant="outline"
           size="sm"
           onClick={handleClick}
