@@ -5,10 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Search, Filter, Calendar, DollarSign } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Clock, Search, Filter, Calendar as CalendarIcon, DollarSign } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const SubscriptionTracker = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,6 +22,13 @@ const SubscriptionTracker = () => {
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("renewal_date");
   const [displayFormat, setDisplayFormat] = useState<"months_days" | "days_only">("months_days");
+  
+  // Dialog states
+  const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
+
+  const queryClient = useQueryClient();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['subscription-tracker'],
@@ -30,6 +43,55 @@ const SubscriptionTracker = () => {
       return data as Customer[];
     }
   });
+
+  // Mutation to update subscription end date
+  const updateEndDateMutation = useMutation({
+    mutationFn: async ({ customerId, endDate }: { customerId: string; endDate: string }) => {
+      const { data, error } = await supabase
+        .from('customers')
+        .update({ subscription_end_date: endDate })
+        .eq('id', customerId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['subscription-tracker'] });
+      toast({
+        title: "Success",
+        description: `Subscription end date updated for ${data.name}`,
+      });
+      setIsDateDialogOpen(false);
+      setSelectedCustomer(null);
+      setSelectedEndDate(undefined);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update subscription end date. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error updating end date:', error);
+    }
+  });
+
+  const handleSetEndDate = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setSelectedEndDate(customer.subscription_end_date ? new Date(customer.subscription_end_date) : undefined);
+    setIsDateDialogOpen(true);
+  };
+
+  const handleSaveEndDate = () => {
+    if (!selectedCustomer || !selectedEndDate) return;
+
+    const endDateString = format(selectedEndDate, 'yyyy-MM-dd');
+    updateEndDateMutation.mutate({
+      customerId: selectedCustomer.id,
+      endDate: endDateString
+    });
+  };
 
   // Calculate time left and status for each customer
   const processCustomers = (customers: Customer[]) => {
@@ -271,7 +333,7 @@ const SubscriptionTracker = () => {
                     {customer.go_live_date && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                          <CalendarIcon className="h-3 w-3" />
                           Start Date:
                         </span>
                         <span className="font-medium">
@@ -283,7 +345,7 @@ const SubscriptionTracker = () => {
                     {customer.subscription_end_date && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                          <CalendarIcon className="h-3 w-3" />
                           End Date:
                         </span>
                         <span className="font-medium">
@@ -332,7 +394,12 @@ const SubscriptionTracker = () => {
                   
                   {customer.status === 'missing_date' && (
                     <div className="pt-2">
-                      <Button size="sm" variant="outline" className="w-full">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => handleSetEndDate(customer)}
+                      >
                         Set End Date
                       </Button>
                     </div>
@@ -342,6 +409,76 @@ const SubscriptionTracker = () => {
             ))}
           </div>
         )}
+
+        {/* Set End Date Dialog */}
+        <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Set Subscription End Date</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Customer: <span className="font-medium text-gray-900 dark:text-gray-100">{selectedCustomer?.name}</span>
+                </p>
+                {selectedCustomer?.go_live_date && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Start Date: {new Date(selectedCustomer.go_live_date).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Subscription End Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !selectedEndDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedEndDate ? format(selectedEndDate, "PPP") : <span>Select end date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedEndDate}
+                      onSelect={setSelectedEndDate}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsDateDialogOpen(false)}
+                disabled={updateEndDateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveEndDate}
+                disabled={!selectedEndDate || updateEndDateMutation.isPending}
+                className="bg-doo-purple-600 hover:bg-doo-purple-700"
+              >
+                {updateEndDateMutation.isPending ? "Saving..." : "Save End Date"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
