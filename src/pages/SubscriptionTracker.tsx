@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,6 @@ const SubscriptionTracker = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("renewal_date");
   const [displayFormat, setDisplayFormat] = useState<"months_days" | "days_only">("months_days");
 
@@ -86,9 +84,8 @@ const SubscriptionTracker = () => {
                          customer.country?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSegment = segmentFilter === "all" || customer.segment === segmentFilter;
     const matchesCountry = countryFilter === "all" || customer.country === countryFilter;
-    const matchesOwner = ownerFilter === "all" || customer.owner_id === ownerFilter;
     
-    return matchesSearch && matchesSegment && matchesCountry && matchesOwner;
+    return matchesSearch && matchesSegment && matchesCountry;
   });
 
   // Sort customers
@@ -98,8 +95,6 @@ const SubscriptionTracker = () => {
         return a.delta - b.delta; // Soonest renewals first
       case "customer_name":
         return a.name.localeCompare(b.name);
-      case "owner":
-        return (a.owner_id || "").localeCompare(b.owner_id || "");
       default:
         return 0;
     }
@@ -138,7 +133,6 @@ const SubscriptionTracker = () => {
   // Get unique values for filters
   const uniqueSegments = Array.from(new Set(customers.map(c => c.segment).filter(Boolean)));
   const uniqueCountries = Array.from(new Set(customers.map(c => c.country).filter(Boolean)));
-  const uniqueOwners = Array.from(new Set(customers.map(c => c.owner_id).filter(Boolean)));
 
   return (
     <DashboardLayout>
@@ -204,17 +198,6 @@ const SubscriptionTracker = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="All Owners" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Owners</SelectItem>
-                  {uniqueOwners.map(owner => (
-                    <SelectItem key={owner} value={owner}>{owner}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Sort by" />
@@ -222,7 +205,6 @@ const SubscriptionTracker = () => {
                 <SelectContent>
                   <SelectItem value="renewal_date">Renewal Date</SelectItem>
                   <SelectItem value="customer_name">Customer Name</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -253,7 +235,7 @@ const SubscriptionTracker = () => {
                 No subscriptions found
               </h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm || segmentFilter !== "all" || countryFilter !== "all" || ownerFilter !== "all"
+                {searchTerm || segmentFilter !== "all" || countryFilter !== "all"
                   ? "Try adjusting your filters to see more results."
                   : "No live customers with subscription data found."}
               </p>
@@ -333,13 +315,6 @@ const SubscriptionTracker = () => {
                         <span className="font-medium text-green-600 dark:text-green-400">
                           ${(customer.annual_rate / 100).toLocaleString()}
                         </span>
-                      </div>
-                    )}
-                    
-                    {customer.owner_id && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Owner:</span>
-                        <span className="font-medium">{customer.owner_id}</span>
                       </div>
                     )}
                   </div>
