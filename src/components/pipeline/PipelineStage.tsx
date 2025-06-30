@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { PipelineStageData } from "@/hooks/usePipelineData";
 import { CustomerDot } from "./CustomerDot";
@@ -22,7 +21,7 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
   totalStages 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const INITIAL_DISPLAY_COUNT = 8;
+  const INITIAL_DISPLAY_COUNT = 12;
 
   const getStageColor = (index: number, total: number) => {
     const ratio = index / (total - 1);
@@ -52,18 +51,18 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
 
   return (
     <Card className={`
-      relative w-80 p-5 transition-all duration-300 hover:shadow-lg overflow-visible
+      relative w-96 p-6 transition-all duration-300 hover:shadow-lg overflow-visible
       ${isEmpty ? 'bg-gray-50 dark:bg-gray-800 border-dashed' : ''}
-      ${isExpanded ? 'min-h-[500px]' : 'min-h-[180px]'}
+      ${isExpanded ? 'min-h-[600px]' : 'min-h-[220px]'}
     `}>
       {/* Stage Header */}
-      <div className="mb-5">
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-3">
+      <div className="mb-6">
+        <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100 mb-4">
           {stage.stageName}
         </h3>
         <div className={`
-          inline-block px-4 py-2 rounded-full text-white text-sm font-medium
-          bg-gradient-to-r ${gradientClass}
+          inline-block px-5 py-3 rounded-full text-white text-sm font-medium
+          bg-gradient-to-r ${gradientClass} shadow-sm
         `}>
           {viewMode === "value" 
             ? formatValue(stage.totalValue)
@@ -75,31 +74,31 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
       {/* Customer Content */}
       <div className="flex-1 overflow-visible">
         {isEmpty ? (
-          <div className="flex flex-col items-center justify-center h-20 text-gray-500 dark:text-gray-400">
-            <div className="text-xs text-center">
+          <div className="flex flex-col items-center justify-center h-24 text-gray-500 dark:text-gray-400">
+            <div className="text-sm text-center">
               No customers in this stage
             </div>
-            <div className="text-xs mt-1">$0 value</div>
+            <div className="text-xs mt-2">$0 value</div>
           </div>
         ) : (
-          <div className="space-y-5 overflow-visible">
+          <div className="space-y-6 overflow-visible">
             {/* Initial Customer Dots */}
             <div className="overflow-visible">
-              <div className="flex flex-wrap gap-3 p-1 overflow-visible">
+              <div className="flex flex-wrap gap-3 p-2 overflow-visible">
                 {stage.customers.slice(0, INITIAL_DISPLAY_COUNT).map((customer) => (
                   <CustomerDot key={customer.id} customer={customer} />
                 ))}
               </div>
               
               {hasOverflow && !isExpanded && (
-                <div className="mt-3">
+                <div className="mt-4">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 px-4 text-xs bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 dark:from-gray-800 dark:to-gray-700 dark:hover:from-gray-700 dark:hover:to-gray-600 border-blue-200 dark:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="h-10 px-5 text-sm bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 dark:from-gray-800 dark:to-gray-700 dark:hover:from-gray-700 dark:hover:to-gray-600 border-blue-200 dark:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md"
                     onClick={toggleExpansion}
                   >
-                    <ChevronDown className="h-3 w-3 mr-2" />
+                    <ChevronDown className="h-4 w-4 mr-2" />
                     Show {overflowCount} more customers
                   </Button>
                 </div>
@@ -108,14 +107,14 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
 
             {/* Expanded Customer List */}
             {isExpanded && hasOverflow && (
-              <div className="animate-fade-in space-y-4 overflow-visible">
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-4 font-medium uppercase tracking-wide">
+              <div className="animate-fade-in space-y-5 overflow-visible">
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-5">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-5 font-medium uppercase tracking-wide">
                     Additional Customers ({overflowCount})
                   </div>
                   
-                  <ScrollArea className="h-60 w-full overflow-visible">
-                    <div className="flex flex-wrap gap-3 p-1 pb-4 overflow-visible">
+                  <ScrollArea className="h-72 w-full overflow-visible">
+                    <div className="flex flex-wrap gap-3 p-2 pb-5 overflow-visible">
                       {stage.customers.slice(INITIAL_DISPLAY_COUNT).map((customer) => (
                         <CustomerDot key={customer.id} customer={customer} />
                       ))}
@@ -127,17 +126,17 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full h-9 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700"
+                  className="w-full h-10 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700"
                   onClick={toggleExpansion}
                 >
-                  <ChevronUp className="h-3 w-3 mr-2" />
+                  <ChevronUp className="h-4 w-4 mr-2" />
                   Hide Additional Customers
                 </Button>
               </div>
             )}
             
             {/* Additional Info */}
-            <div className="text-xs text-gray-600 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-400 pt-4 border-t border-gray-100 dark:border-gray-700">
               {viewMode === "value" ? (
                 <span>{stage.customerCount} customers</span>
               ) : (
