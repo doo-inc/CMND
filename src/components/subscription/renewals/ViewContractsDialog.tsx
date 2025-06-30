@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, DollarSign, CreditCard } from "lucide-react";
+import { FileText, Calendar, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,22 +41,6 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
     enabled: isOpen
   });
 
-  // Also fetch customer data for setup fee
-  const { data: customer } = useQuery({
-    queryKey: ['customer-setup-fee', customerId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('setup_fee')
-        .eq('id', customerId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: isOpen
-  });
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -74,11 +58,8 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
     });
   };
 
-  // Calculate total lifetime value
-  const contractsValue = contracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
-  const contractSetupFees = contracts.reduce((sum, contract) => sum + (contract.setup_fee || 0), 0);
-  const customerSetupFee = customer?.setup_fee || 0;
-  const totalLifetimeValue = contractsValue + contractSetupFees + customerSetupFee;
+  // Calculate total lifetime value from contract values
+  const totalLifetimeValue = contracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -102,7 +83,7 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
             <div>
               <h3 className="font-semibold text-lg text-green-800">Total Lifetime Value</h3>
               <p className="text-sm text-green-600">
-                Combined value of all contracts and setup fees
+                Combined value of all contracts
               </p>
             </div>
             <div className="text-right">
@@ -170,39 +151,21 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
                       </div>
                     </div>
 
-                    {/* Contract Financial Details */}
-                    <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-blue-500" />
-                        <div>
-                          <div className="text-xs text-gray-600 uppercase tracking-wide">Setup Fee</div>
-                          <div className="font-semibold text-blue-600">
-                            {formatCurrency(contract.setup_fee || 0)}
-                          </div>
-                        </div>
-                      </div>
+                    {/* Contract Value */}
+                    <div className="p-4 bg-gray-50 rounded-lg mb-4">
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-green-500" />
                         <div>
-                          <div className="text-xs text-gray-600 uppercase tracking-wide">Annual Rate</div>
-                          <div className="font-semibold text-green-600">
-                            {formatCurrency(contract.annual_rate || 0)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-purple-500" />
-                        <div>
-                          <div className="text-xs text-gray-600 uppercase tracking-wide">Total Value</div>
-                          <div className="font-bold text-purple-600">
-                            {formatCurrency((contract.setup_fee || 0) + (contract.annual_rate || 0) + (contract.value || 0))}
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">Contract Value</div>
+                          <div className="font-bold text-green-600">
+                            {formatCurrency(contract.value || 0)}
                           </div>
                         </div>
                       </div>
                     </div>
                     
                     {contract.renewal_date && (
-                      <div className="mt-4 pt-4 border-t">
+                      <div className="mb-4 pt-4 border-t">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-orange-500" />
                           <div>
@@ -214,7 +177,7 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
                     )}
                     
                     {contract.terms && (
-                      <div className="mt-4 pt-4 border-t">
+                      <div className="pt-4 border-t">
                         <div className="text-sm">
                           <div className="text-xs text-gray-600 uppercase tracking-wide mb-2">Terms</div>
                           <div className="text-gray-800 bg-white p-3 rounded border">
