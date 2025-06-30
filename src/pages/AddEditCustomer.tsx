@@ -5,7 +5,7 @@ import { CustomerForm, type CustomerFormData } from "@/components/customers/Cust
 import { Contract } from "@/components/customers/ContractsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 

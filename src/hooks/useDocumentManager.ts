@@ -68,25 +68,48 @@ export function useDocumentManager(entityId?: string, entityType: "customer" | "
 
       // Insert new documents
       if (newDocuments.length > 0) {
-        const documentsToInsert = newDocuments.map(doc => ({
-          [columnName]: entityId,
-          name: doc.name,
-          file_path: doc.file_path,
-          document_type: doc.document_type,
-          file_size: doc.file_size
-        }));
+        if (entityType === "customer") {
+          const documentsToInsert = newDocuments.map(doc => ({
+            customer_id: entityId,
+            name: doc.name,
+            file_path: doc.file_path,
+            document_type: doc.document_type,
+            file_size: doc.file_size
+          }));
 
-        const { error } = await supabase
-          .from(tableName)
-          .insert(documentsToInsert);
+          const { error } = await supabase
+            .from('documents')
+            .insert(documentsToInsert);
 
-        if (error) {
-          console.error('Error saving documents:', error);
-          toast({
-            title: "Error saving documents",
-            description: "Some documents may not have been saved properly.",
-            variant: "destructive"
-          });
+          if (error) {
+            console.error('Error saving documents:', error);
+            toast({
+              title: "Error saving documents",
+              description: "Some documents may not have been saved properly.",
+              variant: "destructive"
+            });
+          }
+        } else {
+          const documentsToInsert = newDocuments.map(doc => ({
+            partnership_id: entityId,
+            name: doc.name,
+            file_path: doc.file_path,
+            document_type: doc.document_type,
+            file_size: doc.file_size
+          }));
+
+          const { error } = await supabase
+            .from('partnership_documents')
+            .insert(documentsToInsert);
+
+          if (error) {
+            console.error('Error saving documents:', error);
+            toast({
+              title: "Error saving documents",
+              description: "Some documents may not have been saved properly.",
+              variant: "destructive"
+            });
+          }
         }
       }
 

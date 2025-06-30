@@ -27,7 +27,7 @@ import { useDocumentManager } from "@/hooks/useDocumentManager";
 import { countryOptions } from "@/data/defaultLifecycleStages";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 const partnershipSchema = z.object({
   name: z.string().min(1, "Partnership name is required"),
@@ -121,10 +121,17 @@ export default function AddEditPartnership() {
     setIsSubmitting(true);
     try {
       const partnershipData = {
-        ...data,
+        name: data.name,
+        partnership_type: data.partnership_type,
+        status: data.status,
+        country: data.country,
+        region: data.region,
         start_date: data.start_date ? format(data.start_date, "yyyy-MM-dd") : null,
         expiry_date: data.expiry_date ? format(data.expiry_date, "yyyy-MM-dd") : null,
         renewal_date: data.renewal_date ? format(data.renewal_date, "yyyy-MM-dd") : null,
+        expected_value: data.expected_value,
+        description: data.description,
+        notes: data.notes,
       };
 
       let partnershipId = id;

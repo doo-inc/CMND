@@ -142,13 +142,13 @@ export function DocumentUpload({
   };
 
   const removeDocument = async (index: number) => {
-    const document = documents[index];
+    const doc = documents[index];
     
     try {
       // Delete from Supabase Storage
       const { error } = await supabase.storage
         .from('documents')
-        .remove([document.file_path]);
+        .remove([doc.file_path]);
 
       if (error) {
         console.error('Error deleting file:', error);
@@ -160,7 +160,7 @@ export function DocumentUpload({
 
       toast({
         title: "Document removed",
-        description: `${document.name} has been removed.`
+        description: `${doc.name} has been removed.`
       });
 
     } catch (error) {
@@ -173,22 +173,22 @@ export function DocumentUpload({
     }
   };
 
-  const downloadDocument = async (document: Document) => {
+  const downloadDocument = async (doc: Document) => {
     try {
       const { data, error } = await supabase.storage
         .from('documents')
-        .download(document.file_path);
+        .download(doc.file_path);
 
       if (error) throw error;
 
       // Create download link
       const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = document.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = window.document.createElement('a');
+      anchor.href = url;
+      anchor.download = doc.name;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      window.document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
 
     } catch (error) {
