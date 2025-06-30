@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, DollarSign } from "lucide-react";
+import { FileText, Calendar, DollarSign, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,6 +41,22 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
     enabled: isOpen
   });
 
+  // Also fetch customer data for setup fee
+  const { data: customer } = useQuery({
+    queryKey: ['customer-setup-fee', customerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('setup_fee')
+        .eq('id', customerId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -58,21 +74,47 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
     });
   };
 
+  // Calculate total lifetime value
+  const contractsValue = contracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
+  const contractSetupFees = contracts.reduce((sum, contract) => sum + (contract.setup_fee || 0), 0);
+  const customerSetupFee = customer?.setup_fee || 0;
+  const totalLifetimeValue = contractsValue + contractSetupFees + customerSetupFee;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" className="flex items-center gap-1">
-          <FileText className="h-3 w-3" />
+        <Button className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
           View Contracts
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Contracts for {customerName}</DialogTitle>
           <DialogDescription>
-            View all contracts and their details for this customer.
+            View all contracts and their detailed information for this customer.
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Total Lifetime Value Summary */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-lg text-green-800">Total Lifetime Value</h3>
+              <p className="text-sm text-green-600">
+                Combined value of all contracts and setup fees
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-green-800">
+                {formatCurrency(totalLifetimeValue)}
+              </div>
+              <div className="text-sm text-green-600">
+                {contracts.length} {contracts.length === 1 ? 'Contract' : 'Contracts'}
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div className="space-y-4 py-4">
           {isLoading ? (
@@ -96,58 +138,88 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
               <p className="text-gray-500">No contracts have been created for this customer yet.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {contracts.map((contract, index) => (
                 <Card key={contract.id} className="border-l-4 border-l-blue-500">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h4 className="font-semibold text-lg">
-                          Contract {index + 1}: {contract.name}
+                        <h4 className="font-semibold text-lg mb-1">
+                          {contract.name || `Contract ${index + 1}`}
                         </h4>
                         <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
                           {contract.status || 'Active'}
                         </Badge>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-green-600 flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          {formatCurrency(contract.value)}
-                        </div>
-                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <div>
-                          <div className="text-gray-600">Start Date</div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">Start Date</div>
                           <div className="font-medium">{formatDate(contract.start_date)}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <div>
-                          <div className="text-gray-600">End Date</div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">End Date</div>
                           <div className="font-medium">{formatDate(contract.end_date)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contract Financial Details */}
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">Setup Fee</div>
+                          <div className="font-semibold text-blue-600">
+                            {formatCurrency(contract.setup_fee || 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-green-500" />
+                        <div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">Annual Rate</div>
+                          <div className="font-semibold text-green-600">
+                            {formatCurrency(contract.annual_rate || 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-purple-500" />
+                        <div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide">Total Value</div>
+                          <div className="font-bold text-purple-600">
+                            {formatCurrency((contract.setup_fee || 0) + (contract.annual_rate || 0) + (contract.value || 0))}
+                          </div>
                         </div>
                       </div>
                     </div>
                     
                     {contract.renewal_date && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="text-sm">
-                          <div className="text-gray-600">Next Renewal</div>
-                          <div className="font-medium">{formatDate(contract.renewal_date)}</div>
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-orange-500" />
+                          <div>
+                            <div className="text-xs text-gray-600 uppercase tracking-wide">Next Renewal</div>
+                            <div className="font-medium">{formatDate(contract.renewal_date)}</div>
+                          </div>
                         </div>
                       </div>
                     )}
                     
                     {contract.terms && (
-                      <div className="mt-3 pt-3 border-t">
+                      <div className="mt-4 pt-4 border-t">
                         <div className="text-sm">
-                          <div className="text-gray-600 mb-1">Terms</div>
-                          <div className="text-gray-800">{contract.terms}</div>
+                          <div className="text-xs text-gray-600 uppercase tracking-wide mb-2">Terms</div>
+                          <div className="text-gray-800 bg-white p-3 rounded border">
+                            {contract.terms}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -158,7 +230,7 @@ export const ViewContractsDialog: React.FC<ViewContractsDialogProps> = ({
           )}
         </div>
         
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-4 border-t">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Close
           </Button>

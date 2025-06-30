@@ -2,10 +2,8 @@
 import React from "react";
 import { ProcessedCustomer } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DollarSign, CheckCircle } from "lucide-react";
-import { EditRenewalDialog } from "./EditRenewalDialog";
+import { FileText } from "lucide-react";
 import { ViewContractsDialog } from "./ViewContractsDialog";
 
 interface CustomerRenewalCardProps {
@@ -19,21 +17,8 @@ export const CustomerRenewalCard: React.FC<CustomerRenewalCardProps> = ({
   onUpdateDate,
   onMarkAsPaid
 }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "expired":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "expiring_soon":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "active":
-        return "bg-green-100 text-green-800 border-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
   const formatCurrency = (amount: number | null) => {
-    if (!amount) return "N/A";
+    if (!amount) return "$0";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -42,92 +27,52 @@ export const CustomerRenewalCard: React.FC<CustomerRenewalCardProps> = ({
     }).format(amount);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Not set";
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={customer.logo || ""} alt={customer.name} />
-              <AvatarFallback className="bg-doo-purple-100 text-doo-purple-700">
-                {customer.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold text-lg">{customer.name}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                {customer.segment && (
-                  <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                    {customer.segment}
-                  </span>
-                )}
-                {customer.country && (
-                  <span className="text-xs">{customer.country}</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <Badge className={`${getStatusColor(customer.status)} font-medium`}>
-            {customer.timeLeft}
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-gray-500" />
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Renewal Date</p>
-              <p className="font-medium">{formatDate(customer.subscription_end_date)}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-gray-500" />
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Annual Rate</p>
-              <p className="font-medium">{formatCurrency(customer.annual_rate)}</p>
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar className="h-14 w-14">
+            <AvatarImage src={customer.logo || ""} alt={customer.name} />
+            <AvatarFallback className="bg-doo-purple-100 text-doo-purple-700 text-lg font-semibold">
+              {customer.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="font-semibold text-xl mb-1">{customer.name}</h3>
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              {customer.segment && (
+                <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                  {customer.segment}
+                </span>
+              )}
+              {customer.country && (
+                <span className="text-xs">{customer.country}</span>
+              )}
             </div>
           </div>
         </div>
 
-        {customer.setup_fee && customer.setup_fee > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              Setup Fee: <span className="font-medium">{formatCurrency(customer.setup_fee)}</span>
-            </p>
+        <div className="space-y-4 mb-6">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 text-sm">Number of Contracts</span>
+            <span className="font-semibold text-lg">
+              {customer.contractCount} {customer.contractCount === 1 ? 'Contract' : 'Contracts'}
+            </span>
           </div>
-        )}
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 text-sm">Total Lifetime Value</span>
+            <span className="font-bold text-xl text-green-600">
+              {formatCurrency(customer.lifetimeValue)}
+            </span>
+          </div>
+        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <div className="flex-1 min-w-0">
-            <EditRenewalDialog
-              customerId={customer.id}
-              customerName={customer.name}
-              currentDate={customer.subscription_end_date}
-              onUpdateDate={onUpdateDate}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <ViewContractsDialog
-              customerId={customer.id}
-              customerName={customer.name}
-            />
-          </div>
-          <button 
-            onClick={() => onMarkAsPaid(customer.id, customer.name)}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors flex-1 min-w-0 justify-center"
-          >
-            <CheckCircle className="h-4 w-4" />
-            Mark as Paid
-          </button>
+        <div className="flex justify-center">
+          <ViewContractsDialog
+            customerId={customer.id}
+            customerName={customer.name}
+          />
         </div>
       </CardContent>
     </Card>

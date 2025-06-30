@@ -22,7 +22,7 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
   onUpdateDate,
   onMarkAsPaid
 }) => {
-  const [viewMode, setViewMode] = useState<'monthly' | 'cards'>('monthly');
+  const [viewMode, setViewMode] = useState<'monthly' | 'cards'>('cards');
 
   if (isLoading) {
     return viewMode === 'monthly' ? (
@@ -48,7 +48,6 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                 <div className="h-3 bg-gray-200 rounded w-5/6"></div>
                 <div className="flex gap-2">
                   <div className="h-8 bg-gray-200 rounded w-24"></div>
-                  <div className="h-8 bg-gray-200 rounded w-20"></div>
                 </div>
               </div>
             </CardContent>
@@ -107,47 +106,24 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
         />
       ) : (
         <div>
-          {/* Group customers by urgency for card view */}
-          {(() => {
-            const urgentCustomers = customers.filter(c => c.delta < 30 && c.delta >= 0);
-            const expiringSoonCustomers = customers.filter(c => c.delta >= 30 && c.delta <= 60);
-            const activeCustomers = customers.filter(c => c.delta > 60);
-            const expiredCustomers = customers.filter(c => c.delta < 0);
-
-            const sections = [
-              { title: "Urgent (< 30 days)", customers: urgentCustomers, color: "text-red-600" },
-              { title: "Expiring Soon (30-60 days)", customers: expiringSoonCustomers, color: "text-orange-600" },
-              { title: "Overdue", customers: expiredCustomers, color: "text-red-800" },
-              { title: "Active (> 60 days)", customers: activeCustomers, color: "text-green-600" }
-            ].filter(section => section.customers.length > 0);
-
-            return (
-              <div className="space-y-8">
-                {sections.map((section) => (
-                  <div key={section.title}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <h2 className={`text-lg font-semibold ${section.color}`}>
-                        {section.title}
-                      </h2>
-                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {section.customers.length} customer{section.customers.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {section.customers.map((customer) => (
-                        <CustomerRenewalCard
-                          key={customer.id}
-                          customer={customer}
-                          onUpdateDate={onUpdateDate}
-                          onMarkAsPaid={onMarkAsPaid}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              All Customers
+            </h2>
+            <p className="text-sm text-gray-500">
+              {customers.length} customer{customers.length !== 1 ? 's' : ''} with active contracts
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {customers.map((customer) => (
+              <CustomerRenewalCard
+                key={customer.id}
+                customer={customer}
+                onUpdateDate={onUpdateDate}
+                onMarkAsPaid={onMarkAsPaid}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

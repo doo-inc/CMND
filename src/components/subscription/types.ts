@@ -14,6 +14,9 @@ export interface ProcessedCustomer {
   status: "active" | "expiring_soon" | "expired" | "missing_date";
   delta: number;
   progressPercentage: number;
+  contractCount: number;
+  lifetimeValue: number;
+  contracts: any[];
 }
 
 export type ViewMode = "timeline" | "renewals";

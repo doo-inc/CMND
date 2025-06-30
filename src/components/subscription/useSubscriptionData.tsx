@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,8 +77,12 @@ export const useSubscriptionData = () => {
       const customersWithContracts = customersData?.map(customer => {
         const customerContracts = contractsByCustomer[customer.id] || [];
         
-        // Calculate total contract value and get the latest end date
-        const totalContractValue = customerContracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
+        // Calculate lifetime value: sum of all contract values + setup fees
+        const contractsValue = customerContracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
+        const setupFeesValue = customerContracts.reduce((sum, contract) => sum + (contract.setup_fee || 0), 0);
+        const lifetimeValue = contractsValue + setupFeesValue + (customer.setup_fee || 0);
+        
+        // Get the latest end date for renewal tracking
         const latestEndDate = customerContracts.reduce((latest, contract) => {
           if (!latest || new Date(contract.end_date) > new Date(latest)) {
             return contract.end_date;
@@ -90,17 +93,19 @@ export const useSubscriptionData = () => {
         return {
           ...customer,
           contracts: customerContracts,
-          total_contract_value: totalContractValue,
+          contractCount: customerContracts.length,
+          lifetimeValue: lifetimeValue,
           // Use contract end date if available, otherwise fall back to subscription_end_date
           effective_end_date: latestEndDate || customer.subscription_end_date,
           // Use contract value if available, otherwise fall back to annual_rate
-          effective_annual_rate: totalContractValue || customer.annual_rate || 0
+          effective_annual_rate: contractsValue || customer.annual_rate || 0
         };
       }) || [];
       
       return customersWithContracts as (Customer & { 
         contracts: any[], 
-        total_contract_value: number,
+        contractCount: number,
+        lifetimeValue: number,
         effective_end_date: string | null,
         effective_annual_rate: number
       })[];
@@ -158,7 +163,10 @@ export const useSubscriptionData = () => {
         timeLeft,
         status,
         delta,
-        progressPercentage
+        progressPercentage,
+        contractCount: customer.contractCount || 0,
+        lifetimeValue: customer.lifetimeValue || 0,
+        contracts: customer.contracts || []
       };
     });
   };
