@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -101,6 +100,8 @@ export function CustomerForm({
             id: contract.id,
             name: contract.name,
             value: contract.value,
+            setup_fee: contract.setup_fee || 0,
+            annual_rate: contract.annual_rate || 0,
             start_date: contract.start_date,
             end_date: contract.end_date,
             status: contract.status as Contract["status"],
@@ -124,11 +125,12 @@ export function CustomerForm({
     const annualRate = (initialData as any)?.annual_rate || 0;
     
     if (!customerId && contracts.length === 0 && (setupFee || annualRate)) {
-      const legacyContractValue = setupFee + annualRate;
-      if (legacyContractValue > 0) {
+      if (setupFee > 0 || annualRate > 0) {
         const legacyContract: Contract = {
           name: "Primary Contract",
-          value: legacyContractValue,
+          value: setupFee + annualRate,
+          setup_fee: setupFee,
+          annual_rate: annualRate,
           start_date: initialData?.go_live_date ? format(initialData.go_live_date, "yyyy-MM-dd") : new Date().toISOString().split('T')[0],
           end_date: initialData?.subscription_end_date ? format(initialData.subscription_end_date, "yyyy-MM-dd") : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           status: "active",
