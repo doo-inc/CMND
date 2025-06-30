@@ -1,22 +1,20 @@
+
 import React, { useState } from "react";
 import { PipelineStageData } from "@/hooks/usePipelineData";
 import { CustomerDot } from "./CustomerDot";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PipelineStageProps {
   stage: PipelineStageData;
-  viewMode: "value" | "count";
   stageIndex: number;
   totalStages: number;
 }
 
 export const PipelineStage: React.FC<PipelineStageProps> = ({ 
   stage, 
-  viewMode, 
   stageIndex,
   totalStages 
 }) => {
@@ -65,10 +63,7 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
           inline-block px-5 py-3 rounded-full text-white text-sm font-medium
           bg-gradient-to-r ${gradientClass} shadow-sm
         `}>
-          {viewMode === "value" 
-            ? formatValue(stage.totalValue)
-            : `${stage.customerCount} customers`
-          }
+          {formatValue(stage.totalValue)}
         </div>
       </div>
 
@@ -142,13 +137,9 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
               </div>
             )}
             
-            {/* Additional Info */}
+            {/* Additional Info - Always show customer count */}
             <div className="text-sm text-gray-600 dark:text-gray-400 pt-4 border-t border-gray-100 dark:border-gray-700">
-              {viewMode === "value" ? (
-                <span>{stage.customerCount} customers</span>
-              ) : (
-                <span>{formatValue(stage.totalValue)} total</span>
-              )}
+              <span>{stage.customerCount} customers</span>
             </div>
           </div>
         )}

@@ -1,22 +1,15 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { usePipelineData } from "@/hooks/usePipelineData";
 import { PipelineStage } from "./PipelineStage";
-import { Button } from "@/components/ui/button";
-import { BarChart3, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export const PipelineVisualization = () => {
   const { pipelineData, isLoading, error } = usePipelineData();
-  const [viewMode, setViewMode] = useState<"value" | "count">("value");
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex gap-2 mb-6">
-          <div className="h-10 w-32 bg-gray-200 animate-pulse rounded-md"></div>
-          <div className="h-10 w-32 bg-gray-200 animate-pulse rounded-md"></div>
-        </div>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {Array(6).fill(0).map((_, index) => (
             <div key={index} className="flex-shrink-0">
@@ -62,26 +55,6 @@ export const PipelineVisualization = () => {
         </Card>
       </div>
 
-      {/* View Toggle */}
-      <div className="flex gap-2">
-        <Button
-          variant={viewMode === "value" ? "default" : "outline"}
-          onClick={() => setViewMode("value")}
-          className="flex items-center gap-2"
-        >
-          <BarChart3 className="h-4 w-4" />
-          Contract Value
-        </Button>
-        <Button
-          variant={viewMode === "count" ? "default" : "outline"}
-          onClick={() => setViewMode("count")}
-          className="flex items-center gap-2"
-        >
-          <Users className="h-4 w-4" />
-          Customer Count
-        </Button>
-      </div>
-
       {/* Pipeline Visualization */}
       <div className="relative">
         <div className="flex items-center gap-0 overflow-x-auto pb-4 min-h-[200px]">
@@ -89,7 +62,6 @@ export const PipelineVisualization = () => {
             <div key={stage.stageName} className="flex items-center flex-shrink-0">
               <PipelineStage 
                 stage={stage} 
-                viewMode={viewMode}
                 stageIndex={index}
                 totalStages={pipelineData.length}
               />
