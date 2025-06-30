@@ -35,14 +35,17 @@ export const CustomerTimeline: React.FC<CustomerTimelineProps> = ({ customer }) 
     }
   };
 
-  const formatValue = (value: number) => {
+  const formatValue = (value: number | null) => {
+    if (!value || value === 0) return "";
+    
+    // Handle values that are already in correct format
     if (value >= 1000000) {
-      return `$${(value / 100 / 1000000).toFixed(1)}M`;
+      return `$${(value / 1000000).toFixed(1)}M`;
     }
     if (value >= 1000) {
-      return `$${(value / 100 / 1000).toFixed(0)}K`;
+      return `$${(value / 1000).toFixed(0)}K`;
     }
-    return `$${(value / 100).toLocaleString()}`;
+    return `$${value.toLocaleString()}`;
   };
 
   return (

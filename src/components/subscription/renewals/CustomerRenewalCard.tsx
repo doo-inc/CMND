@@ -108,27 +108,29 @@ export const CustomerRenewalCard: React.FC<CustomerRenewalCardProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={() => onRemind(customer.id, customer.name)}
-            className="flex items-center gap-2 flex-1"
+            className="flex items-center gap-2 flex-1 min-w-0"
           >
             <Mail className="h-4 w-4" />
             Send Reminder
           </Button>
-          <UpdateDateDialog
-            customerId={customer.id}
-            customerName={customer.name}
-            currentDate={customer.subscription_end_date}
-            onUpdateDate={onUpdateDate}
-          />
+          <div className="flex-1 min-w-0">
+            <UpdateDateDialog
+              customerId={customer.id}
+              customerName={customer.name}
+              currentDate={customer.subscription_end_date}
+              onUpdateDate={onUpdateDate}
+            />
+          </div>
           <Button 
             size="sm" 
             variant="secondary"
             onClick={() => onMarkAsPaid(customer.id, customer.name)}
-            className="flex items-center gap-2 flex-1"
+            className="flex items-center gap-2 flex-1 min-w-0"
           >
             <CheckCircle className="h-4 w-4" />
             Mark as Paid

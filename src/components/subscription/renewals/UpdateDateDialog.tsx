@@ -41,7 +41,7 @@ export const UpdateDateDialog: React.FC<UpdateDateDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" className="flex items-center gap-2">
+        <Button size="sm" variant="secondary" className="flex items-center gap-2 w-full">
           <Calendar className="h-4 w-4" />
           Update Date
         </Button>
