@@ -16,12 +16,4 @@ export interface ProcessedCustomer {
   progressPercentage: number;
 }
 
-export interface MonthlyRenewal {
-  month: string;
-  year: number;
-  renewalCount: number;
-  totalValue: number;
-  customers: ProcessedCustomer[];
-}
-
 export type ViewMode = "timeline" | "renewals";

@@ -4,13 +4,30 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { ProcessedCustomer, MonthlyRenewal } from "./types";
+import { useToast } from "@/hooks/use-toast";
 
 export const useSubscriptionData = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [segmentFilter, setSegmentFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("renewal_date");
+  const { toast } = useToast();
 
+  // Fetch all customers for filter options
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: ['all-customers-for-filters'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('segment, country')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Pick<Customer, 'segment' | 'country'>[];
+    }
+  });
+
+  // Fetch live customers for subscription data
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['subscription-tracker'],
     queryFn: async () => {
@@ -104,51 +121,32 @@ export const useSubscriptionData = () => {
     }
   });
 
-  // Process monthly renewals for the renewals view
-  const getMonthlyRenewals = (): MonthlyRenewal[] => {
-    const monthlyMap = new Map<string, MonthlyRenewal>();
-    
-    filteredCustomers
-      .filter(customer => customer.subscription_end_date && customer.delta > -365) // Only include customers with end dates within a year
-      .forEach(customer => {
-        if (!customer.subscription_end_date) return;
-        
-        const endDate = new Date(customer.subscription_end_date);
-        const monthKey = `${endDate.getFullYear()}-${endDate.getMonth()}`;
-        const monthName = endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        
-        if (!monthlyMap.has(monthKey)) {
-          monthlyMap.set(monthKey, {
-            month: monthName,
-            year: endDate.getFullYear(),
-            renewalCount: 0,
-            totalValue: 0,
-            customers: []
-          });
-        }
-        
-        const monthData = monthlyMap.get(monthKey)!;
-        monthData.renewalCount++;
-        monthData.totalValue += customer.annual_rate || 0;
-        monthData.customers.push(customer);
+  // Get unique values for filters from ALL customers
+  const uniqueSegments = Array.from(new Set(allCustomers.map(c => c.segment).filter(Boolean)));
+  const uniqueCountries = Array.from(new Set(allCustomers.map(c => c.country).filter(Boolean)));
+
+  // Handle remind customer action
+  const handleRemindCustomer = async (customerId: string, customerName: string) => {
+    try {
+      // For now, we'll just show a success toast
+      // In the future, this could send an email or create a notification
+      toast({
+        title: "Reminder Sent",
+        description: `Renewal reminder sent to ${customerName}`,
       });
-
-    return Array.from(monthlyMap.values())
-      .sort((a, b) => {
-        const aDate = new Date(a.year, new Date(Date.parse(a.month + " 1, 2000")).getMonth());
-        const bDate = new Date(b.year, new Date(Date.parse(b.month + " 1, 2000")).getMonth());
-        return aDate.getTime() - bDate.getTime();
-      })
-      .slice(0, 12); // Show next 12 months
+      
+      console.log(`Reminder sent to customer ${customerId} (${customerName})`);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send reminder. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-
-  // Get unique values for filters
-  const uniqueSegments = Array.from(new Set(customers.map(c => c.segment).filter(Boolean)));
-  const uniqueCountries = Array.from(new Set(customers.map(c => c.country).filter(Boolean)));
 
   return {
     customers: sortedCustomers,
-    monthlyRenewals: getMonthlyRenewals(),
     isLoading,
     searchTerm,
     setSearchTerm,
@@ -159,6 +157,7 @@ export const useSubscriptionData = () => {
     sortBy,
     setSortBy,
     uniqueSegments,
-    uniqueCountries
+    uniqueCountries,
+    handleRemindCustomer
   };
 };

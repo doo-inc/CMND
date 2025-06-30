@@ -14,7 +14,6 @@ const SubscriptionTracker = () => {
   
   const {
     customers,
-    monthlyRenewals,
     isLoading,
     searchTerm,
     setSearchTerm,
@@ -25,7 +24,8 @@ const SubscriptionTracker = () => {
     sortBy,
     setSortBy,
     uniqueSegments,
-    uniqueCountries
+    uniqueCountries,
+    handleRemindCustomer
   } = useSubscriptionData();
 
   return (
@@ -77,7 +77,11 @@ const SubscriptionTracker = () => {
           </TabsContent>
 
           <TabsContent value="renewals" className="space-y-6">
-            <RenewalsView monthlyRenewals={monthlyRenewals} isLoading={isLoading} />
+            <RenewalsView 
+              customers={customers} 
+              isLoading={isLoading}
+              onRemind={handleRemindCustomer}
+            />
           </TabsContent>
         </Tabs>
       </div>
