@@ -30,16 +30,27 @@ export const useSubscriptionData = () => {
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['subscription-tracker'],
     queryFn: async () => {
+      // First, get customer IDs who have completed "Go Live" stage
+      const { data: goLiveCustomers, error: stageError } = await supabase
+        .from('lifecycle_stages')
+        .select('customer_id')
+        .eq('name', 'Go Live')
+        .eq('status', 'done');
+      
+      if (stageError) throw stageError;
+      
+      // Extract customer IDs
+      const customerIds = goLiveCustomers.map(stage => stage.customer_id);
+      
+      if (customerIds.length === 0) {
+        return [];
+      }
+      
+      // Now fetch customers with those IDs
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .in('id', 
-          supabase
-            .from('lifecycle_stages')
-            .select('customer_id')
-            .eq('name', 'Go Live')
-            .eq('status', 'done')
-        )
+        .in('id', customerIds)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
