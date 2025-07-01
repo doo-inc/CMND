@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -39,7 +40,7 @@ export interface ContractDialogProps {
     contract_number?: string;
   };
   isEditing?: boolean;
-  onSuccess: () => void;
+  onSuccess: (action: 'created' | 'updated', contractData?: any) => void;
   trigger?: React.ReactNode;
 }
 
@@ -94,11 +95,15 @@ export function AddContractDialog({
         result = await supabase
           .from("contracts")
           .update(contractData)
-          .eq("id", contract.id);
+          .eq("id", contract.id)
+          .select()
+          .single();
       } else {
         result = await supabase
           .from("contracts")
-          .insert(contractData);
+          .insert(contractData)
+          .select()
+          .single();
       }
       
       if (result.error) {
@@ -114,7 +119,9 @@ export function AddContractDialog({
       toast.success(isEditing ? "Contract updated successfully" : "Contract added successfully");
       resetForm();
       setOpen(false);
-      onSuccess();
+      
+      // Pass the action type and contract data to allow targeted updates
+      onSuccess(isEditing ? 'updated' : 'created', result.data);
     } catch (err) {
       console.error("Error in saving contract:", err);
       toast.error("An unexpected error occurred");
