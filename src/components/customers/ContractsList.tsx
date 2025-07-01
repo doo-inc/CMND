@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
 
   const handleAddContract = () => {
     const newContract: Contract = {
+      id: `temp_${Date.now()}`, // Temporary ID for new contracts
       name: `Contract ${contracts.length + 1}`,
       value: 0,
       setup_fee: 0,
@@ -48,8 +50,12 @@ export const ContractsList: React.FC<ContractsListProps> = ({
 
   const handleSaveContract = (contract: Contract) => {
     if (showAddForm) {
-      // Adding new contract
-      onContractsChange([...contracts, contract]);
+      // Adding new contract - assign a proper ID
+      const contractToAdd = {
+        ...contract,
+        id: contract.id?.startsWith('temp_') ? `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : contract.id
+      };
+      onContractsChange([...contracts, contractToAdd]);
       setShowAddForm(false);
     } else {
       // Editing existing contract
@@ -299,27 +305,38 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
   onSave,
   isNewContract
 }) => {
-  const [formData, setFormData] = useState<Contract>(contract);
+  const [formData, setFormData] = useState<Contract>({ ...contract });
 
   // Calculate total value whenever setup_fee or annual_rate changes
   React.useEffect(() => {
-    const setupFee = formData.setup_fee || 0;
-    const annualRate = formData.annual_rate || 0;
+    const setupFee = Number(formData.setup_fee) || 0;
+    const annualRate = Number(formData.annual_rate) || 0;
     const totalValue = setupFee + annualRate;
     setFormData(prev => ({ ...prev, value: totalValue }));
   }, [formData.setup_fee, formData.annual_rate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      alert('Contract name is required');
+      return;
+    }
+    
     // Ensure numeric fields are numbers, not empty strings
     const contractToSave = {
       ...formData,
-      setup_fee: formData.setup_fee || 0,
-      annual_rate: formData.annual_rate || 0,
-      value: (formData.setup_fee || 0) + (formData.annual_rate || 0)
+      setup_fee: Number(formData.setup_fee) || 0,
+      annual_rate: Number(formData.annual_rate) || 0,
+      value: (Number(formData.setup_fee) || 0) + (Number(formData.annual_rate) || 0)
     };
+    
     onSave(contractToSave);
-    onClose();
+  };
+
+  const handleInputChange = (field: keyof Contract, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const formatCurrency = (value: number) => {
@@ -341,13 +358,14 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Contract Name</label>
+            <label className="block text-sm font-medium mb-1">Contract Name*</label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => handleInputChange('name', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              placeholder="Enter contract name"
             />
           </div>
           
@@ -356,14 +374,12 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
               <label className="block text-sm font-medium mb-1">Setup Fee ($)</label>
               <input
                 type="number"
-                value={formData.setup_fee === 0 ? "" : formData.setup_fee || ""}
-                onChange={(e) => {
-                  const value = e.target.value === "" ? 0 : Number(e.target.value);
-                  setFormData({...formData, setup_fee: value});
-                }}
+                value={formData.setup_fee || ''}
+                onChange={(e) => handleInputChange('setup_fee', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 min="0"
-                placeholder="One-time fee"
+                step="0.01"
+                placeholder="0"
               />
             </div>
             
@@ -371,14 +387,12 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
               <label className="block text-sm font-medium mb-1">Annual Rate ($)</label>
               <input
                 type="number"
-                value={formData.annual_rate === 0 ? "" : formData.annual_rate || ""}
-                onChange={(e) => {
-                  const value = e.target.value === "" ? 0 : Number(e.target.value);
-                  setFormData({...formData, annual_rate: value});
-                }}
+                value={formData.annual_rate || ''}
+                onChange={(e) => handleInputChange('annual_rate', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 min="0"
-                placeholder="Yearly recurring"
+                step="0.01"
+                placeholder="0"
               />
             </div>
           </div>
@@ -387,7 +401,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
             <label className="block text-sm font-medium text-green-800 mb-1">Total Contract Value</label>
             <div className="text-xl font-bold text-green-600">
-              {formatCurrency((formData.setup_fee || 0) + (formData.annual_rate || 0))}
+              {formatCurrency((Number(formData.setup_fee) || 0) + (Number(formData.annual_rate) || 0))}
             </div>
             <div className="text-xs text-green-600 mt-1">
               Auto-calculated from setup fee + annual rate
@@ -396,22 +410,22 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Start Date</label>
+              <label className="block text-sm font-medium mb-1">Start Date*</label>
               <input
                 type="date"
                 value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                onChange={(e) => handleInputChange('start_date', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">End Date</label>
+              <label className="block text-sm font-medium mb-1">End Date*</label>
               <input
                 type="date"
                 value={formData.end_date}
-                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                onChange={(e) => handleInputChange('end_date', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -422,7 +436,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
             <label className="block text-sm font-medium mb-1">Status</label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({...formData, status: e.target.value as Contract["status"]})}
+              onChange={(e) => handleInputChange('status', e.target.value as Contract["status"])}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="draft">Draft</option>
@@ -436,7 +450,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
             <label className="block text-sm font-medium mb-1">Terms (Optional)</label>
             <textarea
               value={formData.terms || ""}
-              onChange={(e) => setFormData({...formData, terms: e.target.value})}
+              onChange={(e) => handleInputChange('terms', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
               placeholder="Enter contract terms and conditions..."
