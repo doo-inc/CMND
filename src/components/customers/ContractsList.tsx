@@ -31,6 +31,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
 }) => {
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddContract = () => {
     const newContract: Contract = {
@@ -46,31 +47,59 @@ export const ContractsList: React.FC<ContractsListProps> = ({
     };
     setEditingContract(newContract);
     setShowAddForm(true);
+    setIsDialogOpen(true);
   };
 
   const handleSaveContract = (contract: Contract) => {
+    // Create a copy of the contract with proper validation
+    const validatedContract = {
+      ...contract,
+      setup_fee: Number(contract.setup_fee) || 0,
+      annual_rate: Number(contract.annual_rate) || 0,
+      value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
+    };
+
+    let updatedContracts: Contract[];
+
     if (showAddForm) {
-      // Adding new contract - assign a proper ID
+      // Adding new contract - assign a proper ID if it's temporary
       const contractToAdd = {
-        ...contract,
-        id: contract.id?.startsWith('temp_') ? `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : contract.id
+        ...validatedContract,
+        id: validatedContract.id?.startsWith('temp_') 
+          ? `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` 
+          : validatedContract.id
       };
-      onContractsChange([...contracts, contractToAdd]);
-      setShowAddForm(false);
+      updatedContracts = [...contracts, contractToAdd];
     } else {
       // Editing existing contract
-      const updatedContracts = contracts.map(c => 
-        c.id === contract.id ? contract : c
+      updatedContracts = contracts.map(c => 
+        c.id === validatedContract.id ? validatedContract : c
       );
-      onContractsChange(updatedContracts);
     }
-    setEditingContract(null);
+
+    // Update the contracts state
+    onContractsChange(updatedContracts);
+    
+    // Close dialog
+    handleCloseDialog();
   };
 
   const handleDeleteContract = (contractId: string | undefined) => {
     if (!contractId) return;
     const updatedContracts = contracts.filter(c => c.id !== contractId);
     onContractsChange(updatedContracts);
+  };
+
+  const handleEditContract = (contract: Contract) => {
+    setEditingContract(contract);
+    setShowAddForm(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setEditingContract(null);
+    setShowAddForm(false);
+    setIsDialogOpen(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -165,10 +194,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setEditingContract(contract);
-                      setShowAddForm(false);
-                    }}
+                    onClick={() => handleEditContract(contract)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -276,11 +302,8 @@ export const ContractsList: React.FC<ContractsListProps> = ({
       {editingContract && (
         <ContractEditDialog
           contract={editingContract}
-          isOpen={!!editingContract}
-          onClose={() => {
-            setEditingContract(null);
-            setShowAddForm(false);
-          }}
+          isOpen={isDialogOpen}
+          onClose={handleCloseDialog}
           onSave={handleSaveContract}
           isNewContract={showAddForm}
         />
@@ -307,6 +330,11 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
 }) => {
   const [formData, setFormData] = useState<Contract>({ ...contract });
 
+  // Reset form data when contract changes
+  React.useEffect(() => {
+    setFormData({ ...contract });
+  }, [contract]);
+
   // Calculate total value whenever setup_fee or annual_rate changes
   React.useEffect(() => {
     const setupFee = Number(formData.setup_fee) || 0;
@@ -317,6 +345,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
     
     // Validate required fields
     if (!formData.name.trim()) {
@@ -337,6 +366,12 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
 
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
   };
 
   const formatCurrency = (value: number) => {
@@ -458,7 +493,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
           </div>
           
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
             <Button type="submit">
