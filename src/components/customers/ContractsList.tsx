@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -465,7 +464,6 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
     console.log('ContractEditDialog: ISOLATED form submission - preventing all bubbling');
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
     
     // Validate required fields
     if (!formData.name.trim()) {
@@ -495,7 +493,6 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
     console.log('ContractEditDialog: Dialog cancelled - preventing all event bubbling');
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
     onClose();
   };
 
