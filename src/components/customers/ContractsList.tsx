@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -136,7 +135,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
       annual_rate: 0,
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: "draft",
+      status: "active",
       terms: ""
     };
     

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,12 +56,11 @@ export const useSubscriptionData = () => {
       
       if (error) throw error;
       
-      // Fetch contracts for these customers with new structure
+      // Fetch ALL contracts for these customers (including draft status)
       const { data: contractsData, error: contractsError } = await supabase
         .from('contracts')
         .select('*')
-        .in('customer_id', customerIds)
-        .in('status', ['active', 'pending']); // Only include active and pending contracts
+        .in('customer_id', customerIds);
       
       if (contractsError) throw contractsError;
       
@@ -92,16 +92,19 @@ export const useSubscriptionData = () => {
         
         const totalLifetimeValue = lifetimeValue + legacyContractValue;
         
-        // Get the latest end date for renewal tracking
-        const latestEndDate = customerContracts.reduce((latest, contract) => {
+        // Get the latest end date for renewal tracking (only from active/pending contracts)
+        const activeContracts = customerContracts.filter(c => ['active', 'pending'].includes(c.status));
+        const latestEndDate = activeContracts.reduce((latest, contract) => {
           if (!latest || new Date(contract.end_date) > new Date(latest)) {
             return contract.end_date;
           }
           return latest;
         }, null);
         
-        // Calculate effective annual rate from all contracts
-        const effectiveAnnualRate = contractsAnnualRates + customerContracts.reduce((sum, contract) => {
+        // Calculate effective annual rate from active/pending contracts only
+        const effectiveAnnualRate = activeContracts.reduce((sum, contract) => {
+          return sum + (contract.annual_rate || 0);
+        }, 0) + activeContracts.reduce((sum, contract) => {
           if (!contract.setup_fee && !contract.annual_rate && contract.value) {
             return sum + contract.value; // Treat legacy values as annual rate
           }
