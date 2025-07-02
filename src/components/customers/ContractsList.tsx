@@ -10,7 +10,7 @@ import { format } from "date-fns";
 export interface Contract {
   id?: string;
   name: string;
-  value: number; // Calculated field (setup_fee + annual_rate)
+  value: number;
   setup_fee: number;
   annual_rate: number;
   start_date: string;
@@ -30,14 +30,14 @@ export const ContractsList: React.FC<ContractsListProps> = ({
   onContractsChange,
   customerName = "Customer"
 }) => {
-  const [editingContract, setEditingContract] = useState<Contract | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [isNewContract, setIsNewContract] = useState(false);
 
   const handleAddContract = () => {
     console.log('Adding new contract - opening dialog');
     const newContract: Contract = {
-      id: `temp_${Date.now()}`, // Temporary ID for new contracts
+      id: `temp_${Date.now()}`,
       name: `Contract ${contracts.length + 1}`,
       value: 0,
       setup_fee: 0,
@@ -49,16 +49,22 @@ export const ContractsList: React.FC<ContractsListProps> = ({
     };
     
     setEditingContract(newContract);
-    setShowAddForm(true);
+    setIsNewContract(true);
     setIsDialogOpen(true);
     
-    console.log('Dialog should be open now', { isDialogOpen: true, editingContract: newContract });
+    console.log('Dialog state set for new contract');
+  };
+
+  const handleEditContract = (contract: Contract) => {
+    console.log('Editing existing contract:', contract);
+    setEditingContract(contract);
+    setIsNewContract(false);
+    setIsDialogOpen(true);
   };
 
   const handleSaveContract = (contract: Contract) => {
     console.log('Saving contract:', contract);
     
-    // Create a copy of the contract with proper validation
     const validatedContract = {
       ...contract,
       setup_fee: Number(contract.setup_fee) || 0,
@@ -68,8 +74,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
 
     let updatedContracts: Contract[];
 
-    if (showAddForm) {
-      // Adding new contract - assign a proper ID if it's temporary
+    if (isNewContract) {
       const contractToAdd = {
         ...validatedContract,
         id: validatedContract.id?.startsWith('temp_') 
@@ -79,17 +84,14 @@ export const ContractsList: React.FC<ContractsListProps> = ({
       updatedContracts = [...contracts, contractToAdd];
       console.log('Adding new contract to parent state');
     } else {
-      // Editing existing contract
       updatedContracts = contracts.map(c => 
         c.id === validatedContract.id ? validatedContract : c
       );
       console.log('Updating existing contract in parent state');
     }
 
-    // Update the parent state
+    // Only update parent state when contract is actually saved
     onContractsChange(updatedContracts);
-    
-    // Close dialog
     handleCloseDialog();
   };
 
@@ -100,17 +102,10 @@ export const ContractsList: React.FC<ContractsListProps> = ({
     onContractsChange(updatedContracts);
   };
 
-  const handleEditContract = (contract: Contract) => {
-    console.log('Editing contract:', contract);
-    setEditingContract(contract);
-    setShowAddForm(false);
-    setIsDialogOpen(true);
-  };
-
   const handleCloseDialog = () => {
     console.log('Closing dialog');
     setEditingContract(null);
-    setShowAddForm(false);
+    setIsNewContract(false);
     setIsDialogOpen(false);
   };
 
@@ -319,7 +314,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}
           onSave={handleSaveContract}
-          isNewContract={showAddForm}
+          isNewContract={isNewContract}
         />,
         document.body
       )}
