@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,10 +23,9 @@ import {
 } from "@/components/ui/form";
 import { industryOptions, countryOptions } from "@/data/defaultLifecycleStages";
 import { CustomerAvatarUpload, CustomerAvatarUploadRef } from "./CustomerAvatarUpload";
-import { ContractsList, Contract } from "./ContractsList";
+import { ContractsList, Contract, ContractsListRef } from "./ContractsList";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
 import { useDocumentManager } from "@/hooks/useDocumentManager";
-import { supabase } from "@/integrations/supabase/client";
 
 const customerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -59,11 +59,7 @@ export function CustomerForm({
   customerId
 }: CustomerFormProps) {
   const avatarUploadRef = useRef<CustomerAvatarUploadRef>(null);
-  
-  // CRITICAL: Keep contracts state completely separate from React Hook Form
-  // This prevents form auto-submission when contracts change
-  const [contractsState, setContractsState] = useState<Contract[]>([]);
-  const [loadingContracts, setLoadingContracts] = useState(false);
+  const contractsListRef = useRef<ContractsListRef>(null);
   
   // Document management
   const { documents, setDocuments, saveDocuments } = useDocumentManager(customerId, "customer");
@@ -85,83 +81,9 @@ export function CustomerForm({
     },
   });
 
-  // Load existing contracts for the customer
-  useEffect(() => {
-    const loadContracts = async () => {
-      if (!customerId) return;
-      
-      setLoadingContracts(true);
-      try {
-        const { data, error } = await supabase
-          .from('contracts')
-          .select('*')
-          .eq('customer_id', customerId)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('Error loading contracts:', error);
-          return;
-        }
-        
-        if (data) {
-          const mappedContracts: Contract[] = data.map(contract => ({
-            id: contract.id,
-            name: contract.name,
-            value: contract.value,
-            setup_fee: contract.setup_fee || 0,
-            annual_rate: contract.annual_rate || 0,
-            start_date: contract.start_date,
-            end_date: contract.end_date,
-            status: contract.status as Contract["status"],
-            terms: contract.terms || ""
-          }));
-          setContractsState(mappedContracts);
-        }
-      } catch (error) {
-        console.error('Error loading contracts:', error);
-      } finally {
-        setLoadingContracts(false);
-      }
-    };
-    
-    loadContracts();
-  }, [customerId]);
-
-  // Create initial contract from legacy fields if customer has them and no contracts exist
-  useEffect(() => {
-    const setupFee = (initialData as any)?.setup_fee || 0;
-    const annualRate = (initialData as any)?.annual_rate || 0;
-    
-    if (!customerId && contractsState.length === 0 && (setupFee || annualRate)) {
-      if (setupFee > 0 || annualRate > 0) {
-        const legacyContract: Contract = {
-          name: "Primary Contract",
-          value: setupFee + annualRate,
-          setup_fee: setupFee,
-          annual_rate: annualRate,
-          start_date: initialData?.go_live_date ? format(initialData.go_live_date, "yyyy-MM-dd") : new Date().toISOString().split('T')[0],
-          end_date: initialData?.subscription_end_date ? format(initialData.subscription_end_date, "yyyy-MM-dd") : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: "active",
-          terms: ""
-        };
-        setContractsState([legacyContract]);
-      }
-    }
-  }, [initialData, customerId, contractsState.length]);
-
-  // CRITICAL: Contract state handler that DOES NOT trigger form submission
-  const handleContractsChange = (newContracts: Contract[]) => {
-    console.log('CustomerForm: Contract state updated (NOT triggering form submission)', { contractCount: newContracts.length });
-    setContractsState(newContracts);
-    // NOTE: We do NOT call any form methods here to prevent auto-submission
-  };
-
   // CRITICAL: Only submit when user explicitly clicks the save button
   const handleFormSubmit = async (data: CustomerFormData) => {
-    console.log('CustomerForm: Explicit form submission started', { 
-      customerData: data, 
-      contractCount: contractsState.length 
-    });
+    console.log('CustomerForm: Explicit form submission started');
     
     // Get the final logo value from the avatar component
     if (avatarUploadRef.current) {
@@ -169,8 +91,12 @@ export function CustomerForm({
       data.logo = finalLogoValue;
     }
     
+    // Get contracts from the contracts list component
+    const contracts = contractsListRef.current?.getContracts() || [];
+    console.log('CustomerForm: Retrieved contracts for submission:', { contractCount: contracts.length });
+    
     // Call the original onSubmit with current contract state
-    await onSubmit(data, contractsState);
+    await onSubmit(data, contracts);
     
     // Save documents if we have a customer ID
     if (customerId && documents.length > 0) {
@@ -311,17 +237,12 @@ export function CustomerForm({
             Contract Details
           </h3>
           
-          {loadingContracts ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <ContractsList
-              contracts={contractsState}
-              onContractsChange={handleContractsChange}
-              customerName={customerName || "Customer"}
-            />
-          )}
+          <ContractsList
+            ref={contractsListRef}
+            customerId={customerId}
+            customerName={customerName || "Customer"}
+            initialData={initialData}
+          />
         </div>
 
         {/* Documents Section */}

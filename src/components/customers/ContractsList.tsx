@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Contract {
   id?: string;
@@ -19,24 +20,100 @@ export interface Contract {
   terms?: string;
 }
 
-interface ContractsListProps {
-  contracts: Contract[];
-  onContractsChange: (contracts: Contract[]) => void;
-  customerName?: string;
+export interface ContractsListRef {
+  getContracts: () => Contract[];
 }
 
-export const ContractsList: React.FC<ContractsListProps> = ({
-  contracts,
-  onContractsChange,
-  customerName = "Customer"
-}) => {
-  // State for dialog management - completely isolated from parent
+interface ContractsListProps {
+  customerId?: string;
+  customerName?: string;
+  initialData?: any;
+}
+
+export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
+  customerId,
+  customerName = "Customer",
+  initialData
+}, ref) => {
+  // CRITICAL: Complete isolation - no callbacks to parent
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+  
+  // Dialog state - completely isolated
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [isNewContract, setIsNewContract] = useState(false);
 
-  // CRITICAL: All contract operations work on local copies until dialog closes
-  // This prevents any parent form interaction during editing
+  // Expose contracts to parent via ref - no callbacks needed
+  useImperativeHandle(ref, () => ({
+    getContracts: () => contracts
+  }));
+
+  // Load existing contracts for the customer
+  useEffect(() => {
+    const loadContracts = async () => {
+      if (!customerId) return;
+      
+      setLoadingContracts(true);
+      try {
+        const { data, error } = await supabase
+          .from('contracts')
+          .select('*')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error loading contracts:', error);
+          return;
+        }
+        
+        if (data) {
+          const mappedContracts: Contract[] = data.map(contract => ({
+            id: contract.id,
+            name: contract.name,
+            value: contract.value,
+            setup_fee: contract.setup_fee || 0,
+            annual_rate: contract.annual_rate || 0,
+            start_date: contract.start_date,
+            end_date: contract.end_date,
+            status: contract.status as Contract["status"],
+            terms: contract.terms || ""
+          }));
+          setContracts(mappedContracts);
+        }
+      } catch (error) {
+        console.error('Error loading contracts:', error);
+      } finally {
+        setLoadingContracts(false);
+      }
+    };
+    
+    loadContracts();
+  }, [customerId]);
+
+  // Create initial contract from legacy fields if customer has them and no contracts exist
+  useEffect(() => {
+    const setupFee = initialData?.setup_fee || 0;
+    const annualRate = initialData?.annual_rate || 0;
+    
+    if (!customerId && contracts.length === 0 && (setupFee || annualRate)) {
+      if (setupFee > 0 || annualRate > 0) {
+        const legacyContract: Contract = {
+          name: "Primary Contract",
+          value: setupFee + annualRate,
+          setup_fee: setupFee,
+          annual_rate: annualRate,
+          start_date: initialData?.go_live_date ? format(initialData.go_live_date, "yyyy-MM-dd") : new Date().toISOString().split('T')[0],
+          end_date: initialData?.subscription_end_date ? format(initialData.subscription_end_date, "yyyy-MM-dd") : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: "active",
+          terms: ""
+        };
+        setContracts([legacyContract]);
+      }
+    }
+  }, [initialData, customerId, contracts.length]);
+
+  // CRITICAL: All contract operations work on local state only
   const handleAddContract = () => {
     console.log('ContractsList: Starting to add new contract');
     const newContract: Contract = {
@@ -65,7 +142,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({
     setIsDialogOpen(true);
   };
 
-  // CRITICAL: Only update parent state when contract is actually saved
+  // CRITICAL: Only update local state - no parent callbacks
   const handleSaveContract = (contract: Contract) => {
     console.log('ContractsList: Saving contract:', contract.name);
     
@@ -76,8 +153,6 @@ export const ContractsList: React.FC<ContractsListProps> = ({
       value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
     };
 
-    let updatedContracts: Contract[];
-
     if (isNewContract) {
       const contractToAdd = {
         ...validatedContract,
@@ -85,25 +160,22 @@ export const ContractsList: React.FC<ContractsListProps> = ({
           ? `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` 
           : validatedContract.id
       };
-      updatedContracts = [...contracts, contractToAdd];
-      console.log('ContractsList: Added new contract to list');
+      setContracts(prev => [...prev, contractToAdd]);
+      console.log('ContractsList: Added new contract to local state');
     } else {
-      updatedContracts = contracts.map(c => 
+      setContracts(prev => prev.map(c => 
         c.id === validatedContract.id ? validatedContract : c
-      );
-      console.log('ContractsList: Updated existing contract in list');
+      ));
+      console.log('ContractsList: Updated existing contract in local state');
     }
 
-    // CRITICAL: Only call parent callback when dialog closes and contract is saved
-    onContractsChange(updatedContracts);
     handleCloseDialog();
   };
 
   const handleDeleteContract = (contractId: string | undefined) => {
     if (!contractId) return;
     console.log('ContractsList: Deleting contract:', contractId);
-    const updatedContracts = contracts.filter(c => c.id !== contractId);
-    onContractsChange(updatedContracts);
+    setContracts(prev => prev.filter(c => c.id !== contractId));
   };
 
   const handleCloseDialog = () => {
@@ -192,123 +264,131 @@ export const ContractsList: React.FC<ContractsListProps> = ({
 
         {/* Contracts List */}
         <div className="space-y-3">
-          {contracts.map((contract, index) => (
-            <Card key={contract.id || index} className="border-l-4 border-l-blue-500">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <h4 className="font-semibold text-lg">{contract.name}</h4>
-                    <Badge className={getStatusColor(contract.status)}>
-                      {contract.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditContract(contract)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteContract(contract.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Contract Value Breakdown */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-blue-500" />
-                      <div>
-                        <div className="text-xs text-gray-600 uppercase tracking-wide">Setup Fee</div>
-                        <div className="text-lg font-bold text-blue-600">
-                          {formatCurrency(contract.setup_fee || 0)}
-                        </div>
-                        <div className="text-xs text-gray-500">One-time</div>
+          {loadingContracts ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <>
+              {contracts.map((contract, index) => (
+                <Card key={contract.id || index} className="border-l-4 border-l-blue-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-semibold text-lg">{contract.name}</h4>
+                        <Badge className={getStatusColor(contract.status)}>
+                          {contract.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditContract(contract)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteContract(contract.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-purple-500" />
-                      <div>
-                        <div className="text-xs text-gray-600 uppercase tracking-wide">Annual Rate</div>
-                        <div className="text-lg font-bold text-purple-600">
-                          {formatCurrency(contract.annual_rate || 0)}
+                    {/* Contract Value Breakdown */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <div className="text-xs text-gray-600 uppercase tracking-wide">Setup Fee</div>
+                            <div className="text-lg font-bold text-blue-600">
+                              {formatCurrency(contract.setup_fee || 0)}
+                            </div>
+                            <div className="text-xs text-gray-500">One-time</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">Per year</div>
+                        
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-purple-500" />
+                          <div>
+                            <div className="text-xs text-gray-600 uppercase tracking-wide">Annual Rate</div>
+                            <div className="text-lg font-bold text-purple-600">
+                              {formatCurrency(contract.annual_rate || 0)}
+                            </div>
+                            <div className="text-xs text-gray-500">Per year</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-green-500" />
+                          <div>
+                            <div className="text-xs text-gray-600 uppercase tracking-wide">Total Value</div>
+                            <div className="text-lg font-bold text-green-600">
+                              {formatCurrency((contract.setup_fee || 0) + (contract.annual_rate || 0))}
+                            </div>
+                            <div className="text-xs text-gray-500">Combined</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-green-500" />
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <div className="text-xs text-gray-600 uppercase tracking-wide">Total Value</div>
-                        <div className="text-lg font-bold text-green-600">
-                          {formatCurrency((contract.setup_fee || 0) + (contract.annual_rate || 0))}
+                        <span className="text-gray-600">Start Date:</span>
+                        <div className="font-medium flex items-center gap-1 mt-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(contract.start_date), "MMM dd, yyyy")}
                         </div>
-                        <div className="text-xs text-gray-500">Combined</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">End Date:</span>
+                        <div className="font-medium flex items-center gap-1 mt-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(contract.end_date), "MMM dd, yyyy")}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Start Date:</span>
-                    <div className="font-medium flex items-center gap-1 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(contract.start_date), "MMM dd, yyyy")}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">End Date:</span>
-                    <div className="font-medium flex items-center gap-1 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(contract.end_date), "MMM dd, yyyy")}
-                    </div>
-                  </div>
-                </div>
 
-                {contract.terms && (
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="text-sm">
-                      <div className="text-xs text-gray-600 uppercase tracking-wide mb-2">Terms</div>
-                      <div className="text-gray-800 bg-white p-3 rounded border text-sm">
-                        {contract.terms}
+                    {contract.terms && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="text-sm">
+                          <div className="text-xs text-gray-600 uppercase tracking-wide mb-2">Terms</div>
+                          <div className="text-gray-800 bg-white p-3 rounded border text-sm">
+                            {contract.terms}
+                          </div>
+                        </div>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              {contracts.length === 0 && (
+                <Card className="border-dashed border-2 border-gray-300">
+                  <CardContent className="pt-6">
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 mb-4">
+                        <DollarSign className="h-16 w-16 mx-auto" />
+                      </div>
+                      <h3 className="text-xl font-medium text-gray-900 mb-2">No contracts yet</h3>
+                      <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+                        Add contracts to track setup fees, annual rates and renewal dates for {customerName}. Each contract will contribute to the total lifetime value.
+                      </p>
+                      <Button onClick={handleAddContract} size="lg">
+                        <Plus className="h-5 w-5 mr-2" />
+                        Add First Contract
+                      </Button>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
         </div>
-
-        {contracts.length === 0 && (
-          <Card className="border-dashed border-2 border-gray-300">
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-4">
-                  <DollarSign className="h-16 w-16 mx-auto" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">No contracts yet</h3>
-                <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-                  Add contracts to track setup fees, annual rates and renewal dates for {customerName}. Each contract will contribute to the total lifetime value.
-                </p>
-                <Button onClick={handleAddContract} size="lg">
-                  <Plus className="h-5 w-5 mr-2" />
-                  Add First Contract
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Contract Dialog - Rendered outside form using Portal to prevent interference */}
@@ -324,7 +404,9 @@ export const ContractsList: React.FC<ContractsListProps> = ({
       )}
     </>
   );
-};
+});
+
+ContractsList.displayName = "ContractsList";
 
 // Contract Edit Dialog Component - Completely isolated from form
 interface ContractEditDialogProps {
