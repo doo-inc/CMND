@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
@@ -307,23 +308,25 @@ const Customers = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {isLoading ? (
-            Array(6).fill(0).map((_, index) => (
-              <div key={index} className="h-48 bg-gray-100 animate-pulse rounded-md"></div>
-            ))
-          ) : (
-            filteredCustomers.map((customer) => (
-              <CustomerCard key={customer.id} customer={customer} />
-            ))
-          )}
-          
-          {!isLoading && filteredCustomers.length === 0 && (
-            <div className="col-span-3 py-16 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No customers found. Try adjusting your filters or add a new customer.</p>
-            </div>
-          )}
-        </div>
+        <ScrollArea className="h-[calc(100vh-300px)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+            {isLoading ? (
+              Array(6).fill(0).map((_, index) => (
+                <div key={index} className="h-48 bg-gray-100 animate-pulse rounded-md"></div>
+              ))
+            ) : (
+              filteredCustomers.map((customer) => (
+                <CustomerCard key={customer.id} customer={customer} />
+              ))
+            )}
+            
+            {!isLoading && filteredCustomers.length === 0 && (
+              <div className="col-span-3 py-16 text-center">
+                <p className="text-gray-500 dark:text-gray-400">No customers found. Try adjusting your filters or add a new customer.</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
       </div>
     </DashboardLayout>
   );

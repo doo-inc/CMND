@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, Calendar, BarChart3 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSubscriptionData } from "@/components/subscription/useSubscriptionData";
 import { CustomerFilters } from "@/components/subscription/CustomerFilters";
 import { TimelineView } from "@/components/subscription/timeline/TimelineView";
@@ -74,19 +75,21 @@ const SubscriptionTracker = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timeline" className="space-y-6">
-            <TimelineView customers={customers} isLoading={isLoading} />
-          </TabsContent>
+          <ScrollArea className="h-[calc(100vh-250px)]">
+            <TabsContent value="timeline" className="space-y-6">
+              <TimelineView customers={customers} isLoading={isLoading} />
+            </TabsContent>
 
-          <TabsContent value="renewals" className="space-y-6">
-            <RenewalsView 
-              customers={customers} 
-              isLoading={isLoading}
-              onRemind={handleRemindCustomer}
-              onUpdateDate={handleUpdateDate}
-              onMarkAsPaid={handleMarkAsPaid}
-            />
-          </TabsContent>
+            <TabsContent value="renewals" className="space-y-6">
+              <RenewalsView 
+                customers={customers} 
+                isLoading={isLoading}
+                onRemind={handleRemindCustomer}
+                onUpdateDate={handleUpdateDate}
+                onMarkAsPaid={handleMarkAsPaid}
+              />
+            </TabsContent>
+          </ScrollArea>
         </Tabs>
       </div>
     </DashboardLayout>

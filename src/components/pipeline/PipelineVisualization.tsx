@@ -3,6 +3,7 @@ import React from "react";
 import { usePipelineData } from "@/hooks/usePipelineData";
 import { PipelineStage } from "./PipelineStage";
 import { Card } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export const PipelineVisualization = () => {
   const { pipelineData, isLoading, error } = usePipelineData();
@@ -10,14 +11,17 @@ export const PipelineVisualization = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {Array(6).fill(0).map((_, index) => (
-            <div key={index} className="flex-shrink-0">
-              <div className="h-32 w-48 bg-gray-200 animate-pulse rounded-lg"></div>
-              {index < 5 && <div className="h-1 w-12 bg-gray-200 animate-pulse mt-16 ml-48"></div>}
-            </div>
-          ))}
-        </div>
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 pb-4">
+            {Array(6).fill(0).map((_, index) => (
+              <div key={index} className="flex-shrink-0">
+                <div className="h-32 w-48 bg-gray-200 animate-pulse rounded-lg"></div>
+                {index < 5 && <div className="h-1 w-12 bg-gray-200 animate-pulse mt-16 ml-48"></div>}
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
     );
   }
@@ -57,20 +61,23 @@ export const PipelineVisualization = () => {
 
       {/* Pipeline Visualization */}
       <div className="relative">
-        <div className="flex items-center gap-0 overflow-x-auto pb-4 min-h-[200px]">
-          {pipelineData.map((stage, index) => (
-            <div key={stage.stageName} className="flex items-center flex-shrink-0">
-              <PipelineStage 
-                stage={stage} 
-                stageIndex={index}
-                totalStages={pipelineData.length}
-              />
-              {index < pipelineData.length - 1 && (
-                <div className="w-8 h-1 bg-gradient-to-r from-purple-400 to-purple-300 mx-2 flex-shrink-0" />
-              )}
-            </div>
-          ))}
-        </div>
+        <ScrollArea className="w-full">
+          <div className="flex items-center gap-0 pb-4 min-h-[200px]">
+            {pipelineData.map((stage, index) => (
+              <div key={stage.stageName} className="flex items-center flex-shrink-0">
+                <PipelineStage 
+                  stage={stage} 
+                  stageIndex={index}
+                  totalStages={pipelineData.length}
+                />
+                {index < pipelineData.length - 1 && (
+                  <div className="w-8 h-1 bg-gradient-to-r from-purple-400 to-purple-300 mx-2 flex-shrink-0" />
+                )}
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
     </div>
   );

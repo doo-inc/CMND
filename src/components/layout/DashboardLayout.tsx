@@ -273,11 +273,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex-1 overflow-auto bg-background p-6">
-            <div className="animate-fade-in">
-              {children}
-            </div>
-          </main>
+          <ScrollArea className="flex-1">
+            <main className="bg-background p-6">
+              <div className="animate-fade-in">
+                {children}
+              </div>
+            </main>
+          </ScrollArea>
         </div>
       </div>
     </SidebarProvider>
