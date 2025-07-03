@@ -17,6 +17,7 @@ import PipelineMap from "./pages/PipelineMap";
 import Notifications from "./pages/Notifications";
 import TeamManagement from "./pages/TeamManagement";
 import TasksBoard from "./pages/TasksBoard";
+import Lifecycle from "./pages/Lifecycle";
 import NotFound from "./pages/NotFound";
 
 // Create a client
@@ -46,8 +47,8 @@ const App = () => {
               <Route path="/tasks" element={<TasksBoard />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/team" element={<TeamManagement />} />
-              {/* Redirect the old routes to customers */}
-              <Route path="/lifecycle" element={<Navigate to="/customers" replace />} />
+              <Route path="/lifecycle" element={<Lifecycle />} />
+              {/* Redirect the old contracts route to customers */}
               <Route path="/contracts" element={<Navigate to="/customers" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

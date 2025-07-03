@@ -4,7 +4,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy } from "lucide-react";
+import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
@@ -235,6 +235,10 @@ const Index = () => {
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/customers")}>
                 <Users className="mr-2 h-4 w-4" />
                 Manage Customers
+              </Button>
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/lifecycle")}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Customer Lifecycle
               </Button>
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/partnerships")}>
                 <HandHeart className="mr-2 h-4 w-4" />
