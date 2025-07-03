@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { LifecycleStageComponent, LifecycleStageProps } from "./LifecycleStage";
 import { AddEditStage } from "./AddEditStage";
@@ -95,7 +96,7 @@ export function LifecycleTracker({
           deadline: newStage.deadline,
           notes: newStage.notes,
           category: newStage.category,
-          owner_id: newStage.owner.id,
+          owner_id: newStage.owner?.id,
         })
         .select(`
           *,
