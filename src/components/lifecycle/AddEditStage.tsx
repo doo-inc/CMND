@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -28,10 +27,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { LifecycleStageProps } from "./LifecycleStage";
 
+interface NewStageData {
+  name?: string;
+  status?: string;
+  category?: string;
+  owner?: { id: string; name: string; role: string; };
+  deadline?: string;
+  notes?: string;
+  icon?: React.ReactNode;
+}
+
 interface AddEditStageProps {
   stage?: LifecycleStageProps;
   isEditing?: boolean;
-  onSave: (stage: Partial<LifecycleStageProps>) => void;
+  onSave: (stage: NewStageData) => void;
   customerId?: string;
 }
 
@@ -54,7 +63,7 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
       return;
     }
     
-    const updatedStage: Partial<LifecycleStageProps> = {
+    const updatedStage: NewStageData = {
       name,
       status,
       category,
