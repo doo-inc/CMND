@@ -29,7 +29,7 @@ import { LifecycleStageProps } from "./LifecycleStage";
 
 interface NewStageData {
   name?: string;
-  status?: string;
+  status?: LifecycleStageProps["status"];
   category?: string;
   owner?: { id: string; name: string; role: string; };
   deadline?: string;

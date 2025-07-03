@@ -1,4 +1,3 @@
-
 import React from "react";
 import { AddEditStage } from "./AddEditStage";
 import { 
@@ -40,6 +39,16 @@ export interface LifecycleStageProps {
 interface LifecycleStageComponentProps extends LifecycleStageProps {
   customerId?: string;
   customerName?: string;
+}
+
+interface NewStageData {
+  name?: string;
+  status?: LifecycleStageProps["status"];
+  category?: string;
+  owner?: { id: string; name: string; role: string; };
+  deadline?: string;
+  notes?: string;
+  icon?: React.ReactNode;
 }
 
 export function LifecycleStageComponent({
@@ -259,9 +268,9 @@ ${category ? `Category: ${category}` : ''}`;
         <AddEditStage 
           stage={{ id, name, status, owner, deadline, notes, icon, category }} 
           isEditing 
-          onSave={(updatedStage) => {
+          onSave={(updatedStage: NewStageData) => {
             if (onUpdate) {
-              onUpdate(id, updatedStage);
+              onUpdate(id, updatedStage as Partial<LifecycleStageProps>);
             }
           }}
         />
