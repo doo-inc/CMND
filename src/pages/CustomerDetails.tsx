@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +13,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { findCustomerById } from "@/utils/customerUtils";
 import { CustomerData } from "@/types/customers";
+import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 
 const CustomerDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [stages, setStages] = useState<LifecycleStageProps[]>([]);
 
   console.log("CustomerDetails component loaded with ID:", id);
 
@@ -62,6 +63,57 @@ const CustomerDetails = () => {
     },
     enabled: !!id
   });
+
+  // Fetch lifecycle stages
+  const { data: lifecycleStages } = useQuery({
+    queryKey: ['lifecycle-stages', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('lifecycle_stages')
+        .select(`
+          *,
+          staff:owner_id (id, name, role)
+        `)
+        .eq('customer_id', id);
+
+      if (error) {
+        console.error("Error fetching lifecycle stages:", error);
+        return [];
+      }
+
+      return data?.map(stage => ({
+        id: stage.id,
+        name: stage.name,
+        status: stage.status as LifecycleStageProps["status"],
+        category: stage.category || "",
+        owner: stage.staff ? {
+          id: stage.staff.id,
+          name: stage.staff.name,
+          role: stage.staff.role
+        } : {
+          id: "unknown",
+          name: "Unknown",
+          role: "Unknown"
+        },
+        deadline: stage.deadline,
+        notes: stage.notes
+      })) || [];
+    },
+    enabled: !!id
+  });
+
+  // Update local stages state when data is fetched
+  React.useEffect(() => {
+    if (lifecycleStages) {
+      setStages(lifecycleStages);
+    }
+  }, [lifecycleStages]);
+
+  const handleStagesUpdate = (updatedStages: LifecycleStageProps[]) => {
+    setStages(updatedStages);
+  };
 
   if (isLoading) {
     return (
@@ -279,7 +331,8 @@ const CustomerDetails = () => {
             <LifecycleTracker 
               customerId={id || ""} 
               customerName={customer.name}
-              stages={[]}
+              stages={stages}
+              onStagesUpdate={handleStagesUpdate}
             />
           </TabsContent>
 
