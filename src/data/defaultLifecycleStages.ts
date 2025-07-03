@@ -4,75 +4,173 @@ export const defaultLifecycleStages = [
   {
     name: "Prospect",
     status: "not-started",
-    category: "Pre-Sales"
+    category: "Pre-Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Qualified Lead", 
     status: "not-started",
-    category: "Pre-Sales"
+    category: "Pre-Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Meeting Set",
     status: "not-started", 
-    category: "Pre-Sales"
+    category: "Pre-Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   // Sales stages
   {
     name: "Discovery Call",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Demo",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Proposal Sent",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Proposal Approved",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Contract Sent",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "Ahmed Abdullah",
+      role: "Account Executive"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Contract Signed",
     status: "not-started",
-    category: "Sales"
+    category: "Sales",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Khalid Al-Farsi",
+      role: "Finance Manager"
+    },
+    deadline: undefined,
+    notes: ""
   },
   // Implementation stages
   {
     name: "Onboarding",
     status: "not-started",
-    category: "Implementation"
+    category: "Implementation",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Technical Setup",
     status: "not-started",
-    category: "Implementation"
+    category: "Implementation",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Training",
     status: "not-started",
-    category: "Implementation"
+    category: "Implementation",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Fatima Hassan",
+      role: "Customer Success Manager"
+    },
+    deadline: undefined,
+    notes: ""
   },
   {
     name: "Go Live",
     status: "not-started",
-    category: "Implementation"
+    category: "Implementation",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Mohammed Rahman",
+      role: "Integration Engineer"
+    },
+    deadline: undefined,
+    notes: ""
   },
   // Finance stages
   {
     name: "Payment Processed",
     status: "not-started",
-    category: "Finance"
+    category: "Finance",
+    owner: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Khalid Al-Farsi",
+      role: "Finance Manager"
+    },
+    deadline: undefined,
+    notes: ""
   }
 ];
 
