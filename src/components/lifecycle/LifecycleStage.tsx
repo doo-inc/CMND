@@ -8,7 +8,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { CheckCircle, Clock, AlertCircle, Circle, Slash, Calendar } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Circle, Slash, Calendar, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface LifecycleStageProps {
   id: string;
@@ -36,6 +37,11 @@ export interface LifecycleStageProps {
   onUpdate?: (stageId: string, updatedStage: Partial<LifecycleStageProps>) => void;
 }
 
+interface LifecycleStageComponentProps extends LifecycleStageProps {
+  customerId?: string;
+  customerName?: string;
+}
+
 export function LifecycleStageComponent({
   id,
   name,
@@ -45,8 +51,10 @@ export function LifecycleStageComponent({
   notes,
   icon,
   category,
+  customerId,
+  customerName,
   onUpdate,
-}: LifecycleStageProps) {
+}: LifecycleStageComponentProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "not-started":
@@ -100,6 +108,59 @@ export function LifecycleStageComponent({
     }
   };
 
+  const handleAddAsTask = async () => {
+    if (!customerId) {
+      toast.error("Customer information not available");
+      return;
+    }
+
+    try {
+      const taskTitle = `Complete ${name}${customerName ? ` for ${customerName}` : ''}`;
+      const taskDescription = `Lifecycle stage: ${name}
+Owner: ${owner.name} (${owner.role})
+Status: ${status.replace("-", " ")}
+${notes ? `Notes: ${notes}` : ''}
+${category ? `Category: ${category}` : ''}`;
+
+      const dueDate = deadline 
+        ? new Date(deadline).toISOString()
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: taskTitle,
+          description: taskDescription,
+          status: "todo",
+          customer_id: customerId,
+          due_date: dueDate,
+          assigned_to: owner.id
+        })
+        .select();
+        
+      if (error) throw error;
+      
+      // Add timeline entry for the task creation
+      await supabase
+        .from('customer_timeline')
+        .insert({
+          customer_id: customerId,
+          event_type: 'task',
+          event_description: `Task created from lifecycle stage: ${name}`,
+          related_id: data[0].id,
+          related_type: 'task',
+          created_by: "current-user",
+          created_by_name: "Demo User",
+          created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png`
+        });
+      
+      toast.success("Task created successfully from lifecycle stage");
+    } catch (error) {
+      console.error("Error creating task from lifecycle stage:", error);
+      toast.error("Failed to create task");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -108,7 +169,15 @@ export function LifecycleStageComponent({
             {icon && icon}
             {name}
           </CardTitle>
-          {getStatusIcon(status)}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddAsTask}
+            className="h-8 w-8 p-0"
+            title="Add as Task"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
