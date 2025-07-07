@@ -1,14 +1,18 @@
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Progress } from "@/components/ui/progress";
-import { LifecycleStageProps } from "./LifecycleStage";
+import { LifecycleStageProps, LifecycleStageComponent } from "./LifecycleStage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Circle, Clock } from "lucide-react";
+import { CheckCircle, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface EnhancedLifecycleProgressProps {
   stages: LifecycleStageProps[];
+  customerId: string;
+  customerName: string;
+  onStageUpdate: (stageId: string, updatedStage: Partial<LifecycleStageProps>) => void;
 }
 
 interface CategoryProgress {
@@ -21,25 +25,53 @@ interface CategoryProgress {
   bgColor: string;
 }
 
-export function EnhancedLifecycleProgress({ stages }: EnhancedLifecycleProgressProps) {
-  const { overallProgress, categoryProgress } = useMemo(() => {
+export function EnhancedLifecycleProgress({ 
+  stages, 
+  customerId, 
+  customerName, 
+  onStageUpdate 
+}: EnhancedLifecycleProgressProps) {
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  
+  const toggleCategory = (categoryName: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryName)) {
+      newExpanded.delete(categoryName);
+    } else {
+      newExpanded.add(categoryName);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  const { overallProgress, categoryProgress, groupedStages } = useMemo(() => {
     if (!stages || stages.length === 0) {
       return { 
         overallProgress: { completed: 0, total: 0, percentage: 0 },
-        categoryProgress: []
+        categoryProgress: [],
+        groupedStages: {}
       };
     }
 
-    // Calculate overall progress
-    const totalStages = stages.filter(s => s.status !== 'not-applicable').length;
-    const completedStages = stages.filter(s => s.status === 'done').length;
+    // Calculate overall progress - count not-applicable as completed
+    const totalStages = stages.length;
+    const completedStages = stages.filter(s => s.status === 'done' || s.status === 'not-applicable').length;
     const overallPercentage = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+
+    // Group stages by category
+    const stagesByCategory = stages.reduce((acc, stage) => {
+      const category = stage.category || "Other";
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(stage);
+      return acc;
+    }, {} as Record<string, LifecycleStageProps[]>);
 
     // Group stages by category and calculate progress
     const categories = ['Pre-Sales', 'Sales', 'Implementation', 'Finance'];
     const categoryData: CategoryProgress[] = categories.map(categoryName => {
-      const categoryStages = stages.filter(s => s.category === categoryName && s.status !== 'not-applicable');
-      const categoryCompleted = categoryStages.filter(s => s.status === 'done').length;
+      const categoryStages = stagesByCategory[categoryName] || [];
+      const categoryCompleted = categoryStages.filter(s => s.status === 'done' || s.status === 'not-applicable').length;
       const categoryTotal = categoryStages.length;
       const categoryPercentage = categoryTotal > 0 ? Math.round((categoryCompleted / categoryTotal) * 100) : 0;
       
@@ -71,7 +103,8 @@ export function EnhancedLifecycleProgress({ stages }: EnhancedLifecycleProgressP
         total: totalStages,
         percentage: overallPercentage
       },
-      categoryProgress: categoryData
+      categoryProgress: categoryData,
+      groupedStages: stagesByCategory
     };
   }, [stages]);
 
@@ -88,19 +121,24 @@ export function EnhancedLifecycleProgress({ stages }: EnhancedLifecycleProgressP
 
   const getStepperDot = (category: CategoryProgress, index: number) => {
     const isLast = index === categoryProgress.length - 1;
+    const isExpanded = expandedCategories.has(category.name);
     
     return (
       <div key={category.name} className="flex items-center">
         <div className="flex flex-col items-center space-y-2 relative">
-          {/* Stepper Dot */}
-          <div className={cn(
-            "relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-105",
-            category.status === 'completed' 
-              ? "bg-green-50 border-green-500" 
-              : category.status === 'in-progress'
-              ? "bg-blue-50 border-blue-500"
-              : "bg-gray-50 border-gray-300"
-          )}>
+          {/* Clickable Stepper Dot */}
+          <Button
+            variant="ghost"
+            className={cn(
+              "relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-105 p-0",
+              category.status === 'completed' 
+                ? "bg-green-50 border-green-500 hover:bg-green-100" 
+                : category.status === 'in-progress'
+                ? "bg-blue-50 border-blue-500 hover:bg-blue-100"
+                : "bg-gray-50 border-gray-300 hover:bg-gray-100"
+            )}
+            onClick={() => toggleCategory(category.name)}
+          >
             {category.status === 'completed' && (
               <div className={cn("w-6 h-6 rounded-full", category.bgColor)} />
             )}
@@ -110,15 +148,26 @@ export function EnhancedLifecycleProgress({ stages }: EnhancedLifecycleProgressP
             {category.status === 'not-started' && (
               <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
             )}
-          </div>
+          </Button>
           
           {/* Category Info */}
           <div className="text-center min-w-[80px]">
-            <p className="text-sm font-medium text-gray-900 mb-1">{category.name}</p>
-            <Badge variant="outline" className="text-xs">
-              {category.total > 0 ? `${category.completed}/${category.total}` : '0/0'}
-            </Badge>
-            <p className="text-xs text-gray-500 mt-1">{category.percentage}%</p>
+            <Button
+              variant="ghost"
+              className="h-auto p-1 flex flex-col items-center"
+              onClick={() => toggleCategory(category.name)}
+            >
+              <p className="text-sm font-medium text-gray-900 mb-1">{category.name}</p>
+              <Badge variant="outline" className="text-xs">
+                {category.total > 0 ? `${category.completed}/${category.total}` : '0/0'}
+              </Badge>
+              <p className="text-xs text-gray-500 mt-1">{category.percentage}%</p>
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3 mt-1 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-3 w-3 mt-1 text-gray-500" />
+              )}
+            </Button>
           </div>
         </div>
         
@@ -194,6 +243,26 @@ export function EnhancedLifecycleProgress({ stages }: EnhancedLifecycleProgressP
             ))}
           </div>
         </div>
+
+        {/* Expandable Stage Details */}
+        {categoryProgress.map((category) => (
+          expandedCategories.has(category.name) && groupedStages[category.name] && (
+            <div key={`${category.name}-expanded`} className="mt-6 animate-fade-in">
+              <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+                {groupedStages[category.name].map((stage) => (
+                  <div key={stage.id} className="min-h-[300px]">
+                    <LifecycleStageComponent
+                      {...stage}
+                      customerId={customerId}
+                      customerName={customerName}
+                      onUpdate={onStageUpdate}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        ))}
       </CardContent>
     </Card>
   );

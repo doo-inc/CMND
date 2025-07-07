@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { LifecycleStageProps } from "./LifecycleStage";
 import { AddEditStage } from "./AddEditStage";
 import { EnhancedLifecycleProgress } from "./EnhancedLifecycleProgress";
-import { CategorySection } from "./CategorySection";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
@@ -33,7 +31,6 @@ export function LifecycleTracker({
   onStagesUpdate 
 }: LifecycleTrackerProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("Pre-Sales");
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const getDbCustomerId = (customerId: string) => {
@@ -238,34 +235,6 @@ export function LifecycleTracker({
 
   const sortedStages = sortStagesByOrder(stages);
 
-  // Group stages by category
-  const groupedStages = sortedStages.reduce((acc, stage) => {
-    const category = stage.category || "Other";
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(stage);
-    return acc;
-  }, {} as Record<string, LifecycleStageProps[]>);
-
-  // Define category order for consistent display
-  const categoryOrder = ["Pre-Sales", "Sales", "Implementation", "Finance"];
-  const availableCategories = categoryOrder.filter(category => groupedStages[category]?.length > 0);
-
-  // Set default active tab to first available category
-  useEffect(() => {
-    if (availableCategories.length > 0 && !availableCategories.includes(activeTab)) {
-      setActiveTab(availableCategories[0]);
-    }
-  }, [availableCategories, activeTab]);
-
-  const getCategoryProgress = (categoryName: string) => {
-    const categoryStages = groupedStages[categoryName] || [];
-    const completedStages = categoryStages.filter(stage => stage.status === 'done').length;
-    const totalStages = categoryStages.filter(stage => stage.status !== 'not-applicable').length;
-    return { completed: completedStages, total: totalStages };
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -275,51 +244,12 @@ export function LifecycleTracker({
         <AddEditStage onSave={handleStageAdd} />
       </div>
       
-      <EnhancedLifecycleProgress stages={sortedStages} />
-      
-      {availableCategories.length > 0 ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            {categoryOrder.map((categoryName) => {
-              const progress = getCategoryProgress(categoryName);
-              const isAvailable = availableCategories.includes(categoryName);
-              return (
-                <TabsTrigger 
-                  key={categoryName} 
-                  value={categoryName}
-                  disabled={!isAvailable}
-                  className="flex flex-col items-center space-y-1"
-                >
-                  <span>{categoryName}</span>
-                  {isAvailable && (
-                    <span className="text-xs text-muted-foreground">
-                      {progress.completed}/{progress.total}
-                    </span>
-                  )}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-          
-          {categoryOrder.map((categoryName) => (
-            <TabsContent key={categoryName} value={categoryName} className="mt-6">
-              {groupedStages[categoryName] && (
-                <CategorySection
-                  categoryName={categoryName}
-                  stages={groupedStages[categoryName]}
-                  customerId={customerId}
-                  customerName={customerName}
-                  onStageUpdate={handleStageUpdate}
-                />
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
-      ) : (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No lifecycle stages available.</p>
-        </div>
-      )}
+      <EnhancedLifecycleProgress 
+        stages={sortedStages}
+        customerId={customerId}
+        customerName={customerName}
+        onStageUpdate={handleStageUpdate}
+      />
       
       {isLoading && (
         <div className="flex justify-center py-4">
