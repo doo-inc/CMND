@@ -43,11 +43,21 @@ export function LifecycleTracker({
 
   const handleStageUpdate = async (stageId: string, updatedStage: Partial<LifecycleStageProps>) => {
     console.log("Updating stage:", stageId, updatedStage);
+    
+    // Optimistic update - immediately update UI
+    const originalStages = [...stages];
+    const optimisticStages = stages.map(stage => 
+      stage.id === stageId ? { ...stage, ...updatedStage } : stage
+    );
+    onStagesUpdate(optimisticStages);
+    
     setIsLoading(true);
     
     try {
       const dbCustomerId = getDbCustomerId(customerId);
-      const { error } = await supabase
+      console.log("Attempting database update for stage:", stageId, "with status:", updatedStage.status);
+      
+      const { data, error } = await supabase
         .from('lifecycle_stages')
         .update({
           name: updatedStage.name,
@@ -58,26 +68,26 @@ export function LifecycleTracker({
           owner_id: updatedStage.owner?.id,
         })
         .eq('id', stageId)
-        .eq('customer_id', dbCustomerId);
+        .eq('customer_id', dbCustomerId)
+        .select();
 
       if (error) {
-        console.error("Error updating stage:", error);
+        console.error("Database update error:", error);
+        // Revert optimistic update on error
+        onStagesUpdate(originalStages);
         throw error;
       }
 
-      const updatedStages = stages.map(stage => 
-        stage.id === stageId ? { ...stage, ...updatedStage } : stage
-      );
-      
-      onStagesUpdate(updatedStages);
+      console.log("Database update successful:", data);
       toast.success("Stage updated successfully");
 
+      // Add timeline entry
       await supabase
         .from('customer_timeline')
         .insert({
           customer_id: dbCustomerId,
           event_type: 'lifecycle_stage',
-          event_description: `Lifecycle stage "${updatedStage.name || stages.find(s => s.id === stageId)?.name}" was updated`,
+          event_description: `Lifecycle stage "${updatedStage.name || stages.find(s => s.id === stageId)?.name}" was updated to "${updatedStage.status}"`,
           created_by: "current-user",
           created_by_name: "Demo User",
           created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png`

@@ -151,13 +151,13 @@ export function EnhancedLifecycleProgress({
           </Button>
           
           {/* Category Info */}
-          <div className="text-center min-w-[80px]">
+          <div className="text-center min-w-[100px] flex justify-center">
             <Button
               variant="ghost"
-              className="h-auto p-1 flex flex-col items-center"
+              className="h-auto p-2 flex flex-col items-center justify-center"
               onClick={() => toggleCategory(category.name)}
             >
-              <p className="text-sm font-medium text-gray-900 mb-1">{category.name}</p>
+              <p className="text-sm font-medium text-gray-900 mb-1 text-center">{category.name}</p>
               <Badge variant="outline" className="text-xs">
                 {category.total > 0 ? `${category.completed}/${category.total}` : '0/0'}
               </Badge>
