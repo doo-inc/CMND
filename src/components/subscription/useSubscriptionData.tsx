@@ -29,11 +29,11 @@ export const useSubscriptionData = () => {
     }
   });
 
-  // Fetch customers who have completed "Go Live" stage along with their contracts
+  // Fetch customers who have completed "Go Live" stage OR have contracts
   const { data: customers = [], isLoading, refetch } = useQuery({
     queryKey: contractQueryKeys.subscription(),
     queryFn: async () => {
-      // First, get customer IDs who have completed "Go Live" stage
+      // Get customer IDs who have completed "Go Live" stage
       const { data: goLiveCustomers, error: stageError } = await supabase
         .from('lifecycle_stages')
         .select('customer_id')
@@ -42,8 +42,17 @@ export const useSubscriptionData = () => {
       
       if (stageError) throw stageError;
       
-      // Extract customer IDs
-      const customerIds = goLiveCustomers.map(stage => stage.customer_id);
+      // Get customer IDs who have contracts
+      const { data: contractCustomers, error: contractError } = await supabase
+        .from('contracts')
+        .select('customer_id');
+      
+      if (contractError) throw contractError;
+      
+      // Combine and deduplicate customer IDs
+      const goLiveCustomerIds = goLiveCustomers.map(stage => stage.customer_id);
+      const contractCustomerIds = contractCustomers.map(contract => contract.customer_id);
+      const customerIds = Array.from(new Set([...goLiveCustomerIds, ...contractCustomerIds]));
       
       if (customerIds.length === 0) {
         return [];
