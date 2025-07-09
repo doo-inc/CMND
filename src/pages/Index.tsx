@@ -39,6 +39,8 @@ const Index = () => {
     mrr: 0,
     dealsAtRisk: 0
   });
+  const [arrData, setArrData] = useState({ totalARR: 0, liveCustomers: [], growthRate: 0 });
+  const [churnRate, setChurnRate] = useState("0.0%");
   
   useEffect(() => {
     const initialSync = async () => {
@@ -141,7 +143,9 @@ const Index = () => {
           conversionRate,
           averageDealSize,
           mrr,
-          dealsAtRisk
+          dealsAtRisk,
+          arrDataResult,
+          churnRateResult
         ] = await Promise.all([
           getDealsPipeline(),
           getTotalPipelineValue(),
@@ -149,7 +153,9 @@ const Index = () => {
           getConversionRate(),
           getAverageDealSize(),
           getMRR(),
-          getDealsAtRisk()
+          getDealsAtRisk(),
+          getCustomerARRData(customers),
+          calculateChurnRate()
         ]);
 
         setMetrics({
@@ -161,6 +167,9 @@ const Index = () => {
           mrr,
           dealsAtRisk
         });
+        
+        setArrData(arrDataResult);
+        setChurnRate(churnRateResult);
       } catch (error) {
         console.error("Error fetching metrics:", error);
       }
@@ -169,12 +178,11 @@ const Index = () => {
     fetchMetrics();
   }, [customers]);
 
-  // Calculate dashboard metrics
-  const { totalARR, liveCustomers, growthRate } = getCustomerARRData(customers);
-  const formattedARR = formatCurrency(totalARR);
+  // Calculate dashboard metrics  
+  const formattedARR = formatCurrency(arrData.totalARR);
   const formattedDealsPipeline = formatCurrency(metrics.dealsPipeline.value);
   const formattedActiveContracts = formatCurrency(metrics.activeContractsValue);
-  const formattedAverageDeal = formatCurrency(metrics.averageDealSize);
+  const formattedAverageDeal = formatCurrency(metrics.averageDealSize, false); // No decimals for average deal size
   const formattedMRR = formatCurrency(metrics.mrr);
   
   const getTotalCustomersCount = () => {
@@ -190,7 +198,7 @@ const Index = () => {
     },
     {
       title: "Live Customers",
-      value: `${liveCustomers.length}`,
+      value: `${arrData.liveCustomers.length}`,
       change: { value: 5, type: "increase" as const },
       icon: <LifeBuoy className="h-6 w-6" />
     },
@@ -238,8 +246,8 @@ const Index = () => {
     },
     {
       title: "Churn Rate",
-      value: calculateChurnRate(customers),
-      description: "Last 12 months",
+      value: churnRate,
+      description: "Last 6 months",
       icon: <Percent className="h-6 w-6" />
     }
   ];

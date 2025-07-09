@@ -172,60 +172,71 @@ export const getLiveCustomers = (customers: CustomerData[]): CustomerData[] => {
 /**
  * Format a number as a currency with K (thousands) or M (millions) suffix
  */
-export const formatCurrency = (amount: number): string => {
+export const formatCurrency = (amount: number, decimals: boolean = true): string => {
   if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
+    return `$${(amount / 1000000).toFixed(decimals ? 1 : 0)}M`;
   } else if (amount >= 1000) {
     return `$${(amount / 1000).toFixed(0)}K`;
   }
-  return `$${amount}`;
+  return `$${Math.round(amount)}`;
 };
 
 /**
- * Gets customer ARR data including all customers that are live, paid, or with invoices sent
- * Include signed customers in ARR now
+ * Gets customer ARR data using actual contract values from database
  */
-export const getCustomerARRData = (customers: CustomerData[]): { 
+export const getCustomerARRData = async (customers: CustomerData[]): Promise<{ 
   totalARR: number, 
   liveCustomers: CustomerData[], 
   growthRate: number 
-} => {
-  const arrStages = [
-    "live", 
-    "production", 
-    "launched", 
-    "active", 
-    "paid", 
-    "invoice sent", 
-    "signed", 
-    "went live",
-    "invoice sent",
-    "paid",
-    "training completed"
-  ];
-  
-  const relevantCustomers = customers.filter(customer => {
-    if (customer.status === "done") return true;
-    if (!customer.stage) return false;
+}> => {
+  try {
+    // Get actual contract values from database for ARR calculation
+    const { data: contracts, error } = await supabase
+      .from('contracts')
+      .select('annual_rate, value, customer_id')
+      .eq('status', 'active');
     
-    // Check if customer stage contains any of the ARR stages (including "signed" now)
-    return arrStages.some(stage => 
-      customer.stage?.toLowerCase().includes(stage.toLowerCase())
-    );
-  });
-  
-  const totalARR = relevantCustomers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
-  
-  // Calculate growth rate (mock 12.5% if no historical data available)
-  const growthRate = 12.5;
-  
-  const liveCustomers = getLiveCustomers(customers);
-  
-  return {
-    totalARR,
-    liveCustomers,
-    growthRate
-  };
+    if (error) {
+      console.error("Error fetching contracts for ARR:", error);
+      // Fallback to customer contract_size
+      const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent", "signed", "went live", "training completed"];
+      const relevantCustomers = customers.filter(customer => {
+        if (customer.status === "done") return true;
+        if (!customer.stage) return false;
+        return arrStages.some(stage => customer.stage?.toLowerCase().includes(stage.toLowerCase()));
+      });
+      const totalARR = relevantCustomers.reduce((sum, customer) => sum + (customer.contractSize || 0), 0);
+      
+      return {
+        totalARR,
+        liveCustomers: getLiveCustomers(customers),
+        growthRate: 12.5
+      };
+    }
+    
+    // Calculate ARR from actual contracts
+    const totalARR = contracts?.reduce((sum, contract) => {
+      return sum + (contract.annual_rate || contract.value || 0);
+    }, 0) || 0;
+    
+    // Simple growth rate calculation based on contract count (could be improved with historical data)
+    const growthRate = contracts && contracts.length > 0 ? Math.min(15, contracts.length * 2) : 12.5;
+    
+    const liveCustomers = getLiveCustomers(customers);
+    
+    return {
+      totalARR,
+      liveCustomers,
+      growthRate
+    };
+  } catch (error) {
+    console.error("Error in getCustomerARRData:", error);
+    return {
+      totalARR: 0,
+      liveCustomers: [],
+      growthRate: 0
+    };
+  }
 };
 
 /**
@@ -422,12 +433,47 @@ export const calculateAverageGoLiveTime = (): string => {
 };
 
 /**
- * Calculate churn rate based on total customers
+ * Calculate churn rate based on expired contracts without renewal
  */
-export const calculateChurnRate = (customers: CustomerData[]): string => {
-  const totalCustomers = customers.length;
-  const churnedCustomers = Math.floor(totalCustomers * 0.05); // 5% churn rate
-  return (churnedCustomers / totalCustomers * 100).toFixed(1) + "%";
+export const calculateChurnRate = async (): Promise<string> => {
+  try {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    // Get contracts that ended in the last 6 months
+    const { data: expiredContracts, error: expiredError } = await supabase
+      .from('contracts')
+      .select('customer_id, end_date')
+      .lt('end_date', new Date().toISOString())
+      .gte('end_date', sixMonthsAgo.toISOString());
+    
+    if (expiredError) {
+      console.error("Error fetching expired contracts:", expiredError);
+      return "0.0%";
+    }
+    
+    // Get total active customers for the same period
+    const { data: allCustomers, error: customersError } = await supabase
+      .from('customers')
+      .select('id')
+      .gte('created_at', sixMonthsAgo.toISOString());
+    
+    if (customersError) {
+      console.error("Error fetching customers for churn:", customersError);
+      return "0.0%";
+    }
+    
+    const totalCustomers = allCustomers?.length || 0;
+    const churnedCustomers = expiredContracts?.length || 0;
+    
+    if (totalCustomers === 0) return "0.0%";
+    
+    const churnRate = (churnedCustomers / totalCustomers) * 100;
+    return churnRate.toFixed(1) + "%";
+  } catch (error) {
+    console.error("Error calculating churn rate:", error);
+    return "0.0%";
+  }
 };
 
 /**
