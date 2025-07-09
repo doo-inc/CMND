@@ -32,7 +32,7 @@ const customerFormSchema = z.object({
   segment: z.string().min(1, "Segment is required"),
   country: z.string().min(1, "Country is required"),
   industry: z.string().optional(),
-  estimated_deal_value: z.number().optional(),
+  estimated_deal_value: z.number().nullable().optional(),
   go_live_date: z.date().optional(),
   subscription_end_date: z.date().optional(),
   description: z.string().optional(),
@@ -77,7 +77,7 @@ export function CustomerForm({
       segment: initialData?.segment || "",
       country: initialData?.country || "",
       industry: initialData?.industry || "",
-      estimated_deal_value: initialData?.estimated_deal_value || 0,
+      estimated_deal_value: initialData?.estimated_deal_value || null,
       go_live_date: initialData?.go_live_date,
       subscription_end_date: initialData?.subscription_end_date,
       description: initialData?.description || "",
@@ -286,12 +286,22 @@ export function CustomerForm({
                   <FormItem>
                     <FormLabel>Estimated Deal Value</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Enter estimated value"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input 
+                          type="number" 
+                          placeholder="0"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === "" ? null : parseInt(value) || null);
+                          }}
+                          className="pl-8"
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
