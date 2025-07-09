@@ -229,25 +229,23 @@ export const getCustomerARRData = (customers: CustomerData[]): {
 };
 
 /**
- * Gets deals pipeline information
- * Deals in pipeline are those not in ARR-counted stages (but NOT including signed now)
+ * Gets deals pipeline information using estimated deal values
+ * Deals in pipeline are those not yet "Live" - using estimated values, not actual contracts
  */
 export const getDealsPipeline = (customers: CustomerData[]): { 
   value: number, 
   count: number 
 } => {
-  const arrStages = ["live", "production", "launched", "active", "paid", "invoice sent", "signed"];
-  
+  // Pipeline includes all customers who haven't reached "Live" stage
   const pipelineCustomers = customers.filter(customer => {
     if (customer.status === "done") return false;
     if (!customer.stage) return true;
     
-    // Check if customer stage does NOT contain any of the ARR stages (signed is in ARR now)
-    return !arrStages.some(stage => 
-      customer.stage?.toLowerCase().includes(stage.toLowerCase())
-    );
+    // Exclude only customers who have reached "Live" stage
+    return !customer.stage?.toLowerCase().includes("live");
   });
   
+  // Use estimated deal value (contractSize field represents estimated value in pipeline)
   const totalValue = pipelineCustomers.reduce((sum, c) => sum + (c.contractSize || 0), 0);
   const count = pipelineCustomers.length;
   

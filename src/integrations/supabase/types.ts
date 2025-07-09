@@ -223,6 +223,7 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          estimated_deal_value: number | null
           go_live_date: string | null
           id: string
           industry: string | null
@@ -245,6 +246,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
           industry?: string | null
@@ -267,6 +269,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
           industry?: string | null

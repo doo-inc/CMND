@@ -32,6 +32,7 @@ const customerFormSchema = z.object({
   segment: z.string().min(1, "Segment is required"),
   country: z.string().min(1, "Country is required"),
   industry: z.string().optional(),
+  estimated_deal_value: z.number().optional(),
   go_live_date: z.date().optional(),
   subscription_end_date: z.date().optional(),
   description: z.string().optional(),
@@ -76,6 +77,7 @@ export function CustomerForm({
       segment: initialData?.segment || "",
       country: initialData?.country || "",
       industry: initialData?.industry || "",
+      estimated_deal_value: initialData?.estimated_deal_value || 0,
       go_live_date: initialData?.go_live_date,
       subscription_end_date: initialData?.subscription_end_date,
       description: initialData?.description || "",
@@ -272,6 +274,25 @@ export function CustomerForm({
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="estimated_deal_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Deal Value</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="Enter estimated value"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -78,7 +78,7 @@ export const usePipelineData = () => {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all customers
+      // Fetch all customers with estimated deal values
       const { data: customers, error: fetchError } = await supabase
         .from('customers')
         .select('*');
@@ -119,7 +119,7 @@ export const usePipelineData = () => {
           country: customer.country || "Unknown Country",
           stage: pipelineStage,
           status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
-          contractSize: customer.contract_size || 0,
+          contractSize: customer.estimated_deal_value || 0,
           owner: {
             id: customer.owner_id || "unknown",
             name: "Unassigned",
