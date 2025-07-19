@@ -33,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 
 const SettingsPage = () => {
+  console.log("Settings page rendering");
   return (
     <DashboardLayout>
       <div className="space-y-6">
