@@ -59,6 +59,17 @@ interface TeamMember {
   created_at: string;
 }
 
+interface InvitationRecord {
+  id: string;
+  email: string;
+  role: 'admin' | 'user';
+  token: string;
+  invited_by: string;
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+}
+
 const inviteFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   role: z.enum(["admin", "user"]),
@@ -68,9 +79,11 @@ type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
 const TeamManagementPage = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<InvitationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteFormSchema),
@@ -82,6 +95,7 @@ const TeamManagementPage = () => {
 
   useEffect(() => {
     fetchTeamMembers();
+    fetchPendingInvitations();
   }, []);
 
   useEffect(() => {
@@ -118,23 +132,74 @@ const TeamManagementPage = () => {
     }
   };
 
+  const fetchPendingInvitations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString());
+
+      if (error) throw error;
+
+      if (data) {
+        setPendingInvitations(data as InvitationRecord[]);
+      }
+    } catch (error) {
+      console.error("Error fetching pending invitations:", error);
+    }
+  };
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+      return { user, profile };
+    }
+    return { user: null, profile: null };
+  };
+
   const onSubmit: SubmitHandler<InviteFormValues> = async (data) => {
     try {
-      // Generate invitation token
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      setIsSubmitting(true);
       
-      // Create invitation record using raw query since types aren't available yet
-      const { error } = await (supabase as any)
+      // Get current user info
+      const { user, profile } = await getCurrentUser();
+      if (!user) {
+        toast.error('You must be logged in to send invitations');
+        return;
+      }
+
+      // Generate secure invitation token using the database function
+      const { data: tokenData, error: tokenError } = await supabase
+        .rpc('generate_invitation_token');
+
+      if (tokenError) {
+        console.error('Error generating token:', tokenError);
+        toast.error('Failed to generate invitation token');
+        return;
+      }
+
+      const token = tokenData;
+
+      // Create invitation record
+      const { data: invitationData, error: invitationError } = await supabase
         .from('invitations')
         .insert([{
           email: data.email,
           role: data.role,
           token: token,
-          invited_by: (await supabase.auth.getUser()).data.user?.id,
-        }]);
+          invited_by: user.id,
+        }])
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error creating invitation:', error);
+      if (invitationError) {
+        console.error('Error creating invitation:', invitationError);
         toast.error('Failed to create invitation');
         return;
       }
@@ -142,7 +207,32 @@ const TeamManagementPage = () => {
       // Create invitation link
       const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
       
-      toast.success(`Invitation created! Send this link to ${data.email}: ${inviteLink}`);
+      // Send invitation email via edge function
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            invitation: {
+              email: data.email,
+              role: data.role,
+              inviteLink: inviteLink,
+              invitedByName: profile?.full_name || 'Team member',
+              companyName: 'DOO Command'
+            }
+          }
+        });
+
+        if (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          toast.error('Invitation created but email failed to send. Please share the link manually.');
+          console.log('Manual invitation link:', inviteLink);
+        } else {
+          toast.success(`Invitation sent successfully to ${data.email}!`);
+        }
+      } catch (emailError) {
+        console.error('Error invoking email function:', emailError);
+        toast.error('Invitation created but email failed to send. Please share the link manually.');
+        console.log('Manual invitation link:', inviteLink);
+      }
       
       await createTeamNotification({
         type: 'team',
@@ -154,10 +244,12 @@ const TeamManagementPage = () => {
       setInviteDialogOpen(false);
       setEditMember(null);
       
-      fetchTeamMembers();
+      fetchPendingInvitations();
     } catch (error) {
       console.error("Error creating invitation:", error);
       toast.error("Failed to create invitation");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -237,7 +329,7 @@ const TeamManagementPage = () => {
               <DialogHeader>
                 <DialogTitle>Invite Team Member</DialogTitle>
                 <DialogDescription>
-                  Create an invitation link to share with new team members.
+                  Send an invitation email to a new team member. They'll receive a link to create their account.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -254,7 +346,7 @@ const TeamManagementPage = () => {
                             type="email" 
                             {...field} 
                             className="glass-input"
-                            
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -271,6 +363,7 @@ const TeamManagementPage = () => {
                           onValueChange={field.onChange} 
                           defaultValue={field.value}
                           value={field.value}
+                          disabled={isSubmitting}
                         >
                           <FormControl>
                             <SelectTrigger className="glass-input">
@@ -287,8 +380,8 @@ const TeamManagementPage = () => {
                     )}
                   />
                   <DialogFooter>
-                    <Button type="submit" className="glass-button">
-                      Create Invitation
+                    <Button type="submit" className="glass-button" disabled={isSubmitting}>
+                      {isSubmitting ? "Sending Invitation..." : "Send Invitation"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -296,6 +389,40 @@ const TeamManagementPage = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Pending Invitations Section */}
+        {pendingInvitations.length > 0 && (
+          <Card className="glass-card animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Pending Invitations ({pendingInvitations.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pendingInvitations.map((invitation) => (
+                  <div key={invitation.id} className="p-3 glass-card rounded-lg flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{invitation.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Invited as {invitation.role} • Expires {new Date(invitation.expires_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      Pending
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="glass-card animate-fade-in">
           <CardHeader>
