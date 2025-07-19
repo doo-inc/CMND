@@ -20,7 +20,7 @@ function Calendar({
   ...props
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(
-    props.defaultMonth || (props.selected as Date) || new Date()
+    props.defaultMonth || new Date()
   );
 
   // Generate year options (10 years back, 10 years forward)
@@ -108,7 +108,7 @@ function Calendar({
         >
           Today
         </Button>
-        {props.selected && (
+        {(props.mode === "single" && "selected" in props && props.selected) && (
           <Button
             variant="ghost"
             size="sm"
@@ -167,8 +167,12 @@ function Calendar({
           ...classNames,
         }}
         components={{
-          IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
-          IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
+          Chevron: ({ ...props }) => {
+            if (props.orientation === "left") {
+              return <ChevronLeft className="h-4 w-4" />;
+            }
+            return <ChevronRight className="h-4 w-4" />;
+          },
         }}
         {...props}
       />

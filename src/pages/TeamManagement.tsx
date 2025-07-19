@@ -205,7 +205,7 @@ const TeamManagementPage = () => {
       }
 
       // Create invitation link
-      const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
+      const inviteLink = `https://cmnd.doo.ooo/accept-invite?token=${token}`;
       
       // Send invitation email via edge function
       try {
