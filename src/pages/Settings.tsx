@@ -30,6 +30,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
 
 const SettingsPage = () => {
   return (
@@ -189,71 +190,7 @@ const SettingsPage = () => {
                   </TabsContent>
                   
                   <TabsContent value="notifications" className="m-0 animate-slide-in">
-                    <h2 className="text-xl font-semibold mb-4">Notification Preferences</h2>
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h3 className="font-medium">Email Notifications</h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="email-updates">Customer Updates</Label>
-                              <p className="text-sm text-muted-foreground">Receive updates when customer status changes</p>
-                            </div>
-                            <Switch id="email-updates" defaultChecked />
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="email-deadlines">Deadline Reminders</Label>
-                              <p className="text-sm text-muted-foreground">Get notified before stage deadlines</p>
-                            </div>
-                            <Switch id="email-deadlines" defaultChecked />
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="email-contracts">Contract Activity</Label>
-                              <p className="text-sm text-muted-foreground">Updates on contract status, approvals, and renewals</p>
-                            </div>
-                            <Switch id="email-contracts" defaultChecked />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <h3 className="font-medium">System Notifications</h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="browser-notifications">Browser Notifications</Label>
-                              <p className="text-sm text-muted-foreground">Show desktop notifications in browser</p>
-                            </div>
-                            <Switch id="browser-notifications" />
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label htmlFor="sound-notifications">Sound Alerts</Label>
-                              <p className="text-sm text-muted-foreground">Play sound when new messages arrive</p>
-                            </div>
-                            <Switch id="sound-notifications" defaultChecked />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-4 flex justify-end">
-                        <Button className="glass-button">
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Preferences
-                        </Button>
-                      </div>
-                    </div>
+                    <NotificationSettings />
                   </TabsContent>
                   
                   <TabsContent value="security" className="m-0 animate-slide-in">
