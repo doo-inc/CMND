@@ -843,6 +843,36 @@ export type Database = {
           },
         ]
       }
+      user_notification_settings: {
+        Row: {
+          created_at: string
+          email_enabled: boolean | null
+          id: string
+          in_app_enabled: boolean | null
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -859,6 +889,14 @@ export type Database = {
           organization_id: string
         }[]
       }
+      get_user_notification_settings: {
+        Args: { user_id_param: string }
+        Returns: {
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          email_enabled: boolean
+          in_app_enabled: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
@@ -869,6 +907,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "user"
+      notification_type:
+        | "lifecycle"
+        | "customer"
+        | "deadline"
+        | "contract"
+        | "team"
       partnership_status:
         | "in_discussion"
         | "signed"
@@ -1009,6 +1053,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "user"],
+      notification_type: [
+        "lifecycle",
+        "customer",
+        "deadline",
+        "contract",
+        "team",
+      ],
       partnership_status: [
         "in_discussion",
         "signed",
