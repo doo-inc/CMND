@@ -21,7 +21,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { industryOptions, countryOptions } from "@/data/defaultLifecycleStages";
+import { industryOptions } from "@/data/defaultLifecycleStages";
+import { getActiveCountries } from "@/utils/countryUtils";
 import { CustomerAvatarUpload, CustomerAvatarUploadRef } from "./CustomerAvatarUpload";
 import { ContractsList, Contract, ContractsListRef } from "./ContractsList";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
@@ -62,6 +63,8 @@ export function CustomerForm({
 }: CustomerFormProps) {
   console.log('CustomerForm: Component rendering, isSubmitting:', isSubmitting);
   
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(true);
   const avatarUploadRef = useRef<CustomerAvatarUploadRef>(null);
   const contractsListRef = useRef<ContractsListRef>(null);
   
@@ -89,6 +92,23 @@ export function CustomerForm({
       contact_phone: initialData?.contact_phone || "",
     },
   });
+
+  // Load countries from database
+  useEffect(() => {
+    loadCountries();
+  }, []);
+
+  const loadCountries = async () => {
+    try {
+      setLoadingCountries(true);
+      const countries = await getActiveCountries();
+      setCountryOptions(countries);
+    } catch (error) {
+      console.error('Error loading countries:', error);
+    } finally {
+      setLoadingCountries(false);
+    }
+  };
 
   // Debug logging for form state changes
   useEffect(() => {

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
 import { useDocumentManager } from "@/hooks/useDocumentManager";
-import { countryOptions } from "@/data/defaultLifecycleStages";
+import { getActiveCountries } from "@/utils/countryUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -55,6 +55,8 @@ export default function AddEditPartnership() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [partnershipName, setPartnershipName] = useState("");
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(true);
   
   // Document management
   const { documents, setDocuments, saveDocuments } = useDocumentManager(id, "partnership");
@@ -72,6 +74,23 @@ export default function AddEditPartnership() {
       notes: "",
     },
   });
+
+  // Load countries from database
+  useEffect(() => {
+    loadCountries();
+  }, []);
+
+  const loadCountries = async () => {
+    try {
+      setLoadingCountries(true);
+      const countries = await getActiveCountries();
+      setCountryOptions(countries);
+    } catch (error) {
+      console.error('Error loading countries:', error);
+    } finally {
+      setLoadingCountries(false);
+    }
+  };
 
   // Load existing partnership data
   useEffect(() => {

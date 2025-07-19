@@ -31,8 +31,33 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { CountryManagement } from "@/components/settings/CountryManagement";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const SettingsPage = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  const checkUserRole = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      setIsAdmin(profile?.role === 'admin');
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -71,11 +96,17 @@ const SettingsPage = () => {
                       <Globe className="mr-3 h-4 w-4" />
                       Integrations
                     </TabsTrigger>
-                    <TabsTrigger value="preferences" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
-                      <SettingsIcon className="mr-3 h-4 w-4" />
-                      Preferences
-                    </TabsTrigger>
-                  </TabsList>
+                     <TabsTrigger value="preferences" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                       <SettingsIcon className="mr-3 h-4 w-4" />
+                       Preferences
+                     </TabsTrigger>
+                     {isAdmin && (
+                       <TabsTrigger value="countries" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                         <Globe className="mr-3 h-4 w-4" />
+                         Countries
+                       </TabsTrigger>
+                     )}
+                   </TabsList>
                 </div>
                 
                 {/* Main Content Area */}
@@ -495,9 +526,15 @@ const SettingsPage = () => {
                           Save Preferences
                         </Button>
                       </div>
-                    </div>
-                  </TabsContent>
-                </div>
+                     </div>
+                   </TabsContent>
+                   
+                   {isAdmin && (
+                     <TabsContent value="countries" className="m-0 animate-slide-in">
+                       <CountryManagement />
+                     </TabsContent>
+                   )}
+                 </div>
               </div>
             </Tabs>
           </CardContent>
