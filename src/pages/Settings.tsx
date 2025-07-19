@@ -43,41 +43,43 @@ const SettingsPage = () => {
         <Card className="glass-card animate-fade-in">
           <CardContent className="p-0">
             <Tabs defaultValue="profile" className="w-full">
-              <div className="flex">
-                <div className="w-64 border-r p-4">
-                  <TabsList className="flex flex-col items-start space-y-1 bg-transparent p-0 w-full">
-                    <TabsTrigger value="profile" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <User className="mr-2 h-4 w-4" />
+              <div className="flex flex-col lg:flex-row min-h-[600px]">
+                {/* Sidebar Navigation */}
+                <div className="lg:w-64 w-full border-r border-border/40 p-4 bg-background/50 lg:min-h-[600px]">
+                  <TabsList className="flex flex-col items-start space-y-1 bg-transparent p-0 w-full h-auto">
+                    <TabsTrigger value="profile" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <User className="mr-3 h-4 w-4" />
                       My Profile
                     </TabsTrigger>
-                    <TabsTrigger value="company" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <Building className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="company" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <Building className="mr-3 h-4 w-4" />
                       Company
                     </TabsTrigger>
-                    <TabsTrigger value="notifications" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <Bell className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="notifications" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <Bell className="mr-3 h-4 w-4" />
                       Notifications
                     </TabsTrigger>
-                    <TabsTrigger value="security" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <Lock className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="security" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <Lock className="mr-3 h-4 w-4" />
                       Security
                     </TabsTrigger>
-                    <TabsTrigger value="team" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <Users className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="team" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <Users className="mr-3 h-4 w-4" />
                       Team
                     </TabsTrigger>
-                    <TabsTrigger value="integrations" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <Globe className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="integrations" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <Globe className="mr-3 h-4 w-4" />
                       Integrations
                     </TabsTrigger>
-                    <TabsTrigger value="preferences" className="w-full justify-start px-2 py-1.5 text-left data-[state=active]:bg-accent/50">
-                      <SettingsIcon className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="preferences" className="w-full justify-start px-3 py-2.5 text-left data-[state=active]:bg-accent/70 data-[state=active]:text-accent-foreground rounded-md transition-colors">
+                      <SettingsIcon className="mr-3 h-4 w-4" />
                       Preferences
                     </TabsTrigger>
                   </TabsList>
                 </div>
                 
-                <div className="flex-1 p-6">
+                {/* Main Content Area */}
+                <div className="flex-1 p-6 overflow-hidden">
                   <TabsContent value="profile" className="m-0 animate-slide-in">
                     <h2 className="text-xl font-semibold mb-4">My Profile</h2>
                     <div className="space-y-6">
