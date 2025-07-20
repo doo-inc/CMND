@@ -160,8 +160,20 @@ export const AcceptInvite = () => {
           console.error('Error creating notification:', notificationError);
         }
 
-        toast.success('Account created successfully! You can now sign in.');
-        navigate('/auth');
+        // Automatically sign in the user after successful account creation
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: invitationData.email,
+          password: password
+        });
+
+        if (signInError) {
+          console.error('Error signing in after account creation:', signInError);
+          toast.success('Account created successfully! You can now sign in.');
+          navigate('/auth');
+        } else {
+          toast.success('Welcome! Your account has been created and you are now signed in.');
+          navigate('/');
+        }
       }
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
