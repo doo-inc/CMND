@@ -7,15 +7,7 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
-      "source": "/accept-invite",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/accept-invite/?(.*)",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/((?!api|_next|static|public|favicon.ico).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
