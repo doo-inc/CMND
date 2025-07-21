@@ -1,4 +1,3 @@
-
 export const defaultLifecycleStages = [
   // Pre-Sales stages
   {
@@ -6,7 +5,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Pre-Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -18,7 +17,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Pre-Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -30,7 +29,7 @@ export const defaultLifecycleStages = [
     status: "not-started", 
     category: "Pre-Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -43,7 +42,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -55,7 +54,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -67,7 +66,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -79,7 +78,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -91,7 +90,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: null,
       name: "Ahmed Abdullah",
       role: "Account Executive"
     },
@@ -103,7 +102,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Sales",
     owner: {
-      id: "00000000-0000-0000-0000-000000000003",
+      id: null,
       name: "Khalid Al-Farsi",
       role: "Finance Manager"
     },
@@ -116,7 +115,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Implementation",
     owner: {
-      id: "00000000-0000-0000-0000-000000000002",
+      id: null,
       name: "Fatima Hassan",
       role: "Customer Success Manager"
     },
@@ -128,7 +127,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Implementation",
     owner: {
-      id: "00000000-0000-0000-0000-000000000004",
+      id: null,
       name: "Mohammed Rahman",
       role: "Integration Engineer"
     },
@@ -140,7 +139,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Implementation",
     owner: {
-      id: "00000000-0000-0000-0000-000000000002",
+      id: null,
       name: "Fatima Hassan",
       role: "Customer Success Manager"
     },
@@ -152,7 +151,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Implementation",
     owner: {
-      id: "00000000-0000-0000-0000-000000000004",
+      id: null,
       name: "Mohammed Rahman",
       role: "Integration Engineer"
     },
@@ -165,7 +164,7 @@ export const defaultLifecycleStages = [
     status: "not-started",
     category: "Finance",
     owner: {
-      id: "00000000-0000-0000-0000-000000000003",
+      id: null,
       name: "Khalid Al-Farsi",
       role: "Finance Manager"
     },

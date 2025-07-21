@@ -181,8 +181,32 @@ export function LifecycleTracker({
     try {
       const dbCustomerId = getDbCustomerId(customerId);
       
+      // Fetch available staff members
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, name, role');
+      
+      if (staffError) {
+        console.error("Error fetching staff:", staffError);
+        throw staffError;
+      }
+      
+      // Create a mapping of roles to staff members
+      const staffByRole = {
+        'Account Executive': staffData?.find(s => s.role === 'Account Executive'),
+        'Customer Success Manager': staffData?.find(s => s.role === 'Customer Success Manager'),
+        'Finance Manager': staffData?.find(s => s.role === 'Finance Manager'),
+        'Integration Engineer': staffData?.find(s => s.role === 'Integration Engineer')
+      };
+      
       for (const defaultStage of defaultLifecycleStages) {
         console.log("Adding default stage:", defaultStage.name);
+        
+        // Try to find a matching staff member by role, fallback to first available or null
+        const matchingStaff = staffByRole[defaultStage.owner.role as keyof typeof staffByRole] || 
+                             staffData?.[0] || 
+                             null;
+        
         await supabase
           .from('lifecycle_stages')
           .insert({
@@ -190,7 +214,7 @@ export function LifecycleTracker({
             name: defaultStage.name,
             status: defaultStage.status,
             category: defaultStage.category,
-            owner_id: defaultStage.owner.id,
+            owner_id: matchingStaff?.id || null,
             deadline: defaultStage.deadline,
             notes: defaultStage.notes
           });
