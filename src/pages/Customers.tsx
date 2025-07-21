@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, ArrowUpDown, RefreshCw } from "lucide-react";
+import { Plus, Search, ArrowUpDown, RefreshCw, Download } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -17,6 +17,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
 import { toast } from "sonner";
+import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const Customers = () => {
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const formatDatabaseCustomer = (dbCustomer: any): CustomerData => {
     return {
@@ -99,7 +101,29 @@ const Customers = () => {
     }
   };
 
+  const handleImportSampleData = async () => {
+    try {
+      setIsImporting(true);
+      console.log("Importing sample customer data...");
+      
+      const success = await syncCustomersToDatabase();
+      
+      if (success) {
+        toast.success("Sample data imported successfully");
+        await fetchCustomers(true);
+      } else {
+        toast.error("Failed to import sample data");
+      }
+    } catch (error) {
+      console.error("Error importing sample data:", error);
+      toast.error("Failed to import sample data");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   useEffect(() => {
+    // Only fetch from database, no automatic sync
     fetchCustomers();
   }, []);
 
@@ -191,6 +215,17 @@ const Customers = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
+            {customers.length === 0 && !isLoading && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleImportSampleData}
+                disabled={isImporting}
+              >
+                <Download className={`mr-2 h-4 w-4 ${isImporting ? 'animate-spin' : ''}`} />
+                Import Sample Data
+              </Button>
+            )}
             <Button onClick={() => navigate("/customers/new")}>
               <Plus className="mr-2 h-4 w-4" /> Add Customer
             </Button>
@@ -280,7 +315,10 @@ const Customers = () => {
             {!isLoading && filteredCustomers.length === 0 && customers.length === 0 && (
               <div className="col-span-3 py-16 text-center">
                 <p className="text-gray-500 dark:text-gray-400 mb-4">No customers found in the database.</p>
-                <p className="text-sm text-gray-400">Add your first customer to get started.</p>
+                <Button onClick={handleImportSampleData} disabled={isImporting}>
+                  <Download className={`mr-2 h-4 w-4 ${isImporting ? 'animate-spin' : ''}`} />
+                  Import Sample Data
+                </Button>
               </div>
             )}
 

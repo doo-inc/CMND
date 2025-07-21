@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
@@ -15,6 +14,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
+import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
+import { removeDuplicateCustomers } from "@/utils/customerDataSync";
 import { 
   FileCheck, Users, Briefcase, DollarSign, Calendar,
   BookOpen, HeartHandshake, Medal, Zap, CheckSquare, Monitor
@@ -38,11 +39,19 @@ const stageIcons: Record<string, React.ReactNode> = {
   "Payment Processed": <DollarSign className="h-5 w-5" />
 };
 
+const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
+  return {
+    ...defaultStage,
+    icon: stageIcons[defaultStage.name] || <FileCheck className="h-5 w-5" />
+  };
+};
+
 const Lifecycle = () => {
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [customerList, setCustomerList] = useState<Customer[]>([]);
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
   const [loading, setLoading] = useState(true);
+  const [validStaffIds, setValidStaffIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   
@@ -54,10 +63,39 @@ const Lifecycle = () => {
     return `00000000-0000-0000-0000-${customerId.replace(/\D/g, '').padStart(12, '0')}`;
   };
 
+  const fetchValidStaffIds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id');
+      
+      if (error) {
+        console.error("Error fetching staff IDs:", error);
+        return [];
+      }
+      
+      return data?.map(staff => staff.id) || [];
+    } catch (error) {
+      console.error("Error in fetchValidStaffIds:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
+    const loadStaffIds = async () => {
+      const ids = await fetchValidStaffIds();
+      console.log("Valid staff IDs:", ids);
+      setValidStaffIds(ids);
+    };
+    
+    loadStaffIds();
+    
     const fetchCustomers = async () => {
       try {
         setLoading(true);
+        
+        // First, remove any duplicate customers that might be in the database
+        await removeDuplicateCustomers();
         
         console.log("Fetching customers for lifecycle...");
         const { data, error } = await supabase
@@ -158,8 +196,10 @@ const Lifecycle = () => {
         });
 
         setCustomerStages(formattedStages);
-      } else {
-        setCustomerStages([]);
+        
+        if (formattedStages.length === 0) {
+          console.log("No stages found, default stages will be added by the lifecycle tracker");
+        }
       }
     } catch (error) {
       console.error("Error in fetchCustomerStages:", error);
@@ -246,18 +286,10 @@ const Lifecycle = () => {
           </div>
         )}
         
-        {!loading && !selectedCustomerData && customerList.length === 0 && (
+        {!loading && !selectedCustomerData && (
           <div className="flex justify-center py-8">
             <div className="text-center">
-              <p className="text-muted-foreground">No customers available. Add customers to track their lifecycle.</p>
-            </div>
-          </div>
-        )}
-        
-        {!loading && !selectedCustomerData && customerList.length > 0 && (
-          <div className="flex justify-center py-8">
-            <div className="text-center">
-              <p className="text-muted-foreground">Please select a customer to view their lifecycle stages.</p>
+              <p className="text-muted-foreground">No customer selected or available. Please select a customer.</p>
             </div>
           </div>
         )}

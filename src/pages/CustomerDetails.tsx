@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -12,6 +11,7 @@ import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { findCustomerById } from "@/utils/customerUtils";
 import { CustomerData } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 
@@ -30,6 +30,7 @@ const CustomerDetails = () => {
       console.log("Fetching customer details for ID:", id);
       
       try {
+        // First try to get from database
         const { data: dbCustomer, error: dbError } = await supabase
           .from('customers')
           .select('*')
@@ -38,19 +39,26 @@ const CustomerDetails = () => {
 
         if (dbError) {
           console.error("Database error:", dbError);
-          throw dbError;
         }
 
-        if (!dbCustomer) {
-          console.log("Customer not found in database");
-          return null;
+        if (dbCustomer) {
+          console.log("Found customer in database:", dbCustomer);
+          return dbCustomer;
         }
 
-        console.log("Found customer in database:", dbCustomer);
-        return dbCustomer;
+        // If not found in database, try findCustomerById utility
+        console.log("Customer not found in database, trying utility function");
+        const foundCustomer = await findCustomerById(id);
+        if (foundCustomer) {
+          console.log("Found customer via utility:", foundCustomer);
+          return foundCustomer;
+        }
+
+        console.log("Customer not found anywhere");
+        return null;
       } catch (err) {
         console.error("Error fetching customer:", err);
-        throw err;
+        return null;
       }
     },
     enabled: !!id
@@ -60,7 +68,7 @@ const CustomerDetails = () => {
   const { data: lifecycleStages } = useQuery({
     queryKey: ['lifecycle-stages', id],
     queryFn: async () => {
-      if (!id || !customer) return [];
+      if (!id) return [];
       
       const { data, error } = await supabase
         .from('lifecycle_stages')
@@ -93,7 +101,7 @@ const CustomerDetails = () => {
         notes: stage.notes
       })) || [];
     },
-    enabled: !!id && !!customer
+    enabled: !!id
   });
 
   // Update local stages state when data is fetched
@@ -120,12 +128,8 @@ const CustomerDetails = () => {
   if (error) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="flex items-center justify-center h-64">
           <div className="text-red-500">Error loading customer details</div>
-          <Button onClick={() => navigate("/customers")} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Customers
-          </Button>
         </div>
       </DashboardLayout>
     );
@@ -134,15 +138,8 @@ const CustomerDetails = () => {
   if (!customer) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-64 space-y-4">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold mb-2">Customer Not Found</h2>
-            <p className="text-muted-foreground">The customer you're looking for doesn't exist or may have been deleted.</p>
-          </div>
-          <Button onClick={() => navigate("/customers")} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Customers
-          </Button>
+        <div className="flex items-center justify-center h-64">
+          <div>Customer not found</div>
         </div>
       </DashboardLayout>
     );
