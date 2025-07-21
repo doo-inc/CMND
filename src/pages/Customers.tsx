@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Search, ArrowUpDown, RefreshCw } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { syncCustomersToDatabase, checkForDuplicateStages, removeDuplicateCustom
 
 const Customers = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filter, setFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +30,7 @@ const Customers = () => {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const convertToCustomerData = (customer: any): CustomerData => {
     return {
@@ -80,21 +82,13 @@ const Customers = () => {
     setUniqueCountries(countries);
   };
 
-  useEffect(() => {
-    const initialSetup = async () => {
-      // Ensure customer data is synced on first load
-      await syncCustomersToDatabase();
-      // Remove duplicate customers before fetching
-      await removeDuplicateCustomers();
-      fetchCustomers();
-    };
-    
-    initialSetup();
-  }, []);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (showRefreshIndicator = false) => {
     try {
-      setIsLoading(true);
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       
       console.log("Fetching customers...");
       const { data, error } = await supabase
@@ -163,12 +157,33 @@ const Customers = () => {
       extractUniqueCountries(formattedRealCustomers);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    const initialSetup = async () => {
+      // Ensure customer data is synced on first load
+      await syncCustomersToDatabase();
+      // Remove duplicate customers before fetching
+      await removeDuplicateCustomers();
+      fetchCustomers();
+    };
+    
+    initialSetup();
+  }, []);
+
+  // Refresh data when navigating back to this page
+  useEffect(() => {
+    // Check if we're coming back from another page (like after a deletion)
+    if (location.state?.refresh || location.pathname === '/customers') {
+      fetchCustomers(true);
+    }
+  }, [location.pathname, location.state]);
+
   React.useEffect(() => {
     const handleFocus = () => {
-      fetchCustomers();
+      fetchCustomers(true);
     };
 
     window.addEventListener('focus', handleFocus);
@@ -177,6 +192,10 @@ const Customers = () => {
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
+
+  const handleRefresh = () => {
+    fetchCustomers(true);
+  };
 
   const handleSort = (field: "name" | "contractSize") => {
     if (sortBy === field) {
@@ -234,6 +253,15 @@ const Customers = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Customers</h1>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button onClick={() => navigate("/customers/new")}>
               <Plus className="mr-2 h-4 w-4" /> Add Customer
             </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CustomerForm, type CustomerFormData } from "@/components/customers/CustomerForm";
@@ -132,7 +131,8 @@ export default function AddEditCustomer() {
         description: "Customer deleted successfully!",
       });
 
-      navigate('/customers');
+      // Navigate back with refresh state to trigger data reload
+      navigate('/customers', { state: { refresh: true } });
     } catch (error: any) {
       console.error('Error deleting customer:', error);
       
@@ -232,7 +232,8 @@ export default function AddEditCustomer() {
         description: `Customer ${id ? 'updated' : 'created'} successfully!`,
       });
 
-      navigate('/customers');
+      // Navigate back with refresh state to trigger data reload
+      navigate('/customers', { state: { refresh: true } });
     } catch (error) {
       console.error('Error saving customer:', error);
       toast({
