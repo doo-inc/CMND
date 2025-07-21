@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { LifecycleStageProps } from "./LifecycleStage";
 import { AddEditStage } from "./AddEditStage";
 import { EnhancedLifecycleProgress } from "./EnhancedLifecycleProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
 import { sortStagesByOrder } from "@/utils/stageOrdering";
 
 interface LifecycleTrackerProps {
@@ -31,7 +31,6 @@ export function LifecycleTracker({
   onStagesUpdate 
 }: LifecycleTrackerProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
 
   const getDbCustomerId = (customerId: string) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)) {
@@ -171,102 +170,6 @@ export function LifecycleTracker({
     }
   };
 
-  const initializeDefaultStages = async () => {
-    if (hasInitialized || stages.length > 0) return;
-    
-    console.log("Initializing default stages for customer:", customerId);
-    setIsLoading(true);
-    setHasInitialized(true);
-    
-    try {
-      const dbCustomerId = getDbCustomerId(customerId);
-      
-      // Fetch available staff members
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('id, name, role');
-      
-      if (staffError) {
-        console.error("Error fetching staff:", staffError);
-        throw staffError;
-      }
-      
-      // Create a mapping of roles to staff members
-      const staffByRole = {
-        'Account Executive': staffData?.find(s => s.role === 'Account Executive'),
-        'Customer Success Manager': staffData?.find(s => s.role === 'Customer Success Manager'),
-        'Finance Manager': staffData?.find(s => s.role === 'Finance Manager'),
-        'Integration Engineer': staffData?.find(s => s.role === 'Integration Engineer')
-      };
-      
-      for (const defaultStage of defaultLifecycleStages) {
-        console.log("Adding default stage:", defaultStage.name);
-        
-        // Try to find a matching staff member by role, fallback to first available or null
-        const matchingStaff = staffByRole[defaultStage.owner.role as keyof typeof staffByRole] || 
-                             staffData?.[0] || 
-                             null;
-        
-        await supabase
-          .from('lifecycle_stages')
-          .insert({
-            customer_id: dbCustomerId,
-            name: defaultStage.name,
-            status: defaultStage.status,
-            category: defaultStage.category,
-            owner_id: matchingStaff?.id || null,
-            deadline: defaultStage.deadline,
-            notes: defaultStage.notes
-          });
-      }
-      
-      toast.success("Default lifecycle stages initialized");
-      
-      // Refresh stages data without page reload
-      const { data, error } = await supabase
-        .from('lifecycle_stages')
-        .select(`
-          *,
-          staff:owner_id (id, name, role)
-        `)
-        .eq('customer_id', dbCustomerId);
-
-      if (!error && data) {
-        const formattedStages: LifecycleStageProps[] = data.map((stage: any) => ({
-          id: stage.id,
-          name: stage.name,
-          status: stage.status as LifecycleStageProps["status"],
-          category: stage.category || "",
-          owner: stage.staff ? {
-            id: stage.staff.id,
-            name: stage.staff.name,
-            role: stage.staff.role
-          } : {
-            id: "unknown",
-            name: "Unknown",
-            role: "Unknown"
-          },
-          deadline: stage.deadline,
-          notes: stage.notes,
-        }));
-        
-        onStagesUpdate(sortStagesByOrder(formattedStages));
-      }
-      
-    } catch (error) {
-      console.error("Error initializing default stages:", error);
-      toast.error("Failed to initialize default stages");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (stages.length === 0 && !hasInitialized) {
-      initializeDefaultStages();
-    }
-  }, [customerId, stages.length, hasInitialized]);
-
   const sortedStages = sortStagesByOrder(stages);
 
   return (
@@ -278,12 +181,19 @@ export function LifecycleTracker({
         <AddEditStage onSave={handleStageAdd} />
       </div>
       
-      <EnhancedLifecycleProgress 
-        stages={sortedStages}
-        customerId={customerId}
-        customerName={customerName}
-        onStageUpdate={handleStageUpdate}
-      />
+      {stages.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">No lifecycle stages found for this customer.</p>
+          <p className="text-sm text-muted-foreground">Add your first stage to get started with tracking this customer's lifecycle.</p>
+        </div>
+      ) : (
+        <EnhancedLifecycleProgress 
+          stages={sortedStages}
+          customerId={customerId}
+          customerName={customerName}
+          onStageUpdate={handleStageUpdate}
+        />
+      )}
       
       {isLoading && (
         <div className="flex justify-center py-4">
