@@ -246,6 +246,7 @@ export type Database = {
       customers: {
         Row: {
           annual_rate: number | null
+          churn_date: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -269,6 +270,7 @@ export type Database = {
         }
         Insert: {
           annual_rate?: number | null
+          churn_date?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -292,6 +294,7 @@ export type Database = {
         }
         Update: {
           annual_rate?: number | null
+          churn_date?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -983,6 +986,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      update_customer_churn_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

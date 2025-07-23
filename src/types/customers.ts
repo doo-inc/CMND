@@ -9,7 +9,8 @@ export interface Customer {
   segment?: string | null;
   country?: string | null;
   stage?: string | null;
-  status?: string | null;
+  status?: "not-started" | "in-progress" | "done" | "blocked" | "churned" | null;
+  churn_date?: string | null;
   contract_size?: number | null;
   setup_fee?: number | null;
   annual_rate?: number | null;

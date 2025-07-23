@@ -111,7 +111,12 @@ const Lifecycle = () => {
         console.log("Lifecycle - fetched customers:", data);
 
         if (data && data.length > 0) {
-          setCustomerList(data);
+          // Cast the status to the proper type
+          const typedCustomers = data.map(customer => ({
+            ...customer,
+            status: customer.status as "not-started" | "in-progress" | "done" | "blocked" | "churned" | null
+          }));
+          setCustomerList(typedCustomers);
           setSelectedCustomer(data[0].id);
         } else {
           console.log("No customers found in the database");

@@ -47,43 +47,66 @@ export const getLiveCustomers = async (): Promise<CustomerData[]> => {
 
 export const getCustomerARRData = async (customers: CustomerData[]) => {
   try {
-    // Get live customers (those who have completed Go Live)
-    const { data: liveCustomersData, error } = await supabase
-      .from('customers')
+    // Get ARR from active contracts (more accurate)
+    const { data: contractsData, error: contractsError } = await supabase
+      .from('contracts')
       .select(`
-        *,
-        lifecycle_stages!inner(name, status)
+        annual_rate,
+        customer_id,
+        customers!inner(
+          id,
+          name,
+          logo,
+          segment,
+          country,
+          owner_id,
+          status,
+          stage
+        )
       `)
-      .eq('lifecycle_stages.name', 'Go Live')
-      .eq('lifecycle_stages.status', 'done');
+      .or('status.eq.active,status.is.null') // Active contracts
+      .gt('end_date', new Date().toISOString()); // Not expired
 
-    if (error) {
-      console.error("Error fetching live customers for ARR:", error);
+    if (contractsError) {
+      console.error("Error fetching ARR from contracts:", contractsError);
       return { totalARR: 0, liveCustomers: [], growthRate: 0 };
     }
 
-    const liveCustomers = (liveCustomersData || []).map(customer => ({
-      id: customer.id,
-      name: customer.name,
-      logo: customer.logo || undefined,
-      segment: customer.segment || "Unknown Segment",
-      country: customer.country || "Unknown Country",
-      stage: "Live",
-      status: "done" as const,
-      contractSize: customer.contract_size || 0,
-      owner: {
-        id: customer.owner_id || "unknown",
-        name: "Account Manager",
-        role: "Sales"
+    // Group contracts by customer and sum ARR
+    const customerARRMap = new Map();
+    (contractsData || []).forEach(contract => {
+      const customer = contract.customers;
+      const customerId = customer.id;
+      
+      if (!customerARRMap.has(customerId)) {
+        customerARRMap.set(customerId, {
+          id: customer.id,
+          name: customer.name,
+          logo: customer.logo || undefined,
+          segment: customer.segment || "Unknown Segment",
+          country: customer.country || "Unknown Country",
+          stage: customer.stage || "Live",
+          status: customer.status as "not-started" | "in-progress" | "done" | "blocked" | "churned" || "done",
+          contractSize: 0,
+          owner: {
+            id: customer.owner_id || "unknown",
+            name: "Account Manager",
+            role: "Sales"
+          }
+        });
       }
-    }));
+      
+      const existingCustomer = customerARRMap.get(customerId);
+      existingCustomer.contractSize += contract.annual_rate || 0;
+    });
 
+    const liveCustomers = Array.from(customerARRMap.values());
     const totalARR = liveCustomers.reduce((sum, customer) => sum + customer.contractSize, 0);
     
     return {
       totalARR,
       liveCustomers,
-      growthRate: 14 // Placeholder growth rate
+      growthRate: 14 // Placeholder growth rate - could be calculated based on historical data
     };
   } catch (error) {
     console.error("Error in getCustomerARRData:", error);
@@ -215,18 +238,20 @@ export const getAverageDealSize = async (): Promise<number> => {
 
 export const getMRR = async (): Promise<number> => {
   try {
+    // Get MRR from active contracts only (more accurate than customer-level data)
     const { data, error } = await supabase
-      .from('customers')
-      .select('contract_size, annual_rate')
-      .or('status.eq.done,stage.eq.Live');
+      .from('contracts')
+      .select('annual_rate, end_date, status')
+      .or('status.eq.active,status.is.null') // Include contracts without status (assuming active)
+      .gt('end_date', new Date().toISOString()); // Only contracts that haven't expired
 
     if (error) {
-      console.error("Error fetching MRR:", error);
+      console.error("Error fetching MRR from contracts:", error);
       return 0;
     }
 
-    const totalAnnualRevenue = (data || []).reduce((sum, customer) => 
-      sum + (customer.annual_rate || customer.contract_size || 0), 0
+    const totalAnnualRevenue = (data || []).reduce((sum, contract) => 
+      sum + (contract.annual_rate || 0), 0 // Only use annual_rate, exclude setup fees
     );
 
     return Math.round(totalAnnualRevenue / 12);
@@ -363,31 +388,95 @@ export const calculateSalesLifecycle = async (): Promise<number> => {
   }
 };
 
-export const calculateChurnRate = async (): Promise<string> => {
+export const calculateChurnRate = async (periodDays: number = 30): Promise<string> => {
   try {
-    // This is a simplified calculation - in reality you'd track churned customers over time
-    const { data: totalCustomers, error: totalError } = await supabase
-      .from('customers')
-      .select('id', { count: 'exact' });
-
-    const { data: liveCustomers, error: liveError } = await supabase
+    // Calculate proper time-based churn rate
+    const periodStartDate = new Date();
+    periodStartDate.setDate(periodStartDate.getDate() - periodDays);
+    
+    // Get customers who were live at the start of the period
+    const { data: liveCustomersAtStart, error: liveStartError } = await supabase
       .from('customers')
       .select('id', { count: 'exact' })
-      .or('status.eq.done,stage.eq.Live');
+      .or('status.eq.done,stage.eq.Live')
+      .lt('created_at', periodStartDate.toISOString()); // Were already customers at period start
 
-    if (totalError || liveError) {
-      console.error("Error calculating churn rate:", totalError || liveError);
+    // Get customers who churned during the period
+    const { data: churnedCustomers, error: churnError } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact' })
+      .eq('status', 'churned')
+      .gte('churn_date', periodStartDate.toISOString())
+      .lte('churn_date', new Date().toISOString());
+
+    if (liveStartError || churnError) {
+      console.error("Error calculating churn rate:", liveStartError || churnError);
       return "0.0%";
     }
 
-    const totalCount = totalCustomers?.length || 0;
-    const liveCount = liveCustomers?.length || 0;
-    const churnedCount = totalCount - liveCount;
+    const liveCount = liveCustomersAtStart?.length || 0;
+    const churnedCount = churnedCustomers?.length || 0;
 
-    const churnRate = totalCount > 0 ? (churnedCount / totalCount) * 100 : 0;
+    // Churn rate = customers who churned / customers who were live at start of period
+    const churnRate = liveCount > 0 ? (churnedCount / liveCount) * 100 : 0;
     return `${churnRate.toFixed(1)}%`;
   } catch (error) {
     console.error("Error in calculateChurnRate:", error);
     return "0.0%";
+  }
+};
+
+// Monthly Churn Rate (more specific)
+export const getMonthlyChurnRate = async (): Promise<string> => {
+  return calculateChurnRate(30);
+};
+
+// Quarterly Churn Rate
+export const getQuarterlyChurnRate = async (): Promise<string> => {
+  return calculateChurnRate(90);
+};
+
+// Update customer churn status based on expired contracts
+export const updateCustomerChurnStatus = async (): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('update_customer_churn_status');
+    
+    if (error) {
+      console.error("Error updating customer churn status:", error);
+      throw error;
+    }
+    
+    console.log("Customer churn status updated successfully");
+  } catch (error) {
+    console.error("Error in updateCustomerChurnStatus:", error);
+    throw error;
+  }
+};
+
+// Get better conversion rate (excluding churned customers)
+export const getImprovedConversionRate = async (): Promise<number> => {
+  try {
+    const { data: totalCustomers, error: totalError } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact' })
+      .neq('status', 'churned'); // Exclude churned customers
+
+    const { data: liveCustomers, error: liveError } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact' })
+      .eq('status', 'done'); // Only truly live customers
+
+    if (totalError || liveError) {
+      console.error("Error calculating improved conversion rate:", totalError || liveError);
+      return 0;
+    }
+
+    const totalCount = totalCustomers?.length || 0;
+    const liveCount = liveCustomers?.length || 0;
+
+    return totalCount > 0 ? (liveCount / totalCount) * 100 : 0;
+  } catch (error) {
+    console.error("Error in getImprovedConversionRate:", error);
+    return 0;
   }
 };
