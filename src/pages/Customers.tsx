@@ -33,15 +33,61 @@ const Customers = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  const formatDatabaseCustomer = (dbCustomer: any): CustomerData => {
+  // Define lifecycle to pipeline stage mapping (same as in usePipelineData)
+  const LIFECYCLE_TO_PIPELINE_MAPPING: Record<string, string> = {
+    "Prospect": "Lead",
+    "Qualified Lead": "Qualified", 
+    "Meeting Set": "Qualified",
+    "Demo": "Demo",
+    "Discovery Call": "Demo",
+    "Proposal Sent": "Proposal",
+    "Proposal Approved": "Proposal", 
+    "Contract Sent": "Contract",
+    "Contract Signed": "Contract",
+    "Onboarding": "Implementation",
+    "Technical Setup": "Implementation",
+    "Training": "Implementation",
+    "Go Live": "Live"
+  };
+
+  const PIPELINE_STAGE_ORDER = ["Lead", "Qualified", "Demo", "Proposal", "Contract", "Implementation", "Live"];
+
+  const getFurthestPipelineStage = (completedStages: string[]): string => {
+    const pipelineStages = completedStages
+      .map(stage => LIFECYCLE_TO_PIPELINE_MAPPING[stage])
+      .filter(Boolean);
+    
+    if (pipelineStages.length === 0) return "Lead";
+    
+    let furthestStageIndex = -1;
+    for (const stage of pipelineStages) {
+      const index = PIPELINE_STAGE_ORDER.indexOf(stage);
+      if (index > furthestStageIndex) {
+        furthestStageIndex = index;
+      }
+    }
+    
+    return PIPELINE_STAGE_ORDER[furthestStageIndex] || "Lead";
+  };
+
+  const getCustomerStatus = (stage: string): "not-started" | "in-progress" | "done" | "blocked" => {
+    if (stage === "Live") return "done";
+    if (stage === "Lead") return "not-started";
+    return "in-progress";
+  };
+
+  const formatDatabaseCustomer = (dbCustomer: any, completedStages: string[] = []): CustomerData => {
+    const pipelineStage = getFurthestPipelineStage(completedStages);
+    const derivedStatus = getCustomerStatus(pipelineStage);
+    
     return {
       id: dbCustomer.id,
       name: dbCustomer.name,
       logo: dbCustomer.logo || undefined,
       segment: dbCustomer.segment || "Unknown Segment",
       country: dbCustomer.country || "Unknown Country",
-      stage: dbCustomer.stage || "New",
-      status: (dbCustomer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
+      stage: pipelineStage,
+      status: derivedStatus,
       contractSize: dbCustomer.contract_size || 0,
       owner: {
         id: dbCustomer.owner_id || "unknown",
@@ -70,19 +116,44 @@ const Customers = () => {
       }
       
       console.log("Fetching customers from database...");
-      const { data, error } = await supabase
+      
+      // Fetch customers and their lifecycle stages
+      const { data: customers, error: customersError } = await supabase
         .from('customers')
         .select('*');
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
+      if (customersError) {
+        console.error("Supabase error:", customersError);
+        throw customersError;
       }
 
-      console.log("Customers data fetched:", data);
+      const { data: lifecycleStages, error: stagesError } = await supabase
+        .from('lifecycle_stages')
+        .select('customer_id, name, status')
+        .eq('status', 'done');
 
-      if (data && data.length > 0) {
-        const formattedCustomers = data.map(formatDatabaseCustomer);
+      if (stagesError) {
+        console.error("Lifecycle stages error:", stagesError);
+        throw stagesError;
+      }
+
+      console.log("Customers data fetched:", customers);
+      console.log("Lifecycle stages fetched:", lifecycleStages);
+
+      if (customers && customers.length > 0) {
+        // Group completed stages by customer
+        const stagesByCustomer: Record<string, string[]> = {};
+        lifecycleStages?.forEach(stage => {
+          if (!stagesByCustomer[stage.customer_id]) {
+            stagesByCustomer[stage.customer_id] = [];
+          }
+          stagesByCustomer[stage.customer_id].push(stage.name);
+        });
+
+        const formattedCustomers = customers.map(customer => 
+          formatDatabaseCustomer(customer, stagesByCustomer[customer.id] || [])
+        );
+        
         setCustomers(formattedCustomers);
         extractUniqueCountries(formattedCustomers);
       } else {
