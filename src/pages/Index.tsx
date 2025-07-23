@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
 import { syncCustomersToDatabase, checkForDuplicateStages } from "@/utils/customerDataSync";
+import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
+import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
 import { toast } from "sonner";
 import { usePerformanceMonitoring } from "@/hooks/usePerformanceMonitoring";
 import { 
@@ -45,10 +47,56 @@ const Index = () => {
   });
   const [arrData, setArrData] = useState({ totalARR: 0, liveCustomers: [], growthRate: 0 });
   const [churnRate, setChurnRate] = useState("0.0%");
+
+  const refreshMetrics = async () => {
+    try {
+      const [
+        dealsPipeline,
+        totalPipelineValue,
+        activeContractsValue,
+        conversionRate,
+        averageDealSize,
+        mrr,
+        dealsAtRisk,
+        arrDataResult,
+        churnRateResult
+      ] = await Promise.all([
+        getDealsPipeline(),
+        getTotalPipelineValue(),
+        getActiveContractsValue(),
+        getConversionRate(),
+        getAverageDealSize(),
+        getMRR(),
+        getDealsAtRisk(),
+        getCustomerARRData(customers),
+        calculateChurnRate()
+      ]);
+
+      setMetrics({
+        dealsPipeline,
+        totalPipelineValue,
+        activeContractsValue,
+        conversionRate,
+        averageDealSize,
+        mrr,
+        dealsAtRisk
+      });
+      
+      setArrData(arrDataResult);
+      setChurnRate(churnRateResult);
+    } catch (error) {
+      console.error("Error refreshing metrics:", error);
+    }
+  };
+
+  // Enable real-time analytics updates
+  useRealtimeAnalytics(refreshMetrics);
   
   useEffect(() => {
     const initialSync = async () => {
-      // Sync customers automatically on first load
+      // Sync customer pipeline stages first
+      await syncCustomerPipelineStages();
+      // Then sync customers from real data if needed
       await syncCustomersToDatabase();
       // Check for duplicates after loading
       await Promise.all(customers.map(customer => checkForDuplicateStages(customer.id)));
@@ -61,6 +109,10 @@ const Index = () => {
     const fetchCustomers = async () => {
       try {
         setLoading(true);
+        
+        // First sync pipeline stages to ensure data is up to date
+        await syncCustomerPipelineStages();
+        
         const { data, error } = await supabase
           .from('customers')
           .select('*')
@@ -78,7 +130,7 @@ const Index = () => {
             logo: customer.logo || undefined,
             segment: customer.segment || "Unknown Segment",
             country: customer.country || "Unknown Country",
-            stage: customer.stage || "New",
+            stage: customer.stage || "Lead", // Use synced stage or default
             status: (customer.status as "not-started" | "in-progress" | "done" | "blocked") || "not-started",
             contractSize: customer.contract_size || 0,
             owner: {
@@ -138,48 +190,7 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const [
-          dealsPipeline,
-          totalPipelineValue,
-          activeContractsValue,
-          conversionRate,
-          averageDealSize,
-          mrr,
-          dealsAtRisk,
-          arrDataResult,
-          churnRateResult
-        ] = await Promise.all([
-          getDealsPipeline(),
-          getTotalPipelineValue(),
-          getActiveContractsValue(),
-          getConversionRate(),
-          getAverageDealSize(),
-          getMRR(),
-          getDealsAtRisk(),
-          getCustomerARRData(customers),
-          calculateChurnRate()
-        ]);
-
-        setMetrics({
-          dealsPipeline,
-          totalPipelineValue,
-          activeContractsValue,
-          conversionRate,
-          averageDealSize,
-          mrr,
-          dealsAtRisk
-        });
-        
-        setArrData(arrDataResult);
-        setChurnRate(churnRateResult);
-      } catch (error) {
-        console.error("Error fetching metrics:", error);
-      }
-    };
-
-    fetchMetrics();
+    refreshMetrics();
   }, [customers]);
 
   // Calculate dashboard metrics  
