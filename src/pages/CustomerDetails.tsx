@@ -11,7 +11,7 @@ import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { findCustomerById } from "@/utils/customerUtils";
+
 import { CustomerData } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 
@@ -46,13 +46,6 @@ const CustomerDetails = () => {
           return dbCustomer;
         }
 
-        // If not found in database, try findCustomerById utility
-        console.log("Customer not found in database, trying utility function");
-        const foundCustomer = await findCustomerById(id);
-        if (foundCustomer) {
-          console.log("Found customer via utility:", foundCustomer);
-          return foundCustomer;
-        }
 
         console.log("Customer not found anywhere");
         return null;
