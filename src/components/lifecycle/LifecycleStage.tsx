@@ -127,7 +127,7 @@ export function LifecycleStageComponent({
     try {
       const taskTitle = `Complete ${name}${customerName ? ` for ${customerName}` : ''}`;
       const taskDescription = `Lifecycle stage: ${name}
-Owner: ${owner.name} (${owner.role})
+Owner Role: ${owner.role}
 Status: ${status.replace("-", " ")}
 ${notes ? `Notes: ${notes}` : ''}
 ${category ? `Category: ${category}` : ''}`;
@@ -198,11 +198,9 @@ ${category ? `Category: ${category}` : ''}`;
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Avatar className="h-6 w-6 flex-shrink-0">
-              <AvatarImage src={`https://avatar.vercel.sh/${owner.name}.png`} alt={owner.name} />
-              <AvatarFallback className="bg-secondary/50 text-secondary text-xs">{owner.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="bg-secondary/50 text-secondary text-xs">{owner.role.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="text-xs min-w-0 flex-1">
-              <p className="font-medium truncate">{owner.name}</p>
               <p className="text-muted-foreground truncate">{owner.role}</p>
             </div>
           </div>

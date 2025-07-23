@@ -178,8 +178,20 @@ export function LifecycleTracker({
     setIsLoading(true);
     setHasInitialized(true);
     
+    // Double-check that stages don't exist in database to prevent duplicates
+    const dbCustomerId = getDbCustomerId(customerId);
+    const { data: existingStages } = await supabase
+      .from('lifecycle_stages')
+      .select('id')
+      .eq('customer_id', dbCustomerId);
+    
+    if (existingStages && existingStages.length > 0) {
+      console.log("Stages already exist in database, skipping initialization");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const dbCustomerId = getDbCustomerId(customerId);
       
       // Fetch available staff members
       const { data: staffData, error: staffError } = await supabase
