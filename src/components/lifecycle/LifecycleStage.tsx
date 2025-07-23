@@ -173,9 +173,9 @@ ${category ? `Category: ${category}` : ''}`;
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base font-medium flex items-start gap-2 leading-tight">
+          <CardTitle className="text-sm font-medium flex items-start gap-2 leading-tight">
             {icon && <span className="flex-shrink-0 mt-0.5">{icon}</span>}
             <span className="break-words">{name}</span>
           </CardTitle>
@@ -183,28 +183,19 @@ ${category ? `Category: ${category}` : ''}`;
             variant="outline"
             size="sm"
             onClick={handleAddAsTask}
-            className="h-7 w-7 p-0 flex-shrink-0"
+            className="h-6 w-6 p-0 flex-shrink-0"
             title="Add as Task"
           >
             <Plus className="h-3 w-3" />
           </Button>
         </div>
         {category && (
-          <Badge variant="outline" className="bg-secondary/10 text-xs w-fit mt-2">{category}</Badge>
+          <Badge variant="outline" className="bg-secondary/10 text-xs w-fit mt-1">{category}</Badge>
         )}
       </CardHeader>
       
-      <CardContent className="flex-1 pt-0 pb-3">
-        <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-6 w-6 flex-shrink-0">
-              <AvatarFallback className="bg-secondary/50 text-secondary text-xs">{owner.role.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="text-xs min-w-0 flex-1">
-              <p className="text-muted-foreground truncate">{owner.role}</p>
-            </div>
-          </div>
-          
+      <CardContent className="flex-1 pt-0 pb-2">
+        <div className="space-y-2">
           <div className="flex items-center justify-start">
             <Popover>
               <PopoverTrigger asChild>
@@ -225,7 +216,6 @@ ${category ? `Category: ${category}` : ''}`;
               </PopoverContent>
             </Popover>
           </div>
-          
           {notes && (
             <div className="text-xs space-y-1">
               <p className="text-muted-foreground font-medium">Notes:</p>
@@ -235,7 +225,7 @@ ${category ? `Category: ${category}` : ''}`;
         </div>
       </CardContent>
       
-      <CardFooter className="flex justify-between items-center pt-0 gap-2">
+      <CardFooter className="flex justify-between items-center pt-0 gap-2 pb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="px-2 h-7 text-xs">
