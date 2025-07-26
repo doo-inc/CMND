@@ -282,23 +282,6 @@ const Partnerships = () => {
                           }
                         </span>
                       </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Expected Value:</span>
-                        <span className="font-medium text-green-600 dark:text-green-400">
-                          {partnership.expected_value && partnership.expected_value > 0
-                            ? `$${partnership.expected_value.toLocaleString()}`
-                            : 'Not specified'
-                          }
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Owner:</span>
-                        <span className="font-medium">
-                          {partnership.owner_id || 'Unassigned'}
-                        </span>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
