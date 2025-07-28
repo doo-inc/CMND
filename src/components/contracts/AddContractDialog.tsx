@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ContractDialogProps {
-  customerId: string | null;
+  customerId?: string | null;
   contract?: {
     id: string;
     name: string;
@@ -65,10 +65,41 @@ export function AddContractDialog({
   const [value, setValue] = useState(contract?.value?.toString() || "");
   const [document, setDocument] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState(customerId || "");
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+
+  // Fetch customers when dialog opens and no customerId is provided
+  useEffect(() => {
+    if (open && !customerId) {
+      fetchCustomers();
+    }
+  }, [open, customerId]);
+
+  const fetchCustomers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name")
+        .order("name");
+      
+      if (error) {
+        console.error("Error fetching customers:", error);
+        toast.error("Failed to load customers");
+        return;
+      }
+      
+      setCustomers(data || []);
+    } catch (err) {
+      console.error("Error in fetchCustomers:", err);
+      toast.error("Failed to load customers");
+    }
+  };
   
   const handleSubmit = async () => {
-    if (!customerId) {
-      toast.error("Customer ID is required");
+    const finalCustomerId = customerId || selectedCustomerId;
+    
+    if (!finalCustomerId) {
+      toast.error("Please select a customer");
       return;
     }
     
@@ -76,10 +107,21 @@ export function AddContractDialog({
       toast.error("Contract name is required");
       return;
     }
+
+    // Validate dates for active contracts
+    if (status === "active" && (!startDate || !endDate)) {
+      toast.error("Active contracts must have both start and end dates");
+      return;
+    }
+
+    if (startDate && endDate && endDate <= startDate) {
+      toast.error("End date must be after start date");
+      return;
+    }
     
     try {
       const contractData = {
-        customer_id: customerId,
+        customer_id: finalCustomerId,
         name,
         contract_number: contractNumber || null,
         status,
@@ -139,6 +181,7 @@ export function AddContractDialog({
       setValue("");
       setDocument(null);
       setDocumentName("");
+      setSelectedCustomerId("");
     }
   };
   
@@ -169,6 +212,24 @@ export function AddContractDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          {!customerId && (
+            <div className="grid gap-2">
+              <Label htmlFor="customer">Customer*</Label>
+              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                <SelectTrigger id="customer">
+                  <SelectValue placeholder="Select a customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="grid gap-2">
             <Label htmlFor="name">Contract Name*</Label>
             <Input 

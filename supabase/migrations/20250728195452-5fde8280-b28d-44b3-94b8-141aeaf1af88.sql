@@ -1,0 +1,21 @@
+-- Fix the security warning by setting search_path for the new function
+CREATE OR REPLACE FUNCTION validate_contract_dates()
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Ensure active contracts have both start and end dates
+  IF NEW.status = 'active' AND (NEW.start_date IS NULL OR NEW.end_date IS NULL) THEN
+    RAISE EXCEPTION 'Active contracts must have both start_date and end_date specified';
+  END IF;
+  
+  -- Ensure end date is after start date when both are provided
+  IF NEW.start_date IS NOT NULL AND NEW.end_date IS NOT NULL AND NEW.end_date <= NEW.start_date THEN
+    RAISE EXCEPTION 'Contract end_date must be after start_date';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
