@@ -20,13 +20,13 @@ export type Database = {
           contract_number: string | null
           created_at: string
           customer_id: string
-          end_date: string
+          end_date: string | null
           id: string
           name: string
           owner_id: string | null
           renewal_date: string | null
           setup_fee: number | null
-          start_date: string
+          start_date: string | null
           status: string | null
           terms: string | null
           updated_at: string
@@ -37,13 +37,13 @@ export type Database = {
           contract_number?: string | null
           created_at?: string
           customer_id: string
-          end_date: string
+          end_date?: string | null
           id?: string
           name: string
           owner_id?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
-          start_date: string
+          start_date?: string | null
           status?: string | null
           terms?: string | null
           updated_at?: string
@@ -54,13 +54,13 @@ export type Database = {
           contract_number?: string | null
           created_at?: string
           customer_id?: string
-          end_date?: string
+          end_date?: string | null
           id?: string
           name?: string
           owner_id?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
-          start_date?: string
+          start_date?: string | null
           status?: string | null
           terms?: string | null
           updated_at?: string
