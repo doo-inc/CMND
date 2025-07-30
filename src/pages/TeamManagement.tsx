@@ -292,22 +292,17 @@ const TeamManagementPage = () => {
 
   const createTeamNotification = async (notificationData: CreateNotificationParams) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-notification', {
+        body: {
           notification: notificationData
-        })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create notification');
+      if (error) {
+        throw error;
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error("Error creating team notification:", error);
     }
