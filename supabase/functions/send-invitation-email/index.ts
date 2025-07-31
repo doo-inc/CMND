@@ -29,6 +29,7 @@ serve(async (req) => {
 
   try {
     console.log("Processing invitation email request");
+    console.log("RESEND_API_KEY exists:", !!Deno.env.get("RESEND_API_KEY"));
     
     const { invitation }: EmailRequest = await req.json();
     console.log("Invitation data:", invitation);
@@ -45,6 +46,11 @@ serve(async (req) => {
     });
 
     console.log("Invitation email sent successfully:", emailResponse);
+    
+    if (emailResponse.error) {
+      console.error("Resend API error:", emailResponse.error);
+      throw new Error(`Resend API error: ${emailResponse.error.message || emailResponse.error}`);
+    }
 
     return new Response(
       JSON.stringify({ 
