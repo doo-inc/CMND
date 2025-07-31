@@ -56,6 +56,9 @@ export function AddContractDialog({
   const [contractNumber, setContractNumber] = useState(contract?.contract_number || "");
   const [type, setType] = useState(contract?.type || "Service Agreement");
   const [status, setStatus] = useState(contract?.status || "draft");
+  const [paymentFrequency, setPaymentFrequency] = useState("annual");
+  const [setupFee, setSetupFee] = useState("");
+  const [annualRate, setAnnualRate] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(
     contract?.start_date ? new Date(contract.start_date) : undefined
   );
@@ -125,7 +128,10 @@ export function AddContractDialog({
         name,
         contract_number: contractNumber || null,
         status,
+        payment_frequency: paymentFrequency,
         value: value ? parseInt(value, 10) : 0,
+        setup_fee: setupFee ? parseInt(setupFee, 10) : 0,
+        annual_rate: annualRate ? parseInt(annualRate, 10) : 0,
         start_date: startDate ? startDate.toISOString() : null,
         end_date: endDate ? endDate.toISOString() : null,
         terms: type || "Service Agreement"
@@ -176,9 +182,12 @@ export function AddContractDialog({
       setContractNumber("");
       setType("Service Agreement");
       setStatus("draft");
+      setPaymentFrequency("annual");
       setStartDate(undefined);
       setEndDate(undefined);
       setValue("");
+      setSetupFee("");
+      setAnnualRate("");
       setDocument(null);
       setDocumentName("");
       setSelectedCustomerId("");
@@ -279,6 +288,20 @@ export function AddContractDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="paymentFrequency">Payment Frequency</Label>
+            <Select value={paymentFrequency} onValueChange={setPaymentFrequency}>
+              <SelectTrigger id="paymentFrequency">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="semi_annual">Semi-Annual</SelectItem>
+                <SelectItem value="annual">Annual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
@@ -334,14 +357,36 @@ export function AddContractDialog({
             </div>
           </div>
           
-          <div className="grid gap-2">
-            <Label htmlFor="value">Contract Value ($)</Label>
-            <Input
-              id="value"
-              value={value}
-              onChange={(e) => setValue(e.target.value.replace(/[^0-9.]/g, ''))}
-              placeholder="Enter contract value"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="setupFee">Setup Fee ($)</Label>
+              <Input
+                id="setupFee"
+                value={setupFee}
+                onChange={(e) => setSetupFee(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="Enter setup fee"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="annualRate">Annual Rate ($)</Label>
+              <Input
+                id="annualRate"
+                value={annualRate}
+                onChange={(e) => setAnnualRate(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="Enter annual rate"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="value">Legacy Value ($)</Label>
+              <Input
+                id="value"
+                value={value}
+                onChange={(e) => setValue(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="Legacy contract value"
+              />
+            </div>
           </div>
           
           <div className="grid gap-2">

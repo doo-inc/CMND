@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { getPaymentFrequencyDisplay } from "@/utils/paymentUtils";
 
 export interface Contract {
   id?: string;
@@ -13,6 +14,7 @@ export interface Contract {
   value: number;
   setup_fee: number;
   annual_rate: number;
+  payment_frequency?: string;
   start_date: string;
   end_date: string;
   status: "active" | "pending" | "expired" | "draft";
@@ -79,6 +81,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
             value: contract.value,
             setup_fee: contract.setup_fee || 0,
             annual_rate: contract.annual_rate || 0,
+            payment_frequency: contract.payment_frequency || "annual",
             start_date: contract.start_date,
             end_date: contract.end_date,
             status: contract.status as Contract["status"],
@@ -307,6 +310,9 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
                         <h4 className="font-semibold text-lg">{contract.name}</h4>
                         <Badge className={getStatusColor(contract.status)}>
                           {contract.status}
+                        </Badge>
+                        <Badge variant="outline">
+                          {getPaymentFrequencyDisplay(contract.payment_frequency || "annual")}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
+import { CustomerPayments } from "@/components/customers/CustomerPayments";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -316,6 +317,7 @@ const CustomerDetails = () => {
         <Tabs defaultValue="lifecycle" className="space-y-4">
           <TabsList>
             <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
@@ -327,6 +329,10 @@ const CustomerDetails = () => {
               stages={stages}
               onStagesUpdate={handleStagesUpdate}
             />
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-4">
+            <CustomerPayments customerId={id || ""} />
           </TabsContent>
 
           <TabsContent value="timeline" className="space-y-4">

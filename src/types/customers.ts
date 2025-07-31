@@ -66,7 +66,10 @@ export interface Contract {
   customer_id: string;
   name: string;
   status?: string | null;
+  payment_frequency?: string | null;
   value: number;
+  setup_fee?: number | null;
+  annual_rate?: number | null;
   start_date: string;
   end_date: string;
   renewal_date?: string | null;
