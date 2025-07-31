@@ -205,9 +205,14 @@ const TeamManagementPage = () => {
         return;
       }
 
-      // Create invitation link
-      const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
+      // Create invitation link with URL-encoded token
+      const encodedToken = encodeURIComponent(token);
+      const inviteLink = `${window.location.origin}/accept-invite?token=${encodedToken}`;
       setInvitationLink(inviteLink);
+      
+      console.log('Generated token:', token);
+      console.log('Encoded token:', encodedToken);
+      console.log('Invitation link:', inviteLink);
       
       // Send invitation email via edge function
       try {

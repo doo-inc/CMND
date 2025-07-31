@@ -19,7 +19,8 @@ interface InvitationData {
 export const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token');
+  const rawToken = searchParams.get('token');
+  const token = rawToken ? decodeURIComponent(rawToken) : null;
   
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +33,8 @@ export const AcceptInvite = () => {
     // Add debug logging
     console.log('AcceptInvite component mounted');
     console.log('Current URL:', window.location.href);
-    console.log('Token from URL:', token);
+    console.log('Raw token from URL:', rawToken);
+    console.log('Decoded token:', token);
     
     if (token) {
       validateInvitationToken();
@@ -45,6 +47,13 @@ export const AcceptInvite = () => {
   const validateInvitationToken = async () => {
     try {
       console.log('Validating invitation token:', token);
+      console.log('Token length:', token?.length);
+      console.log('Token type:', typeof token);
+      
+      if (!token) {
+        setTokenError('No invitation token provided');
+        return;
+      }
       
       // Query invitations table directly
       const { data, error } = await supabase
@@ -57,7 +66,13 @@ export const AcceptInvite = () => {
 
       if (error) {
         console.error('Error validating invitation:', error);
-        setTokenError('This invitation link has expired or is invalid');
+        console.error('Database error details:', error.details, error.hint, error.code);
+        
+        if (error.code === 'PGRST116') {
+          setTokenError('This invitation link has expired, been used, or is invalid');
+        } else {
+          setTokenError('Failed to validate invitation token');
+        }
         return;
       }
 
