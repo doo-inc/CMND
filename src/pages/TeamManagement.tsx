@@ -216,7 +216,10 @@ const TeamManagementPage = () => {
       
       // Send invitation email via edge function
       try {
-        console.log('About to invoke send-invitation-email function with payload:', {
+        console.log('About to invoke send-invitation-email function');
+        console.log('Supabase client authenticated:', !!supabase.auth.getUser());
+        
+        const payload = {
           invitation: {
             email: data.email,
             role: data.role,
@@ -224,25 +227,25 @@ const TeamManagementPage = () => {
             invitedByName: profile?.full_name || 'Team member',
             companyName: 'DOO Command'
           }
-        });
+        };
+        
+        console.log('Function payload:', payload);
         
         const response = await supabase.functions.invoke('send-invitation-email', {
-          body: {
-            invitation: {
-              email: data.email,
-              role: data.role,
-              inviteLink: inviteLink,
-              invitedByName: profile?.full_name || 'Team member',
-              companyName: 'DOO Command'
-            }
-          }
+          body: payload
         });
 
-        console.log('Edge function response:', response);
+        console.log('Edge function full response:', response);
+        console.log('Response data:', response.data);
+        console.log('Response error:', response.error);
 
         if (response.error) {
           console.error('Error sending invitation email:', response.error);
-          toast.error('Email failed to send. Use the copy link button below to share manually.');
+          toast.error(`Email failed to send: ${response.error.message || 'Unknown error'}. Use the copy link button below to share manually.`);
+          console.log('Manual invitation link:', inviteLink);
+        } else if (response.data && response.data.error) {
+          console.error('Function returned error:', response.data.error);
+          toast.error(`Email failed to send: ${response.data.error}. Use the copy link button below to share manually.`);
           console.log('Manual invitation link:', inviteLink);
         } else {
           console.log('Email sent successfully:', response.data);
@@ -251,7 +254,8 @@ const TeamManagementPage = () => {
         }
       } catch (emailError) {
         console.error('Error invoking email function:', emailError);
-        toast.error('Email failed to send. Use the copy link button below to share manually.');
+        console.error('Error details:', JSON.stringify(emailError, null, 2));
+        toast.error(`Email failed to send: ${emailError.message || 'Network error'}. Use the copy link button below to share manually.`);
         console.log('Manual invitation link:', inviteLink);
       }
       
