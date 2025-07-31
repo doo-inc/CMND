@@ -24,6 +24,7 @@ export type Database = {
           id: string
           name: string
           owner_id: string | null
+          payment_frequency: string | null
           renewal_date: string | null
           setup_fee: number | null
           start_date: string | null
@@ -41,6 +42,7 @@ export type Database = {
           id?: string
           name: string
           owner_id?: string | null
+          payment_frequency?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
           start_date?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string | null
+          payment_frequency?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
           start_date?: string | null
@@ -697,6 +700,48 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          customer_id: string
+          due_date: string
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          contract_id: string
+          created_at?: string
+          customer_id: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          customer_id?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -947,6 +992,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -988,6 +1037,10 @@ export type Database = {
         Returns: boolean
       }
       update_customer_churn_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_payment_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
