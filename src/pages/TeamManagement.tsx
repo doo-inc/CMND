@@ -216,7 +216,17 @@ const TeamManagementPage = () => {
       
       // Send invitation email via edge function
       try {
-        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        console.log('About to invoke send-invitation-email function with payload:', {
+          invitation: {
+            email: data.email,
+            role: data.role,
+            inviteLink: inviteLink,
+            invitedByName: profile?.full_name || 'Team member',
+            companyName: 'DOO Command'
+          }
+        });
+        
+        const response = await supabase.functions.invoke('send-invitation-email', {
           body: {
             invitation: {
               email: data.email,
@@ -228,11 +238,14 @@ const TeamManagementPage = () => {
           }
         });
 
-        if (emailError) {
-          console.error('Error sending invitation email:', emailError);
+        console.log('Edge function response:', response);
+
+        if (response.error) {
+          console.error('Error sending invitation email:', response.error);
           toast.error('Email failed to send. Use the copy link button below to share manually.');
           console.log('Manual invitation link:', inviteLink);
         } else {
+          console.log('Email sent successfully:', response.data);
           toast.success(`Invitation sent successfully to ${data.email}!`);
           setInvitationLink(''); // Clear link if email was successful
         }
