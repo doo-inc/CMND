@@ -36,9 +36,9 @@ serve(async (req) => {
     // Build email content
     const emailContent = buildInvitationEmailContent(invitation);
 
-    // Send email using Resend
+    // Send email using Resend - using verified domain
     const emailResponse = await resend.emails.send({
-      from: "DOO Command <hello@doo.ooo>",
+      from: "DOO Command <onboarding@resend.dev>",
       to: [invitation.email],
       subject: `You're invited to join ${invitation.companyName || 'our team'} on DOO Command`,
       html: emailContent,

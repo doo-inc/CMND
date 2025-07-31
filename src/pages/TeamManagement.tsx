@@ -84,6 +84,7 @@ const TeamManagementPage = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [invitationLink, setInvitationLink] = useState<string>('');
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteFormSchema),
@@ -206,6 +207,7 @@ const TeamManagementPage = () => {
 
       // Create invitation link
       const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
+      setInvitationLink(inviteLink);
       
       // Send invitation email via edge function
       try {
@@ -223,14 +225,15 @@ const TeamManagementPage = () => {
 
         if (emailError) {
           console.error('Error sending invitation email:', emailError);
-          toast.error('Invitation created but email failed to send. Please share the link manually.');
+          toast.error('Email failed to send. Use the copy link button below to share manually.');
           console.log('Manual invitation link:', inviteLink);
         } else {
           toast.success(`Invitation sent successfully to ${data.email}!`);
+          setInvitationLink(''); // Clear link if email was successful
         }
       } catch (emailError) {
         console.error('Error invoking email function:', emailError);
-        toast.error('Invitation created but email failed to send. Please share the link manually.');
+        toast.error('Email failed to send. Use the copy link button below to share manually.');
         console.log('Manual invitation link:', inviteLink);
       }
       
@@ -288,6 +291,13 @@ const TeamManagementPage = () => {
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const copyInvitationLink = () => {
+    if (invitationLink) {
+      navigator.clipboard.writeText(invitationLink);
+      toast.success("Invitation link copied to clipboard!");
+    }
   };
 
   const createTeamNotification = async (notificationData: CreateNotificationParams) => {
@@ -374,6 +384,35 @@ const TeamManagementPage = () => {
                       </FormItem>
                     )}
                   />
+                  
+                  {invitationLink && (
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-muted">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Manual Invitation Link:</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          value={invitationLink} 
+                          readOnly 
+                          className="text-xs font-mono bg-background"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={copyInvitationLink}
+                          className="shrink-0"
+                        >
+                          Copy Link
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Share this link manually since the email failed to send.
+                      </p>
+                    </div>
+                  )}
+                  
                   <DialogFooter>
                     <Button type="submit" className="glass-button" disabled={isSubmitting}>
                       {isSubmitting ? "Sending Invitation..." : "Send Invitation"}
