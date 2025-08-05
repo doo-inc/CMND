@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
+import { CustomerDocuments } from "@/components/customers/CustomerDocuments";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -318,6 +319,7 @@ const CustomerDetails = () => {
             <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
           </TabsList>
 
           <TabsContent value="lifecycle" className="space-y-4">
@@ -335,6 +337,10 @@ const CustomerDetails = () => {
 
           <TabsContent value="feedback" className="space-y-4">
             <CustomerFeedback customerId={id || null} />
+          </TabsContent>
+
+          <TabsContent value="documents" className="space-y-4">
+            <CustomerDocuments customerId={id || ""} />
           </TabsContent>
         </Tabs>
       </div>

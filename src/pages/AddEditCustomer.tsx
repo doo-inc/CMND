@@ -11,6 +11,10 @@ import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-di
 
 // Helper function to save documents to database
 const saveDocumentsToDatabase = async (customerId: string, documents: any[]) => {
+  // Get current user ID for uploaded_by field
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
   // Get existing documents in database to avoid duplicates
   const { data: existingDocs } = await supabase
     .from('documents')
@@ -20,6 +24,13 @@ const saveDocumentsToDatabase = async (customerId: string, documents: any[]) => 
   const existingFilePaths = new Set(existingDocs?.map(doc => doc.file_path) || []);
   const newDocuments = documents.filter(doc => !doc.id && !existingFilePaths.has(doc.file_path));
 
+  console.log('saveDocumentsToDatabase: Processing documents:', {
+    totalDocuments: documents.length,
+    newDocuments: newDocuments.length,
+    existingDocuments: documents.filter(doc => doc.id).length,
+    currentUserId
+  });
+
   // Insert new documents
   if (newDocuments.length > 0) {
     const documentsToInsert = newDocuments.map(doc => ({
@@ -27,8 +38,11 @@ const saveDocumentsToDatabase = async (customerId: string, documents: any[]) => 
       name: doc.name,
       file_path: doc.file_path,
       document_type: doc.document_type,
-      file_size: doc.file_size || 0
+      file_size: doc.file_size || 0,
+      uploaded_by: currentUserId
     }));
+
+    console.log('saveDocumentsToDatabase: Inserting documents:', documentsToInsert);
 
     const { error } = await supabase
       .from('documents')
@@ -38,11 +52,15 @@ const saveDocumentsToDatabase = async (customerId: string, documents: any[]) => 
       console.error('Error saving documents to database:', error);
       throw error;
     }
+    
+    console.log('saveDocumentsToDatabase: Successfully inserted new documents');
   }
 
   // Update existing documents (for document type changes)
   const existingDocsToUpdate = documents.filter(doc => doc.id);
   for (const doc of existingDocsToUpdate) {
+    console.log('saveDocumentsToDatabase: Updating document:', doc.id);
+    
     const { error } = await supabase
       .from('documents')
       .update({
