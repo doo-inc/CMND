@@ -4,14 +4,16 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Building, DollarSign, Calendar, Tag, User, Briefcase } from "lucide-react";
+import { ArrowLeft, Edit, Building, DollarSign, Calendar, Tag, User, Briefcase, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 import { CustomerDocuments } from "@/components/customers/CustomerDocuments";
-import { useQuery } from "@tanstack/react-query";
+import { ChurnConfirmationDialog } from "@/components/customers/ChurnConfirmationDialog";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 import { CustomerData } from "@/types/customers";
 import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
@@ -19,7 +21,9 @@ import { LifecycleStageProps } from "@/components/lifecycle/LifecycleStage";
 const CustomerDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [stages, setStages] = useState<LifecycleStageProps[]>([]);
+  const [showChurnDialog, setShowChurnDialog] = useState(false);
 
   console.log("CustomerDetails component loaded with ID:", id);
 
@@ -108,6 +112,32 @@ const CustomerDetails = () => {
   const handleStagesUpdate = (updatedStages: LifecycleStageProps[]) => {
     setStages(updatedStages);
   };
+
+  // Churn mutation
+  const churnMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("No customer ID");
+      
+      const { error } = await supabase
+        .from('customers')
+        .update({ 
+          status: 'churned',
+          churn_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Customer marked as churned");
+      setShowChurnDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['customer-details', id] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+    onError: (error) => {
+      toast.error("Failed to mark customer as churned: " + error.message);
+    }
+  });
 
   if (isLoading) {
     return (
@@ -201,10 +231,22 @@ const CustomerDetails = () => {
               </div>
             </div>
           </div>
-          <Button onClick={() => navigate(`/customers/${id}/edit`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Customer
-          </Button>
+          <div className="flex space-x-2">
+            {customer.status !== 'churned' && (
+              <Button 
+                variant="outline" 
+                onClick={() => setShowChurnDialog(true)}
+                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <UserX className="mr-2 h-4 w-4" />
+                Mark as Churned
+              </Button>
+            )}
+            <Button onClick={() => navigate(`/customers/${id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Customer
+            </Button>
+          </div>
         </div>
 
         {/* Customer Overview Cards */}
@@ -343,6 +385,15 @@ const CustomerDetails = () => {
             <CustomerDocuments customerId={id || ""} />
           </TabsContent>
         </Tabs>
+
+        {/* Churn Confirmation Dialog */}
+        <ChurnConfirmationDialog
+          open={showChurnDialog}
+          onOpenChange={setShowChurnDialog}
+          onConfirm={() => churnMutation.mutate()}
+          customerName={customer.name}
+          isProcessing={churnMutation.isPending}
+        />
       </div>
     </DashboardLayout>
   );
