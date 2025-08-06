@@ -34,24 +34,43 @@ const CustomerDetails = () => {
     mutationFn: async () => {
       if (!id) throw new Error("No customer ID");
       
-      const { error } = await supabase
+      console.log(`Starting churn process for customer ${id}`);
+      
+      const updateData = { 
+        status: 'churned' as const,
+        churn_date: new Date().toISOString().split('T')[0],
+        churn_method: 'manual' as const
+      };
+      
+      console.log('Churn update data:', updateData);
+      
+      const { data, error } = await supabase
         .from('customers')
-        .update({ 
-          status: 'churned',
-          churn_date: new Date().toISOString().split('T')[0],
-          churn_method: 'manual'
-        })
-        .eq('id', id);
+        .update(updateData)
+        .eq('id', id)
+        .select('id, status, churn_date, churn_method');
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error churning customer:", error);
+        throw new Error(`Failed to churn customer: ${error.message}`);
+      }
+      
+      if (!data || data.length === 0) {
+        throw new Error("No customer found with the provided ID");
+      }
+      
+      console.log('Churn successful, updated customer:', data[0]);
+      return data[0];
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Churn mutation completed successfully:", data);
       toast.success("Customer marked as churned");
       setShowChurnDialog(false);
       queryClient.invalidateQueries({ queryKey: ['customer-details', id] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (error) => {
+      console.error("Failed to churn customer:", error);
       toast.error("Failed to mark customer as churned: " + error.message);
     }
   });
