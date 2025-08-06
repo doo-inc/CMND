@@ -107,10 +107,12 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
             <span className={getStatusClass(customer.status)}>
               {(customer.status || "not-started").replace("-", " ")}
             </span>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <User className="h-3 w-3 mr-1" />
-              <span>{customer.owner.name}</span>
-            </div>
+            {customer.owner.name && customer.owner.name !== "Unassigned" && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <User className="h-3 w-3 mr-1" />
+                <span>{customer.owner.name}</span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
