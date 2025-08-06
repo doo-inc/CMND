@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
 import { 
@@ -47,6 +48,7 @@ const convertDefaultStageToProps = (defaultStage: any): LifecycleStageProps => {
 };
 
 const Lifecycle = () => {
+  const { customerId: urlCustomerId } = useParams();
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [customerList, setCustomerList] = useState<Customer[]>([]);
   const [customerStages, setCustomerStages] = useState<LifecycleStageProps[]>([]);
@@ -110,7 +112,13 @@ const Lifecycle = () => {
             status: customer.status as "not-started" | "in-progress" | "done" | "blocked" | "churned" | null
           }));
           setCustomerList(typedCustomers);
-          setSelectedCustomer(data[0].id);
+          
+          // If URL contains customerId, use that; otherwise use first customer
+          if (urlCustomerId) {
+            setSelectedCustomer(urlCustomerId);
+          } else {
+            setSelectedCustomer(data[0].id);
+          }
         } else {
           setCustomerList([]);
         }

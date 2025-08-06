@@ -329,8 +329,8 @@ export default function AddEditCustomer() {
         description: `Customer ${id ? 'updated' : 'created'} successfully!`,
       });
 
-      // Navigate back with refresh state to trigger data reload
-      navigate('/customers', { state: { refresh: true } });
+      // Navigate to lifecycle page with the customer ID
+      navigate(`/lifecycle/${customerId}`);
     } catch (error) {
       console.error('Error saving customer:', error);
       toast({

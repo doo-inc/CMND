@@ -83,6 +83,7 @@ const App = () => {
                   <Route path="/notifications" element={<ProtectedRoute><LazyNotifications /></ProtectedRoute>} />
                   <Route path="/team" element={<ProtectedRoute><LazyTeamManagement /></ProtectedRoute>} />
                   <Route path="/lifecycle" element={<ProtectedRoute><LazyLifecycle /></ProtectedRoute>} />
+                  <Route path="/lifecycle/:customerId" element={<ProtectedRoute><LazyLifecycle /></ProtectedRoute>} />
                   <Route path="/contracts" element={<ProtectedRoute><LazyContracts /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><LazySettings /></ProtectedRoute>} />
                   
