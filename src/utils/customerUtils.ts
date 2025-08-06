@@ -394,36 +394,55 @@ export const calculateSalesLifecycle = async (): Promise<number> => {
 
 export const calculateChurnRate = async (periodDays: number = 30): Promise<string> => {
   try {
-    // Calculate proper time-based churn rate
     const periodStartDate = new Date();
     periodStartDate.setDate(periodStartDate.getDate() - periodDays);
     
-    // Get customers who were live at the start of the period
+    // Get customers who were live at the start of the period (traditional method)
     const { data: liveCustomersAtStart, error: liveStartError } = await supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .or('status.eq.done,stage.eq.Live')
-      .lt('created_at', periodStartDate.toISOString()); // Were already customers at period start
+      .lt('created_at', periodStartDate.toISOString());
 
-    // Get customers who were manually churned during the period
+    // Get customers who churned during the period
     const { data: churnedCustomers, error: churnError } = await supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .eq('status', 'churned')
-      .eq('churn_method', 'manual')
       .gte('churn_date', periodStartDate.toISOString())
       .lte('churn_date', new Date().toISOString());
 
-    if (liveStartError || churnError) {
-      console.error("Error calculating churn rate:", liveStartError || churnError);
+    // Get total customers at end of period (for simple ratio method)
+    const { data: totalCustomers, error: totalError } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact' })
+      .neq('status', 'churned');
+
+    if (liveStartError || churnError || totalError) {
+      console.error("Error calculating churn rate:", liveStartError || churnError || totalError);
       return "0.0%";
     }
 
     const liveCount = liveCustomersAtStart?.length || 0;
     const churnedCount = churnedCustomers?.length || 0;
+    const totalCount = totalCustomers?.length || 0;
 
-    // Churn rate = customers who churned / customers who were live at start of period
-    const churnRate = liveCount > 0 ? (churnedCount / liveCount) * 100 : 0;
+    // Use simple ratio method for new businesses (when few historical customers)
+    // Traditional method for established businesses
+    let churnRate: number;
+    
+    if (liveCount < 3) {
+      // Simple ratio: churned customers / total active customers
+      // Better for new businesses with limited historical data
+      churnRate = totalCount > 0 ? (churnedCount / (totalCount + churnedCount)) * 100 : 0;
+      console.log(`Using simple ratio method: ${churnedCount} churned / ${totalCount + churnedCount} total = ${churnRate.toFixed(1)}%`);
+    } else {
+      // Traditional cohort method: churned customers / customers at period start
+      // Better for established businesses with historical data
+      churnRate = liveCount > 0 ? (churnedCount / liveCount) * 100 : 0;
+      console.log(`Using traditional method: ${churnedCount} churned / ${liveCount} at period start = ${churnRate.toFixed(1)}%`);
+    }
+
     return `${churnRate.toFixed(1)}%`;
   } catch (error) {
     console.error("Error in calculateChurnRate:", error);
