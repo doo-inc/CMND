@@ -179,8 +179,9 @@ export const useSubscriptionData = () => {
   const processCustomers = (customers: any[]): ProcessedCustomer[] => {
     return customers.map(customer => {
       const today = new Date();
-      // Subscription tracker now uses NEXT PAYMENT, not contract end date
-      const paymentDate = customer.next_payment_date ? new Date(customer.next_payment_date) : null;
+      // For renewal tracking: prioritize contract end date over next payment date
+      // Contract end date represents when the contract/subscription expires (renewal needed)
+      const renewalDate = customer.effective_end_date ? new Date(customer.effective_end_date) : null;
       const startDate = customer.effective_start_date ? new Date(customer.effective_start_date) : null;
       
       let timeLeft = "";
@@ -188,17 +189,14 @@ export const useSubscriptionData = () => {
       let delta = 0;
       let progressPercentage = 0;
 
-      if (paymentDate) {
-        delta = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (renewalDate) {
+        delta = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         
         if (startDate) {
-          // Keep progress based on contract period if known
-          const endDateForProgress = customer.effective_end_date ? new Date(customer.effective_end_date) : null;
-          if (endDateForProgress) {
-            const totalDays = Math.ceil((endDateForProgress.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-            const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-            progressPercentage = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
-          }
+          // Progress based on contract period
+          const totalDays = Math.ceil((renewalDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          progressPercentage = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
         }
         
         if (delta > 60) {
@@ -214,13 +212,13 @@ export const useSubscriptionData = () => {
           timeLeft = `${delta} days left`;
         } else if (delta === 0) {
           status = "expiring_soon";
-          timeLeft = "Due today";
+          timeLeft = "Expires today";
         } else {
           status = "expired";
-          timeLeft = "Payment overdue";
+          timeLeft = "Contract expired";
         }
       } else {
-        timeLeft = "No upcoming payment";
+        timeLeft = "No contract end date";
         delta = -999999;
       }
 
@@ -228,8 +226,8 @@ export const useSubscriptionData = () => {
         ...customer,
         // Use effective values from contracts
         annual_rate: customer.effective_annual_rate,
-        // Show the next payment date if available, otherwise use contract end date
-        subscription_end_date: customer.next_payment_date || customer.effective_end_date,
+        // Show the contract end date as the renewal/subscription end date
+        subscription_end_date: customer.effective_end_date,
         timeLeft,
         status,
         delta,

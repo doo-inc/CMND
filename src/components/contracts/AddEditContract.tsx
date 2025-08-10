@@ -64,6 +64,11 @@ export function AddEditContract({ contract, isEditing = false, onSave }: AddEdit
     paymentFrequency: contract?.paymentFrequency || "annual",
   });
 
+  // Debug logging to see what contract data we're getting
+  console.log("AddEditContract - contract data:", contract);
+  console.log("AddEditContract - isEditing:", isEditing);
+  console.log("AddEditContract - formData:", formData);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
