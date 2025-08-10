@@ -64,7 +64,7 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
           stage
         )
       `)
-      .or('status.eq.active,status.is.null')
+      .or('status.eq.active,status.eq.pending,status.is.null')
       .gt('end_date', new Date().toISOString())
       .neq('customers.status', 'churned');
 
@@ -249,7 +249,7 @@ export const getMRR = async (): Promise<number> => {
     const { data, error } = await supabase
       .from('contracts')
       .select('annual_rate, end_date, status')
-      .or('status.eq.active,status.is.null')
+      .or('status.eq.active,status.eq.pending,status.is.null')
       .gt('end_date', new Date().toISOString());
 
     if (error) {
