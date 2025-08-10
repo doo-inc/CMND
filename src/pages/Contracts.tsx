@@ -104,6 +104,9 @@ const ContractsPage = () => {
           startDate: contract.start_date ? new Date(contract.start_date).toISOString().split('T')[0] : "-",
           endDate: contract.end_date ? new Date(contract.end_date).toISOString().split('T')[0] : "-",
           value: `$${contract.value.toLocaleString()}`,
+          setupFee: contract.setup_fee ? `${contract.setup_fee}` : "0",
+          annualRate: contract.annual_rate ? `${contract.annual_rate}` : "0",
+          paymentFrequency: (contract.payment_frequency as "annual" | "quarterly" | "semi-annual" | "one-time") || "annual",
           documentUrl: undefined,
           documentName: undefined
         }));
@@ -168,6 +171,9 @@ const ContractsPage = () => {
           startDate: newContract.startDate || "-",
           endDate: newContract.endDate || "-",
           value: newContract.value || "$0",
+          setupFee: newContract.setupFee || "0",
+          annualRate: newContract.annualRate || "0",
+          paymentFrequency: newContract.paymentFrequency || "annual",
           documentUrl: newContract.documentUrl,
           documentName: newContract.documentName
         };

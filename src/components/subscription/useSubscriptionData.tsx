@@ -228,8 +228,8 @@ export const useSubscriptionData = () => {
         ...customer,
         // Use effective values from contracts
         annual_rate: customer.effective_annual_rate,
-        // Show the next payment date in the tracker
-        subscription_end_date: customer.next_payment_date,
+        // Show the next payment date if available, otherwise use contract end date
+        subscription_end_date: customer.next_payment_date || customer.effective_end_date,
         timeLeft,
         status,
         delta,
