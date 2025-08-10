@@ -38,6 +38,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { contractQueryKeys, calculateContractValue, formatCurrency } from "@/utils/contractUtils";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ContractsByYearView from "@/components/contracts/ContractsByYearView";
 
 const getStatusBadge = (status: string) => {
   switch(status) {
@@ -271,184 +273,197 @@ const ContractsPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold">Contracts</h1>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                type="search" 
-                placeholder="Search contracts or numbers..." 
-                className="pl-8 glass-input w-[250px]" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" onClick={refreshContracts}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="glass-input">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
+      <Tabs defaultValue="all" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="by-year">By Year</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-2xl font-bold">Contracts</h1>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    type="search" 
+                    placeholder="Search contracts or numbers..." 
+                    className="pl-8 glass-input w-[250px]" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline" onClick={refreshContracts}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="glass-card">
-                <DropdownMenuItem onClick={() => handleFilter(null)}>All Contracts</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilter('active')}>Active Contracts</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilter('pending')}>Pending Approval</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilter('expired')}>Expired</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilter('draft')}>Drafts</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <AddEditContract onSave={handleAddContract} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="glass-input">
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filter
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="glass-card">
+                    <DropdownMenuItem onClick={() => handleFilter(null)}>All Contracts</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilter('active')}>Active Contracts</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilter('pending')}>Pending Approval</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilter('expired')}>Expired</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilter('draft')}>Drafts</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AddEditContract onSave={handleAddContract} />
+              </div>
+            </div>
+
+            <Card className="glass-card animate-fade-in">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl flex items-center">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Contract Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 mb-5">
+                  <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.1s" }}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Active Contracts</p>
+                        <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'active').length}</h3>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
+                        <FileCheck className="h-5 w-5 text-doo-purple-600" />
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.2s" }}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Pending Approval</p>
+                        <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'pending').length}</h3>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
+                        <FileWarning className="h-5 w-5 text-doo-purple-600" />
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.3s" }}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Expiring Soon</p>
+                        <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'expired').length}</h3>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-doo-purple-600" />
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.4s" }}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Value</p>
+                        <h3 className="text-2xl font-bold">
+                          {formatCurrency(contracts.reduce((sum, contract) => {
+                            const numericValue = Number(contract.value.replace(/[^0-9.-]+/g, ""));
+                            return sum + (isNaN(numericValue) ? 0 : numericValue);
+                          }, 0))}
+                        </h3>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
+                        <FileSignature className="h-5 w-5 text-doo-purple-600" />
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Contract #</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead>End Date</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        Array(3).fill(0).map((_, index) => (
+                          <TableRow key={`loading-${index}`}>
+                            <TableCell colSpan={8}>
+                              <div className="h-12 bg-gray-100 animate-pulse rounded"></div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : filteredContracts.length > 0 ? (
+                        filteredContracts.map((contract, index) => (
+                          <TableRow key={contract.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
+                            <TableCell className="font-mono text-sm">
+                              {contract.contractNumber || <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                            <TableCell className="font-medium">{contract.customer}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {getContractIcon(contract.type)}
+                                <span className="ml-2">{contract.type}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                            <TableCell>{contract.startDate}</TableCell>
+                            <TableCell>{contract.endDate}</TableCell>
+                            <TableCell>{contract.value}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-1">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="glass-card">
+                                    <DropdownMenuItem>
+                                      <AddEditContract 
+                                        contract={contract}
+                                        isEditing={true}
+                                        onSave={(updatedContract) => handleUpdateContract(contract.id, updatedContract)}
+                                      />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDownloadContract(contract)}
+                                      disabled={!contract.documentUrl}
+                                    >
+                                      Download
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No contracts found. Try adjusting your filters or create a new contract.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        </TabsContent>
 
-        <Card className="glass-card animate-fade-in">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              Contract Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4 mb-5">
-              <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.1s" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Contracts</p>
-                    <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'active').length}</h3>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
-                    <FileCheck className="h-5 w-5 text-doo-purple-600" />
-                  </div>
-                </div>
-              </Card>
-              <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.2s" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending Approval</p>
-                    <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'pending').length}</h3>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
-                    <FileWarning className="h-5 w-5 text-doo-purple-600" />
-                  </div>
-                </div>
-              </Card>
-              <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.3s" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Expiring Soon</p>
-                    <h3 className="text-2xl font-bold">{contracts.filter(c => c.status === 'expired').length}</h3>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-doo-purple-600" />
-                  </div>
-                </div>
-              </Card>
-              <Card className="glass-card p-4 animate-bounce-in" style={{ animationDelay: "0.4s" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Value</p>
-                    <h3 className="text-2xl font-bold">
-                      {formatCurrency(contracts.reduce((sum, contract) => {
-                        const numericValue = Number(contract.value.replace(/[^0-9.-]+/g, ""));
-                        return sum + (isNaN(numericValue) ? 0 : numericValue);
-                      }, 0))}
-                    </h3>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-doo-purple-100 flex items-center justify-center">
-                    <FileSignature className="h-5 w-5 text-doo-purple-600" />
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Contract #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    Array(3).fill(0).map((_, index) => (
-                      <TableRow key={`loading-${index}`}>
-                        <TableCell colSpan={8}>
-                          <div className="h-12 bg-gray-100 animate-pulse rounded"></div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : filteredContracts.length > 0 ? (
-                    filteredContracts.map((contract, index) => (
-                      <TableRow key={contract.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.05}s` }}>
-                        <TableCell className="font-mono text-sm">
-                          {contract.contractNumber || <span className="text-muted-foreground">-</span>}
-                        </TableCell>
-                        <TableCell className="font-medium">{contract.customer}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            {getContractIcon(contract.type)}
-                            <span className="ml-2">{contract.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                        <TableCell>{contract.startDate}</TableCell>
-                        <TableCell>{contract.endDate}</TableCell>
-                        <TableCell>{contract.value}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="glass-card">
-                                <DropdownMenuItem>
-                                  <AddEditContract 
-                                    contract={contract}
-                                    isEditing={true}
-                                    onSave={(updatedContract) => handleUpdateContract(contract.id, updatedContract)}
-                                  />
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleDownloadContract(contract)}
-                                  disabled={!contract.documentUrl}
-                                >
-                                  Download
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No contracts found. Try adjusting your filters or create a new contract.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="by-year">
+          <ContractsByYearView />
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 };
