@@ -229,9 +229,9 @@ const Index = () => {
       icon: <TrendingUp className="h-6 w-6" />
     },
     {
-      title: "Active Contracts",
+      title: "Total Revenue",
       value: formattedActiveContracts,
-      description: "Current contract value",
+      description: "All revenue (current year)",
       icon: <DollarSign className="h-6 w-6" />
     },
     {

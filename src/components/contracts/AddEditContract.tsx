@@ -35,6 +35,9 @@ export interface ContractData {
   startDate: string;
   endDate: string;
   value: string;
+  setupFee?: string;
+  annualRate?: string;
+  paymentFrequency?: "annual" | "quarterly" | "semi-annual" | "one-time";
   documentUrl?: string;
   documentName?: string;
 }
@@ -56,6 +59,9 @@ export function AddEditContract({ contract, isEditing = false, onSave }: AddEdit
     startDate: contract?.startDate || "",
     endDate: contract?.endDate || "",
     value: contract?.value || "",
+    setupFee: contract?.setupFee || "",
+    annualRate: contract?.annualRate || "",
+    paymentFrequency: contract?.paymentFrequency || "annual",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -213,12 +219,51 @@ export function AddEditContract({ contract, isEditing = false, onSave }: AddEdit
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="value">Contract Value ($)</Label>
+            <Label htmlFor="paymentFrequency">Payment Frequency</Label>
+            <Select value={formData.paymentFrequency} onValueChange={(value) => setFormData(prev => ({ ...prev, paymentFrequency: value as "annual" | "quarterly" | "semi-annual" | "one-time" }))}>
+              <SelectTrigger id="paymentFrequency">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="annual">Annual</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="semi-annual">Semi-Annual</SelectItem>
+                <SelectItem value="one-time">One-Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="setupFee">Setup Fee ($)</Label>
+              <Input
+                id="setupFee"
+                value={formData.setupFee}
+                onChange={(e) => setFormData(prev => ({ ...prev, setupFee: e.target.value }))}
+                placeholder="Enter setup fee"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="annualRate">
+                {formData.paymentFrequency === "one-time" ? "One-Time Amount ($)" : "Annual Rate ($)"}
+              </Label>
+              <Input
+                id="annualRate"
+                value={formData.annualRate}
+                onChange={(e) => setFormData(prev => ({ ...prev, annualRate: e.target.value }))}
+                placeholder={formData.paymentFrequency === "one-time" ? "Enter one-time amount" : "Enter annual rate"}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="value">Total Contract Value ($)</Label>
             <Input
               id="value"
               value={formData.value}
               onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-              placeholder="Enter contract value"
+              placeholder="Enter total contract value"
             />
           </div>
 
