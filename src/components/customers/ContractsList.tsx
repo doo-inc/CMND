@@ -603,6 +603,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
               <option value="annual">Annual</option>
               <option value="quarterly">Quarterly</option>
               <option value="semi-annual">Semi-Annual</option>
+              <option value="monthly">Monthly</option>
               <option value="one-time">One-Time</option>
             </select>
           </div>
