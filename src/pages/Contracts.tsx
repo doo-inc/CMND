@@ -147,6 +147,9 @@ const ContractsPage = () => {
             ? new Date(newContract.endDate).toISOString() 
             : null,
           value: parseInt(newContract.value?.replace(/[^0-9.-]+/g, "") || "0"),
+          setup_fee: parseInt(newContract.setupFee?.replace(/[^0-9.-]+/g, "") || "0"),
+          annual_rate: parseInt(newContract.annualRate?.replace(/[^0-9.-]+/g, "") || "0"),
+          payment_frequency: newContract.paymentFrequency || "annual",
           terms: null
         })
         .select();
@@ -198,7 +201,10 @@ const ContractsPage = () => {
           end_date: updatedContract.endDate && updatedContract.endDate !== "-" 
             ? new Date(updatedContract.endDate).toISOString() 
             : null,
-          value: parseInt(updatedContract.value?.replace(/[^0-9.-]+/g, "") || "0")
+          value: parseInt(updatedContract.value?.replace(/[^0-9.-]+/g, "") || "0"),
+          setup_fee: parseInt(updatedContract.setupFee?.replace(/[^0-9.-]+/g, "") || "0"),
+          annual_rate: parseInt(updatedContract.annualRate?.replace(/[^0-9.-]+/g, "") || "0"),
+          payment_frequency: updatedContract.paymentFrequency || "annual"
         })
         .eq('id', contractId);
       
