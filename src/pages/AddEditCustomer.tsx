@@ -288,6 +288,7 @@ export default function AddEditCustomer() {
           value: contract.value,
           setup_fee: contract.setup_fee || 0,
           annual_rate: contract.annual_rate || 0,
+          payment_frequency: contract.payment_frequency || "annual",
           start_date: contract.start_date,
           end_date: contract.end_date,
           status: contract.status,

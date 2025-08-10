@@ -13,6 +13,7 @@ export interface Contract {
   value: number;
   setup_fee: number;
   annual_rate: number;
+  payment_frequency?: "annual" | "quarterly" | "semi-annual" | "one-time";
   start_date: string;
   end_date: string;
   status: "active" | "pending" | "expired" | "draft";
@@ -79,6 +80,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
             value: contract.value,
             setup_fee: contract.setup_fee || 0,
             annual_rate: contract.annual_rate || 0,
+            payment_frequency: (contract.payment_frequency as Contract["payment_frequency"]) || "annual",
             start_date: contract.start_date,
             end_date: contract.end_date,
             status: contract.status as Contract["status"],
@@ -110,6 +112,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
           value: setupFee + annualRate,
           setup_fee: setupFee,
           annual_rate: annualRate,
+          payment_frequency: "annual",
           start_date: initialData?.go_live_date ? format(initialData.go_live_date, "yyyy-MM-dd") : new Date().toISOString().split('T')[0],
           end_date: initialData?.subscription_end_date ? format(initialData.subscription_end_date, "yyyy-MM-dd") : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           status: "active",
@@ -133,6 +136,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
       value: 0,
       setup_fee: 0,
       annual_rate: 0,
+      payment_frequency: "annual",
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       status: "active",
@@ -165,6 +169,7 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
       ...contract,
       setup_fee: Number(contract.setup_fee) || 0,
       annual_rate: Number(contract.annual_rate) || 0,
+      payment_frequency: contract.payment_frequency || "annual",
       value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
     };
 
@@ -490,6 +495,7 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
       ...formData,
       setup_fee: Number(formData.setup_fee) || 0,
       annual_rate: Number(formData.annual_rate) || 0,
+      payment_frequency: formData.payment_frequency || "annual",
       value: (Number(formData.setup_fee) || 0) + (Number(formData.annual_rate) || 0)
     };
     
@@ -583,6 +589,22 @@ const ContractEditDialog: React.FC<ContractEditDialogProps> = ({
                 onClick={handleDialogClick}
               />
             </div>
+          </div>
+          
+          {/* Payment Frequency */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Payment Frequency</label>
+            <select
+              value={formData.payment_frequency || 'annual'}
+              onChange={(e) => handleInputChange('payment_frequency', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              onClick={handleDialogClick}
+            >
+              <option value="annual">Annual</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="semi-annual">Semi-Annual</option>
+              <option value="one-time">One-Time</option>
+            </select>
           </div>
           
           {/* Total Value Display */}
