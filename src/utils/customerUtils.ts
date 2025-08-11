@@ -187,11 +187,21 @@ export const getActiveContractsValue = async (): Promise<number> => {
       return 0;
     }
 
+    console.log('getActiveContractsValue: Fetched contracts:', data?.length);
+    console.log('getActiveContractsValue: Contract details:', (data || []).map((c, index) => ({
+      index: index + 1,
+      setup_fee: c.setup_fee,
+      annual_rate: c.annual_rate,
+      value: c.value,
+      calculated: (c.setup_fee || 0) + (c.annual_rate || c.value || 0)
+    })));
+
     const totalRevenue = (data || []).reduce((sum, contract) => {
       const contractValue = (contract.setup_fee || 0) + (contract.annual_rate || contract.value || 0);
       return sum + contractValue;
     }, 0);
 
+    console.log('getActiveContractsValue: Total calculated:', totalRevenue);
     return totalRevenue;
   } catch (error) {
     console.error("Error in getActiveContractsValue (Total Revenue):", error);
