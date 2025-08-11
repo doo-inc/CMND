@@ -325,7 +325,7 @@ const ContractsPage = () => {
                     <DropdownMenuItem onClick={() => handleFilter('draft')}>Drafts</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <AddEditContract onSave={handleAddContract} />
+                
               </div>
             </div>
 
