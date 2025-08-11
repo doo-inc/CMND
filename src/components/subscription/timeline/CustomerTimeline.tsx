@@ -125,7 +125,7 @@ export const CustomerTimeline: React.FC<CustomerTimelineProps> = ({ customer }) 
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  Next {customer.nextPayment.payment_type} payment
+                  Next payment
                 </span>
               </div>
               <div className="text-right">
