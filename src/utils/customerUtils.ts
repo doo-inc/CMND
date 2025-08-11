@@ -14,10 +14,10 @@ export const formatCurrency = (amount: number, includeDecimals: boolean = true):
 
 export const getLiveCustomers = async (): Promise<CustomerData[]> => {
   try {
+    // Get all customers who have active contracts (not churned)
     const { data, error } = await supabase
       .from('customers')
       .select('*')
-      .or('status.eq.done,stage.eq.Live')
       .neq('status', 'churned');
 
     if (error) {
@@ -77,7 +77,7 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
       const customer = contract.customers;
       const customerId = customer.id;
       
-      // Skip churned customers
+      // Only include customers with active contracts (exclude churned)
       if (customer.status === 'churned') {
         return;
       }
@@ -220,10 +220,10 @@ export const getConversionRate = async (): Promise<number> => {
       .from('customers')
       .select('id', { count: 'exact' });
 
+    // Get all customers with active contracts (live customers)
     const { data: liveCustomers, error: liveError } = await supabase
       .from('customers')
       .select('id', { count: 'exact' })
-      .or('status.eq.done,stage.eq.Live')
       .neq('status', 'churned');
 
     if (totalError || liveError) {
@@ -419,10 +419,11 @@ export const calculateChurnRate = async (periodDays: number = 30): Promise<strin
     const periodStartDate = new Date();
     periodStartDate.setDate(periodStartDate.getDate() - periodDays);
     
+    // Get all customers with active contracts at period start
     const { data: liveCustomersAtStart, error: liveStartError } = await supabase
       .from('customers')
       .select('id', { count: 'exact' })
-      .or('status.eq.done,stage.eq.Live')
+      .neq('status', 'churned')
       .lt('created_at', periodStartDate.toISOString());
 
     const { data: churnedCustomers, error: churnError } = await supabase

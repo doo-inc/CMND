@@ -61,7 +61,7 @@ export const LiveCustomersDetail = () => {
           const customer = contract.customers;
           const customerId = customer.id;
           
-          // Skip churned customers
+          // Only include customers with active contracts (exclude churned)
           if (customer.status === 'churned') {
             return;
           }
