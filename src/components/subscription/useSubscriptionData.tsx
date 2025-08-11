@@ -154,10 +154,10 @@ export const useSubscriptionData = () => {
           schema: 'public',
           table: 'contracts'
         },
-        () => {
-          console.log('Contract change detected, refetching subscription data');
-          refetch();
-        }
+         () => {
+           console.log('Contract change detected, refetching subscription data');
+           refetch();
+         }
       )
       .on(
         'postgres_changes',
