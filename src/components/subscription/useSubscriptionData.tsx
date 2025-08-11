@@ -195,7 +195,16 @@ export const useSubscriptionData = () => {
   }, [refetch]);
 
   const processCustomers = (customers: any[]): ProcessedCustomer[] => {
+    console.log('Processing customers:', customers.length);
     return customers.map(customer => {
+      if (customer.name === 'Ahlia University') {
+        console.log('Processing Ahlia University:', {
+          nextPaymentDate: customer.nextPaymentDate,
+          effective_end_date: customer.effective_end_date,
+          payment_frequency: customer.payment_frequency,
+          nextPayment: customer.nextPayment
+        });
+      }
       const today = new Date();
       
       // Find the next payment date across all customer contracts
@@ -209,9 +218,15 @@ export const useSubscriptionData = () => {
       if (nextPaymentDate && customer.payment_frequency !== 'one_time') {
         trackingDate = nextPaymentDate;
         trackingType = "payment";
+        if (customer.name === 'Ahlia University') {
+          console.log('Ahlia: Using next payment date:', trackingDate, 'Type:', trackingType);
+        }
       } else if (contractEndDate && customer.payment_frequency !== 'one_time') {
         trackingDate = contractEndDate;
         trackingType = "renewal";
+        if (customer.name === 'Ahlia University') {
+          console.log('Ahlia: Using contract end date:', trackingDate, 'Type:', trackingType);
+        }
       }
       
       // One-time contracts shouldn't appear in the tracker unless they're about to expire
@@ -233,6 +248,15 @@ export const useSubscriptionData = () => {
 
       if (trackingDate) {
         delta = Math.ceil((trackingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (customer.name === 'Ahlia University') {
+          console.log('Ahlia delta calculation:', {
+            trackingDate: trackingDate.toISOString(),
+            today: today.toISOString(),
+            delta: delta,
+            trackingType: trackingType
+          });
+        }
         
         // Calculate progress based on payment schedule or contract period
         if (customer.effective_start_date) {
