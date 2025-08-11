@@ -80,9 +80,9 @@ export function DocumentUpload({
 
       console.log('Uploading file:', { fileName, filePath, fileSize: file.size });
 
-      // Upload to Supabase Storage - using correct bucket name
+      // Upload to Supabase Storage - using documents bucket
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('Customer Documents')
+        .from('documents')
         .upload(filePath, file);
 
       console.log('Upload result:', { uploadData, uploadError });
@@ -151,7 +151,7 @@ export function DocumentUpload({
     try {
       // Delete from Supabase Storage
       const { error } = await supabase.storage
-        .from('Customer Documents')
+        .from('documents')
         .remove([doc.file_path]);
 
       if (error) {
@@ -180,7 +180,7 @@ export function DocumentUpload({
   const downloadDocument = async (doc: Document) => {
     try {
       const { data, error } = await supabase.storage
-        .from('Customer Documents')
+        .from('documents')
         .download(doc.file_path);
 
       if (error) throw error;
