@@ -161,9 +161,14 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
     setIsDialogOpen(true);
   };
 
-  // CRITICAL: Only update local state - NO parent callbacks or form interference
-  const handleSaveContract = (contract: Contract) => {
-    console.log('ContractsList: Saving contract LOCALLY ONLY:', contract.name);
+  // Save contract to database and update local state
+  const handleSaveContract = async (contract: Contract) => {
+    if (!customerId) {
+      console.error('ContractsList: Cannot save contract - no customer ID');
+      return;
+    }
+    
+    console.log('ContractsList: Saving contract to database:', contract.name);
     
     const validatedContract = {
       ...contract,
@@ -173,29 +178,93 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
       value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
     };
 
-    if (isNewContract) {
-      const contractToAdd = {
-        ...validatedContract,
-        id: validatedContract.id?.startsWith('temp_') 
-          ? `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` 
-          : validatedContract.id
-      };
-      setContracts(prev => {
-        const newContracts = [...prev, contractToAdd];
-        console.log('ContractsList: Added new contract to LOCAL state only. Total contracts:', newContracts.length);
-        return newContracts;
-      });
-    } else {
-      setContracts(prev => {
-        const updatedContracts = prev.map(c => 
-          c.id === validatedContract.id ? validatedContract : c
-        );
-        console.log('ContractsList: Updated existing contract in LOCAL state only. Total contracts:', updatedContracts.length);
-        return updatedContracts;
-      });
-    }
+    try {
+      if (isNewContract) {
+        // Insert new contract
+        const contractData = {
+          customer_id: customerId,
+          name: validatedContract.name,
+          value: validatedContract.value,
+          setup_fee: validatedContract.setup_fee,
+          annual_rate: validatedContract.annual_rate,
+          payment_frequency: validatedContract.payment_frequency,
+          start_date: validatedContract.start_date,
+          end_date: validatedContract.end_date,
+          status: validatedContract.status,
+          terms: validatedContract.terms || null
+        };
 
-    handleCloseDialog();
+        const { data, error } = await supabase
+          .from('contracts')
+          .insert([contractData])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('ContractsList: Error saving new contract:', error);
+          alert('Failed to save contract. Please try again.');
+          return;
+        }
+
+        if (data) {
+          const savedContract: Contract = {
+            id: data.id,
+            name: data.name,
+            value: data.value,
+            setup_fee: data.setup_fee || 0,
+            annual_rate: data.annual_rate || 0,
+            payment_frequency: data.payment_frequency as Contract["payment_frequency"],
+            start_date: data.start_date,
+            end_date: data.end_date,
+            status: data.status as Contract["status"],
+            terms: data.terms || ""
+          };
+
+          setContracts(prev => {
+            const newContracts = [...prev, savedContract];
+            console.log('ContractsList: Added new contract to database. Total contracts:', newContracts.length);
+            return newContracts;
+          });
+        }
+      } else {
+        // Update existing contract
+        const contractData = {
+          name: validatedContract.name,
+          value: validatedContract.value,
+          setup_fee: validatedContract.setup_fee,
+          annual_rate: validatedContract.annual_rate,
+          payment_frequency: validatedContract.payment_frequency,
+          start_date: validatedContract.start_date,
+          end_date: validatedContract.end_date,
+          status: validatedContract.status,
+          terms: validatedContract.terms || null
+        };
+
+        const { error } = await supabase
+          .from('contracts')
+          .update(contractData)
+          .eq('id', validatedContract.id);
+
+        if (error) {
+          console.error('ContractsList: Error updating contract:', error);
+          alert('Failed to update contract. Please try again.');
+          return;
+        }
+
+        setContracts(prev => {
+          const updatedContracts = prev.map(c => 
+            c.id === validatedContract.id ? validatedContract : c
+          );
+          console.log('ContractsList: Updated contract in database. Total contracts:', updatedContracts.length);
+          return updatedContracts;
+        });
+      }
+
+      handleCloseDialog();
+    } catch (error) {
+      console.error('ContractsList: Unexpected error saving contract:', error);
+      alert('Failed to save contract. Please try again.');
+    }
   };
 
   const handleDeleteContract = (contractId: string | undefined, e?: React.MouseEvent) => {
