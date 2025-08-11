@@ -88,7 +88,7 @@ export const useSubscriptionData = () => {
         return acc;
       }, {} as Record<string, any[]>) || {};
 
-      // Map earliest payment per customer - sum all payments with same due date
+      // Map earliest payment per customer - take only the first payment per due date per customer
       const nextPaymentByCustomer: Record<string, { due_date: string; amount: number; payment_type: string; status: string }> = {};
       (nextPaymentsData || []).forEach(p => {
         if (!nextPaymentByCustomer[p.customer_id]) {
@@ -99,10 +99,8 @@ export const useSubscriptionData = () => {
             payment_type: p.payment_type,
             status: p.status
           };
-        } else if (nextPaymentByCustomer[p.customer_id].due_date === p.due_date) {
-          // Same due date - sum the amounts (handles combined setup + recurring payments)
-          nextPaymentByCustomer[p.customer_id].amount += p.amount || 0;
         }
+        // Skip duplicate payments - only take the first one per customer
       });
       
       // Merge customer data with contract and next payment data
