@@ -163,8 +163,36 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
 
   // Save contract to database and update local state
   const handleSaveContract = async (contract: Contract) => {
+    // For new customers (no customerId), just store contracts locally
     if (!customerId) {
-      console.error('ContractsList: Cannot save contract - no customer ID');
+      console.log('ContractsList: No customer ID - storing contract locally for new customer');
+      const validatedContract = {
+        ...contract,
+        setup_fee: Number(contract.setup_fee) || 0,
+        annual_rate: Number(contract.annual_rate) || 0,
+        payment_frequency: contract.payment_frequency || "annual",
+        value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
+      };
+
+      if (isNewContract) {
+        setContracts(prev => {
+          const newContracts = [...prev, validatedContract];
+          console.log('ContractsList: Added contract locally. Total contracts:', newContracts.length);
+          return newContracts;
+        });
+      } else {
+        setContracts(prev => {
+          const updatedContracts = prev.map(c => 
+            c.id === contract.id ? validatedContract : c
+          );
+          console.log('ContractsList: Updated contract locally. Total contracts:', updatedContracts.length);
+          return updatedContracts;
+        });
+      }
+      
+      setIsDialogOpen(false);
+      setEditingContract(null);
+      setIsNewContract(false);
       return;
     }
     
