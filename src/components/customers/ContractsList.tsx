@@ -206,6 +206,17 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
       value: (Number(contract.setup_fee) || 0) + (Number(contract.annual_rate) || 0)
     };
 
+    // Validate dates before saving
+    if (validatedContract.start_date && validatedContract.end_date) {
+      const startDate = new Date(validatedContract.start_date);
+      const endDate = new Date(validatedContract.end_date);
+      
+      if (endDate <= startDate) {
+        alert('Contract end date must be after the start date. Please check your dates.');
+        return;
+      }
+    }
+
     try {
       if (isNewContract) {
         // Insert new contract
