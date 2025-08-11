@@ -28,58 +28,58 @@ export const TotalARRDetail = () => {
   useEffect(() => {
     const fetchARRDetails = async () => {
       try {
-        // Get all customers with their active contracts
-        const { data, error } = await supabase
-          .from('customers')
+        // Use the same logic as dashboard - get ARR from contracts (annual_rate only)
+        const { data: contractsData, error: contractsError } = await supabase
+          .from('contracts')
           .select(`
-            id,
-            name,
-            logo,
-            segment,
-            country,
-            contracts!inner(
+            annual_rate,
+            customer_id,
+            customers!inner(
               id,
-              value,
-              setup_fee,
-              annual_rate,
+              name,
+              logo,
+              segment,
+              country,
+              owner_id,
               status,
-              end_date
+              stage
             )
           `)
-          .neq('status', 'churned');
+          .or('status.eq.active,status.eq.pending,status.is.null')
+          .gt('end_date', new Date().toISOString());
 
-        if (error) throw error;
+        if (contractsError) throw contractsError;
 
         const customerARRMap = new Map<string, ARRCustomer>();
-
-        (data || []).forEach(customer => {
-          const activeContracts = (customer.contracts as any[]).filter(contract => 
-            ['active', 'pending'].includes(contract.status) && 
-            new Date(contract.end_date) > new Date()
-          );
-
-          if (activeContracts.length === 0) return;
-
-          const annualRevenue = activeContracts.reduce((sum, contract) => {
-            // Use annual_rate if available, otherwise treat value as annual revenue
-            return sum + (contract.annual_rate || contract.value || 0);
-          }, 0);
-
-          if (annualRevenue > 0) {
-            customerARRMap.set(customer.id, {
+        (contractsData || []).forEach(contract => {
+          const customer = contract.customers;
+          const customerId = customer.id;
+          
+          // Skip churned customers
+          if (customer.status === 'churned') {
+            return;
+          }
+          
+          if (!customerARRMap.has(customerId)) {
+            customerARRMap.set(customerId, {
               id: customer.id,
               name: customer.name,
               logo: customer.logo,
               segment: customer.segment,
               country: customer.country,
-              annual_revenue: annualRevenue,
-              contract_count: activeContracts.length,
-              percentage_of_total: 0 // Will be calculated after we have the total
+              annual_revenue: 0,
+              contract_count: 0,
+              percentage_of_total: 0
             });
           }
+          
+          const existingCustomer = customerARRMap.get(customerId)!;
+          // ARR excludes setup fees and one-time payments - only annual_rate counts
+          existingCustomer.annual_revenue += contract.annual_rate || 0;
+          existingCustomer.contract_count += 1;
         });
 
-        const arrCustomers = Array.from(customerARRMap.values());
+        const arrCustomers = Array.from(customerARRMap.values()).filter(customer => customer.annual_revenue > 0);
         const total = arrCustomers.reduce((sum, customer) => sum + customer.annual_revenue, 0);
 
         // Calculate percentages
