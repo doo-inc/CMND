@@ -283,7 +283,8 @@ export const useSubscriptionData = () => {
       return {
         ...customer,
         annual_rate: customer.effective_annual_rate,
-        subscription_end_date: trackingDate ? trackingDate.toISOString().split('T')[0] : customer.effective_end_date,
+        go_live_date: customer.effective_start_date || customer.go_live_date,
+        subscription_end_date: customer.effective_end_date || customer.subscription_end_date,
         timeLeft,
         status,
         delta,
