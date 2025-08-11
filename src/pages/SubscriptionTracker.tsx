@@ -48,14 +48,17 @@ const SubscriptionTracker = () => {
             </p>
           </div>
           <Button
-            onClick={() => refetch()}
+            onClick={async () => {
+              console.log('Refresh button clicked');
+              await refetch();
+            }}
             variant="outline"
             size="sm"
             className="flex items-center gap-2"
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            {isLoading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
 
