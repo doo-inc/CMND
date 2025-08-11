@@ -66,7 +66,7 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
       `)
       .or('status.eq.active,status.eq.pending,status.is.null')
       .gt('end_date', new Date().toISOString())
-      .neq('customers.status', 'churned');
+      .or('customers.status.neq.churned,customers.status.is.null');
 
     if (contractsError) {
       console.error("Error fetching ARR from contracts:", contractsError);
