@@ -58,18 +58,14 @@ export const getLatestContractEndDate = (contracts: (Contract | any)[]): string 
 
 /**
  * Format currency value for display
- * Converts cents to dollars and formats as currency
  */
 export const formatCurrency = (amount: number): string => {
-  // Convert cents to dollars
-  const dollarAmount = amount / 100;
-  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(dollarAmount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 /**
