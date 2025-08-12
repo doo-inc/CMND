@@ -121,11 +121,11 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
 
 export const getDealsPipeline = async () => {
   try {
+    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
     const { data, error } = await supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value, stage')
-      .not('stage', 'eq', 'Live')
-      .not('stage', 'is', null);
+      .select('contract_size, estimated_deal_value, stage, status')
+      .or('status.is.null,status.neq.churned.and.status.neq.done');
 
     if (error) {
       console.error("Error fetching deals pipeline:", error);
@@ -149,11 +149,11 @@ export const getDealsPipeline = async () => {
 
 export const getTotalPipelineValue = async (): Promise<number> => {
   try {
+    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
     const { data, error } = await supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value, stage')
-      .not('stage', 'eq', 'Live')
-      .not('stage', 'is', null);
+      .select('contract_size, estimated_deal_value, stage, status')
+      .or('status.is.null,status.neq.churned.and.status.neq.done');
 
     if (error) {
       console.error("Error fetching total pipeline value:", error);
@@ -243,11 +243,11 @@ export const getConversionRate = async (): Promise<number> => {
 
 export const getAverageDealSize = async (): Promise<number> => {
   try {
+    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
     const { data, error } = await supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value')
-      .not('stage', 'eq', 'Live')
-      .not('stage', 'is', null);
+      .select('contract_size, estimated_deal_value, status')
+      .or('status.is.null,status.neq.churned.and.status.neq.done');
 
     if (error) {
       console.error("Error fetching average deal size:", error);
