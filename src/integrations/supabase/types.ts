@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1006,36 +1006,36 @@ export type Database = {
       get_current_user_profile: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
+          avatar_url: string
           email: string
           full_name: string
-          avatar_url: string
-          role: Database["public"]["Enums"]["app_role"]
+          id: string
           organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
         }[]
       }
       get_user_notification_settings: {
         Args: { user_id_param: string }
         Returns: {
-          notification_type: Database["public"]["Enums"]["notification_type"]
           email_enabled: boolean
           in_app_enabled: boolean
+          notification_type: Database["public"]["Enums"]["notification_type"]
         }[]
       }
       get_valid_invitation: {
         Args: { token_param: string }
         Returns: {
-          id: string
           email: string
-          role: Database["public"]["Enums"]["app_role"]
-          invited_by: string
           expires_at: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
