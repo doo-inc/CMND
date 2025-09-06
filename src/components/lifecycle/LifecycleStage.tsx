@@ -67,10 +67,27 @@ export function LifecycleStageComponent({
   onUpdate,
 }: LifecycleStageComponentProps) {
   const [localNotes, setLocalNotes] = React.useState<string>(notes || "");
+  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [justSaved, setJustSaved] = React.useState(false);
 
   React.useEffect(() => {
     setLocalNotes(notes || "");
+    // cancel any pending save when props change or id changes
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
   }, [notes, id]);
+
+  const triggerSave = React.useCallback((value: string) => {
+    if (!onUpdate) return;
+    setSaving(true);
+    onUpdate(id, { notes: value });
+    setSaving(false);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 1500);
+  }, [id, onUpdate]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -228,16 +245,31 @@ ${category ? `Category: ${category}` : ''}`;
             <Textarea
               placeholder="Add notes..."
               value={localNotes}
-              onChange={(e) => setLocalNotes(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setLocalNotes(value);
+                if (saveTimer.current) {
+                  clearTimeout(saveTimer.current);
+                }
+                // Debounced auto-save
+                saveTimer.current = setTimeout(() => {
+                  triggerSave(value);
+                }, 600);
+              }}
               onBlur={(e) => {
                 const value = e.target.value;
-                if (onUpdate) {
-                  onUpdate(id, { notes: value });
-                  toast.success("Notes saved");
+                if (saveTimer.current) {
+                  clearTimeout(saveTimer.current);
+                  saveTimer.current = null;
                 }
+                triggerSave(value);
+                toast.success("Notes saved");
               }}
               className="min-h-[60px] text-xs resize-none"
             />
+            {(saving || justSaved) && (
+              <p className="text-[10px] text-muted-foreground mt-1">{saving ? "Saving..." : "Saved"}</p>
+            )}
           </div>
         </div>
       </CardContent>

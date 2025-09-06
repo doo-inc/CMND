@@ -43,32 +43,36 @@ export function LifecycleTracker({
   };
 
   const handleStageUpdate = async (stageId: string, updatedStage: Partial<LifecycleStageProps>) => {
-    
     // Optimistic update - immediately update UI
     const originalStages = [...stages];
     const optimisticStages = stages.map(stage => 
       stage.id === stageId ? { ...stage, ...updatedStage } : stage
     );
     onStagesUpdate(optimisticStages);
-    
+
     setIsLoading(true);
-    
+
     try {
       const dbCustomerId = getDbCustomerId(customerId);
-      
+
+      // Build minimal payload only with provided fields
+      const payload: Record<string, any> = {};
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'name')) payload.name = updatedStage.name;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'status')) payload.status = updatedStage.status;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'deadline')) payload.deadline = updatedStage.deadline ?? null;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'notes')) payload.notes = updatedStage.notes ?? null;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'category')) payload.category = updatedStage.category;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'owner')) payload.owner_id = updatedStage.owner?.id ?? null;
+
       const { data, error } = await supabase
         .from('lifecycle_stages')
-        .update({
-          name: updatedStage.name,
-          status: updatedStage.status,
-          deadline: updatedStage.deadline,
-          notes: updatedStage.notes,
-          category: updatedStage.category,
-          owner_id: updatedStage.owner?.id,
-        })
+        .update(payload)
         .eq('id', stageId)
         .eq('customer_id', dbCustomerId)
-        .select();
+        .select(`
+          *,
+          staff:owner_id (id, name, role)
+        `);
 
       if (error) {
         // Revert optimistic update on error
@@ -76,21 +80,47 @@ export function LifecycleTracker({
         throw error;
       }
 
+      // Use returned row to update local state to canonical server data
+      if (data && data[0]) {
+        const row = data[0];
+        const updated: LifecycleStageProps = {
+          id: row.id,
+          name: row.name,
+          status: row.status as LifecycleStageProps["status"],
+          category: row.category || "",
+          owner: row.staff ? {
+            id: row.staff.id,
+            name: row.staff.name,
+            role: row.staff.role
+          } : (optimisticStages.find(s => s.id === stageId)?.owner || { id: "unknown", name: "Unknown", role: "Unknown" }),
+          deadline: row.deadline,
+          notes: row.notes,
+          icon: optimisticStages.find(s => s.id === stageId)?.icon
+        };
+        const merged = stages.map(s => s.id === stageId ? updated : s);
+        onStagesUpdate(sortStagesByOrder(merged));
+      }
+
       toast.success("Stage updated successfully");
 
-      // Add timeline entry
-      await supabase
-        .from('customer_timeline')
-        .insert({
-          customer_id: dbCustomerId,
-          event_type: 'lifecycle_stage',
-          event_description: `Lifecycle stage "${updatedStage.name || stages.find(s => s.id === stageId)?.name}" was updated to "${updatedStage.status}"`,
-          created_by: "current-user",
-          created_by_name: "Demo User",
-          created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png`
-        });
+      // Add timeline entry (decoupled; ignore failures)
+      try {
+        await supabase
+          .from('customer_timeline')
+          .insert({
+            customer_id: dbCustomerId,
+            event_type: 'lifecycle_stage',
+            event_description: `Lifecycle stage "${(updatedStage.name ?? stages.find(s => s.id === stageId)?.name) ?? ''}" was updated${updatedStage.status ? ` to "${updatedStage.status}"` : ''}`,
+            created_by: "current-user",
+            created_by_name: "Demo User",
+            created_by_avatar: `https://avatar.vercel.sh/${Math.random()}.png`
+          });
+      } catch (timelineError) {
+        console.error('Timeline logging failed:', timelineError);
+      }
 
     } catch (error) {
+      console.error('Failed to update stage:', error);
       toast.error("Failed to update stage");
     } finally {
       setIsLoading(false);
