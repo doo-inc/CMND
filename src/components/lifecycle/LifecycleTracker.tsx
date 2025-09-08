@@ -141,6 +141,7 @@ export function LifecycleTracker({
           notes: newStage.notes,
           category: newStage.category,
           owner_id: newStage.owner?.id,
+          status_changed_at: newStage.status_changed_at ?? null
         })
         .select(`
           *,
