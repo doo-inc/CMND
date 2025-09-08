@@ -21,9 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { CalendarIcon, Plus } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { LifecycleStageProps } from "./LifecycleStage";
 
@@ -51,6 +49,9 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
   const [ownerId, setOwnerId] = React.useState(stage?.owner?.id || "00000000-0000-0000-0000-000000000001");
   const [notes, setNotes] = React.useState(stage?.notes || "");
   const [category, setCategory] = React.useState(stage?.category || "");
+  const [statusChangedAt, setStatusChangedAt] = React.useState<Date | undefined>(
+    stage?.status_changed_at ? new Date(stage.status_changed_at) : undefined
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +71,7 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
         role: getOwnerRole(ownerId)
       },
       notes,
+      status_changed_at: status === "not-started" ? undefined : statusChangedAt?.toISOString(),
       ...(stage?.icon && { icon: stage.icon }), // Preserve icon if it exists
     };
     
@@ -80,7 +82,16 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
   
   // Fixed type handler for status
   const handleStatusChange = (value: string) => {
-    setStatus(value as LifecycleStageProps["status"]);
+    const newStatus = value as LifecycleStageProps["status"];
+    setStatus(newStatus);
+    
+    // Clear date when status is set to "not-started"
+    if (newStatus === "not-started") {
+      setStatusChangedAt(undefined);
+    } else if (!statusChangedAt) {
+      // Set current date if no date exists and status is not "not-started"
+      setStatusChangedAt(new Date());
+    }
   };
   
   const getOwnerName = (id: string) => {
@@ -184,6 +195,18 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
               </Select>
             </div>
             
+            {status !== "not-started" && (
+              <div className="grid gap-2">
+                <Label htmlFor="statusDate">Status Change Date</Label>
+                <DatePicker
+                  date={statusChangedAt}
+                  onDateChange={setStatusChangedAt}
+                  placeholder="Select date when status changed"
+                  disabled={(date) => date > new Date()}
+                  className="w-full"
+                />
+              </div>
+            )}
             
             <div className="grid gap-2">
               <Label htmlFor="notes">Notes (Optional)</Label>

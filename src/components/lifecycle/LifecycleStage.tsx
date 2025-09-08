@@ -125,7 +125,10 @@ export function LifecycleStageComponent({
 
   const handleStatusChange = async (newStatus: LifecycleStageProps["status"]) => {
     if (onUpdate) {
-      const statusChangedAt = newStatus === "not-started" ? null : new Date().toISOString();
+      // Clear date if going back to "not-started", otherwise preserve existing date or set current date
+      const statusChangedAt = newStatus === "not-started" 
+        ? null 
+        : (status_changed_at || new Date().toISOString());
       
       // Update in database
       try {
