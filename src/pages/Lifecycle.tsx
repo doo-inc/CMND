@@ -187,7 +187,7 @@ const Lifecycle = () => {
               name: "Ahmed Abdullah",
               role: "Account Executive"
             },
-            deadline: stage.deadline,
+            status_changed_at: (stage as any).status_changed_at,
             notes: stage.notes,
             icon: stageIcons[stage.name] || <FileCheck className="h-5 w-5" />
           };

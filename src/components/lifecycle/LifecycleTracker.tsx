@@ -93,7 +93,7 @@ export function LifecycleTracker({
             name: row.staff.name,
             role: row.staff.role
           } : (optimisticStages.find(s => s.id === stageId)?.owner || { id: "unknown", name: "Unknown", role: "Unknown" }),
-          status_changed_at: row.status_changed_at,
+          status_changed_at: (row as any).status_changed_at,
           notes: row.notes,
           icon: optimisticStages.find(s => s.id === stageId)?.icon
         };
@@ -166,7 +166,7 @@ export function LifecycleTracker({
             name: "Unknown",
             role: "Unknown"
           },
-          status_changed_at: data[0].status_changed_at,
+          status_changed_at: (data[0] as any).status_changed_at,
           notes: data[0].notes,
           icon: newStage.icon
         };

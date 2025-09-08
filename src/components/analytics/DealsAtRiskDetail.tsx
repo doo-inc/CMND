@@ -46,7 +46,7 @@ export const DealsAtRiskDetail = () => {
           .select(`
             customer_id,
             name,
-            deadline,
+            status_changed_at,
             customers!inner(
               id,
               name,
@@ -59,8 +59,8 @@ export const DealsAtRiskDetail = () => {
             )
           `)
           .eq('status', 'blocked')
-          .not('deadline', 'is', null)
-          .lt('deadline', new Date().toISOString())
+          .not('status_changed_at', 'is', null)
+          .lt('status_changed_at', new Date().toISOString())
           .not('customers.status', 'eq', 'done')
           .not('customers.status', 'eq', 'churned');
 
@@ -72,7 +72,7 @@ export const DealsAtRiskDetail = () => {
         (lifecycleData || []).forEach(stage => {
           const customer = (stage.customers as any);
           const customerId = customer.id;
-          const deadline = new Date(stage.deadline);
+          const deadline = new Date((stage as any).status_changed_at);
           const daysOverdue = Math.floor((now.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24));
 
           if (!dealMap.has(customerId)) {
@@ -93,7 +93,7 @@ export const DealsAtRiskDetail = () => {
           const deal = dealMap.get(customerId)!;
           deal.blocked_stages.push({
             stage_name: stage.name,
-            deadline: stage.deadline,
+            deadline: (stage as any).status_changed_at,
             days_overdue: daysOverdue
           });
 

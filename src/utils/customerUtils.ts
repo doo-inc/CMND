@@ -298,7 +298,7 @@ export const getDealsAtRisk = async (): Promise<number> => {
       .from('lifecycle_stages')
       .select('id', { count: 'exact' })
       .eq('status', 'blocked')
-      .or('deadline.lt.now()');
+      .or('status_changed_at.lt.now()');
 
     if (error) {
       console.error("Error fetching deals at risk:", error);

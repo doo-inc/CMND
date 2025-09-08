@@ -169,7 +169,7 @@ const CustomerDetails = () => {
           name: "Unknown",
           role: "Unknown"
         },
-        deadline: stage.deadline,
+        status_changed_at: (stage as any).status_changed_at,
         notes: stage.notes
       })) || [];
     },

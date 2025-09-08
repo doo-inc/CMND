@@ -426,36 +426,36 @@ export type Database = {
           category: string | null
           created_at: string
           customer_id: string
-          deadline: string | null
           id: string
           name: string
           notes: string | null
           owner_id: string | null
           status: string | null
+          status_changed_at: string | null
           updated_at: string
         }
         Insert: {
           category?: string | null
           created_at?: string
           customer_id: string
-          deadline?: string | null
           id?: string
           name: string
           notes?: string | null
           owner_id?: string | null
           status?: string | null
+          status_changed_at?: string | null
           updated_at?: string
         }
         Update: {
           category?: string | null
           created_at?: string
           customer_id?: string
-          deadline?: string | null
           id?: string
           name?: string
           notes?: string | null
           owner_id?: string | null
           status?: string | null
+          status_changed_at?: string | null
           updated_at?: string
         }
         Relationships: [
