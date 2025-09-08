@@ -68,7 +68,6 @@ export function LifecycleTracker({
         .from('lifecycle_stages')
         .update(payload)
         .eq('id', stageId)
-        .eq('customer_id', dbCustomerId)
         .select(`
           *,
           staff:owner_id (id, name, role)
