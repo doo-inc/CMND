@@ -13,6 +13,7 @@ import { AverageDealSizeDetail } from "@/components/analytics/AverageDealSizeDet
 import { MRRDetail } from "@/components/analytics/MRRDetail";
 import { DealsAtRiskDetail } from "@/components/analytics/DealsAtRiskDetail";
 import { ChurnRateDetail } from "@/components/analytics/ChurnRateDetail";
+import { PitchToPayDetail } from "@/components/analytics/PitchToPayDetail";
 
 const AnalyticsDetail = () => {
   const { metric } = useParams<{ metric: string }>();
@@ -30,7 +31,8 @@ const AnalyticsDetail = () => {
       "average-deal-size": "Average Deal Size Details",
       "mrr": "Monthly Recurring Revenue Details",
       "deals-at-risk": "Deals at Risk Details",
-      "churn-rate": "Churn Rate Details"
+      "churn-rate": "Churn Rate Details",
+      "pitch-to-pay": "Pitch to Pay Details"
     };
     setTitle(titles[metric || ""] || "Analytics Details");
   }, [metric]);
@@ -57,6 +59,8 @@ const AnalyticsDetail = () => {
         return <DealsAtRiskDetail />;
       case "churn-rate":
         return <ChurnRateDetail />;
+      case "pitch-to-pay":
+        return <PitchToPayDetail />;
       default:
         return (
           <div className="text-center py-8">
