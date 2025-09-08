@@ -27,18 +27,22 @@ const LIFECYCLE_TO_PIPELINE_MAPPING: Record<string, string> = {
   "Meeting Set": "Lead",
   // Qualified stage
   "Qualified Lead": "Qualified",
+  "Discovery Call": "Qualified",
   // Demo stage
   "Demo": "Demo",
   // Proposal stage
   "Proposal Sent": "Proposal",
+  "Proposal Approved": "Proposal",
   // Contract stage
   "Contract Sent": "Contract",
+  "Contract Signed": "Contract",
   // Implementation stage
   "Onboarding": "Implementation",
   "Technical Setup": "Implementation",
   "Training": "Implementation",
   // Live stage
-  "Go Live": "Live"
+  "Go Live": "Live",
+  "Payment Processed": "Live"
 };
 
 // Define pipeline stage order for determining furthest stage
