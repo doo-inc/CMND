@@ -105,6 +105,15 @@ const Customers = () => {
     
     const pipelineStage = getFurthestPipelineStage(completedStages);
     const operationalStatus = getOperationalStatus(lifecycleStages);
+
+    const lastUpdatedStage = lifecycleStages && lifecycleStages.length > 0
+      ? [...lifecycleStages]
+          .sort((a, b) => {
+            const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+            const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+            return bTime - aTime;
+          })[0]?.name
+      : undefined;
     
     return {
       id: dbCustomer.id,
@@ -116,6 +125,7 @@ const Customers = () => {
       status: operationalStatus,
       contractSize: dbCustomer.contract_size || 0,
       completedStages,
+      lastUpdatedStage,
       owner: {
         id: dbCustomer.owner_id || "unknown",
         name: "Unassigned",
@@ -166,7 +176,7 @@ const Customers = () => {
 
       const { data: allLifecycleStages, error: stagesError } = await supabase
         .from('lifecycle_stages')
-        .select('customer_id, name, status');
+        .select('customer_id, name, status, updated_at, created_at');
 
       if (stagesError) {
         console.error("Lifecycle stages error:", stagesError);
@@ -300,7 +310,7 @@ const Customers = () => {
       return false;
     }
     
-    if (stageFilter !== "all" && !customer.completedStages?.includes(stageFilter)) {
+    if (stageFilter !== "all" && customer.lastUpdatedStage !== stageFilter) {
       return false;
     }
     
