@@ -31,7 +31,7 @@ export interface LifecycleStageProps {
     name: string;
     role: string;
   };
-  deadline?: string;
+  status_changed_at?: string;
   notes?: string;
   icon?: ReactNode;
   category?: string;
@@ -48,7 +48,7 @@ interface NewStageData {
   status?: LifecycleStageProps["status"];
   category?: string;
   owner?: { id: string; name: string; role: string; };
-  deadline?: string;
+  status_changed_at?: string;
   notes?: string;
   icon?: React.ReactNode;
 }
@@ -58,7 +58,7 @@ export function LifecycleStageComponent({
   name,
   status,
   owner,
-  deadline,
+  status_changed_at,
   notes,
   icon,
   category,
@@ -123,24 +123,29 @@ export function LifecycleStageComponent({
     }
   };
 
-  const handleStatusChange = (newStatus: LifecycleStageProps["status"]) => {
+  const handleStatusChange = async (newStatus: LifecycleStageProps["status"]) => {
     if (onUpdate) {
-      onUpdate(id, { status: newStatus });
-      toast.success(`Status updated to ${newStatus.replace("-", " ")}`);
-    }
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    if (onUpdate) {
-      if (date) {
-        onUpdate(id, { deadline: format(date, "yyyy-MM-dd") });
-        toast.success("Deadline updated");
-      } else {
-        onUpdate(id, { deadline: undefined });
-        toast.success("Deadline removed");
+      const statusChangedAt = newStatus === "not-started" ? null : new Date().toISOString();
+      
+      // Update in database
+      try {
+        await supabase
+          .from('lifecycle_stages')
+          .update({ 
+            status: newStatus,
+            status_changed_at: statusChangedAt
+          })
+          .eq('id', id);
+          
+        onUpdate(id, { status: newStatus, status_changed_at: statusChangedAt });
+        toast.success(`Status updated to ${newStatus.replace("-", " ")}`);
+      } catch (error) {
+        console.error("Error updating status:", error);
+        toast.error("Failed to update status");
       }
     }
   };
+
 
   const handleAddAsTask = async () => {
     if (!customerId) {
@@ -156,8 +161,8 @@ Status: ${status.replace("-", " ")}
 ${notes ? `Notes: ${notes}` : ''}
 ${category ? `Category: ${category}` : ''}`;
 
-      const dueDate = deadline 
-        ? new Date(deadline).toISOString()
+      const dueDate = status_changed_at 
+        ? new Date(Date.parse(status_changed_at) + 7 * 24 * 60 * 60 * 1000).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { data, error } = await supabase
@@ -220,26 +225,14 @@ ${category ? `Category: ${category}` : ''}`;
       
       <CardContent className="flex-1 pt-0 pb-2">
         <div className="space-y-2">
-          <div className="flex items-center justify-start">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="link" className="p-0 h-auto text-xs flex items-center text-muted-foreground hover:text-foreground">
-                  <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
-                  <span className="truncate">
-                    {deadline ? new Date(deadline).toLocaleDateString() : "Set deadline"}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={deadline ? new Date(deadline) : undefined}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          {status_changed_at && (
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+              <span className="truncate">
+                Status changed: {new Date(status_changed_at).toLocaleDateString()}
+              </span>
+            </div>
+          )}
           <div className="text-xs space-y-1">
             <p className="text-muted-foreground font-medium">Notes:</p>
             <Textarea
@@ -306,7 +299,7 @@ ${category ? `Category: ${category}` : ''}`;
         </DropdownMenu>
         
         <AddEditStage 
-          stage={{ id, name, status, owner, deadline, notes, icon, category }} 
+          stage={{ id, name, status, owner, status_changed_at, notes, icon, category }} 
           isEditing 
           onSave={(updatedStage: NewStageData) => {
             if (onUpdate) {

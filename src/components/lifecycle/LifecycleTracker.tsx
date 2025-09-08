@@ -19,7 +19,7 @@ interface NewStageData {
   status?: LifecycleStageProps["status"];
   category?: string;
   owner?: { id: string; name: string; role: string; };
-  deadline?: string;
+  status_changed_at?: string;
   notes?: string;
   icon?: React.ReactNode;
 }
@@ -59,7 +59,7 @@ export function LifecycleTracker({
       const payload: Record<string, any> = {};
       if (Object.prototype.hasOwnProperty.call(updatedStage, 'name')) payload.name = updatedStage.name;
       if (Object.prototype.hasOwnProperty.call(updatedStage, 'status')) payload.status = updatedStage.status;
-      if (Object.prototype.hasOwnProperty.call(updatedStage, 'deadline')) payload.deadline = updatedStage.deadline ?? null;
+      if (Object.prototype.hasOwnProperty.call(updatedStage, 'status_changed_at')) payload.status_changed_at = updatedStage.status_changed_at ?? null;
       if (Object.prototype.hasOwnProperty.call(updatedStage, 'notes')) payload.notes = updatedStage.notes ?? null;
       if (Object.prototype.hasOwnProperty.call(updatedStage, 'category')) payload.category = updatedStage.category;
       if (Object.prototype.hasOwnProperty.call(updatedStage, 'owner')) payload.owner_id = updatedStage.owner?.id ?? null;
@@ -93,7 +93,7 @@ export function LifecycleTracker({
             name: row.staff.name,
             role: row.staff.role
           } : (optimisticStages.find(s => s.id === stageId)?.owner || { id: "unknown", name: "Unknown", role: "Unknown" }),
-          deadline: row.deadline,
+          status_changed_at: row.status_changed_at,
           notes: row.notes,
           icon: optimisticStages.find(s => s.id === stageId)?.icon
         };
@@ -138,7 +138,6 @@ export function LifecycleTracker({
           customer_id: dbCustomerId,
           name: newStage.name,
           status: newStage.status || 'not-started',
-          deadline: newStage.deadline,
           notes: newStage.notes,
           category: newStage.category,
           owner_id: newStage.owner?.id,
@@ -167,7 +166,7 @@ export function LifecycleTracker({
             name: "Unknown",
             role: "Unknown"
           },
-          deadline: data[0].deadline,
+          status_changed_at: data[0].status_changed_at,
           notes: data[0].notes,
           icon: newStage.icon
         };
@@ -246,7 +245,6 @@ export function LifecycleTracker({
             status: defaultStage.status,
             category: defaultStage.category,
             owner_id: matchingStaff?.id || null,
-            deadline: defaultStage.deadline,
             notes: defaultStage.notes
           });
       }
@@ -277,7 +275,7 @@ export function LifecycleTracker({
             name: "Unknown",
             role: "Unknown"
           },
-          deadline: stage.deadline,
+          status_changed_at: stage.status_changed_at,
           notes: stage.notes,
         }));
         

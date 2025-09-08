@@ -465,7 +465,7 @@ export const lifecycleStages: LifecycleStageProps[] = [
       name: "Ahmed Abdullah",
       role: "Account Executive",
     },
-    deadline: "March 15, 2025",
+    status_changed_at: "2025-03-15T10:30:00Z",
     notes: "Initial interest through LinkedIn outreach campaign.",
   },
   {
@@ -477,7 +477,7 @@ export const lifecycleStages: LifecycleStageProps[] = [
       name: "Ahmed Abdullah",
       role: "Account Executive",
     },
-    deadline: "March 22, 2025",
+    status_changed_at: "2025-03-22T14:15:00Z",
     notes: "Successful demo with positive feedback on WhatsApp integration.",
   },
   {
@@ -489,7 +489,7 @@ export const lifecycleStages: LifecycleStageProps[] = [
       name: "Ahmed Abdullah",
       role: "Account Executive",
     },
-    deadline: "March 30, 2025",
+    status_changed_at: "2025-03-30T09:00:00Z",
   },
   {
     id: "stage-004",
@@ -500,7 +500,7 @@ export const lifecycleStages: LifecycleStageProps[] = [
       name: "Fatima Hassan",
       role: "Customer Success Manager",
     },
-    deadline: "April 15, 2025",
+    status_changed_at: "2025-04-01T11:45:00Z",
     notes: "Pilot launched with 5 test users. Monitoring usage patterns.",
   },
   {
@@ -512,7 +512,7 @@ export const lifecycleStages: LifecycleStageProps[] = [
       name: "Ahmed Abdullah",
       role: "Account Executive",
     },
-    deadline: "April 20, 2025",
+    
   },
   {
     id: "stage-006",

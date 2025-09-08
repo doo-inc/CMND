@@ -32,7 +32,7 @@ interface NewStageData {
   status?: LifecycleStageProps["status"];
   category?: string;
   owner?: { id: string; name: string; role: string; };
-  deadline?: string;
+  status_changed_at?: string;
   notes?: string;
   icon?: React.ReactNode;
 }
@@ -49,9 +49,6 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
   const [name, setName] = React.useState(stage?.name || "");
   const [status, setStatus] = React.useState<LifecycleStageProps["status"]>(stage?.status || "not-started");
   const [ownerId, setOwnerId] = React.useState(stage?.owner?.id || "00000000-0000-0000-0000-000000000001");
-  const [date, setDate] = React.useState<Date | undefined>(
-    stage?.deadline ? new Date(stage.deadline) : undefined
-  );
   const [notes, setNotes] = React.useState(stage?.notes || "");
   const [category, setCategory] = React.useState(stage?.category || "");
 
@@ -73,7 +70,6 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
         role: getOwnerRole(ownerId)
       },
       notes,
-      ...(date && { deadline: format(date, "yyyy-MM-dd") }),
       ...(stage?.icon && { icon: stage.icon }), // Preserve icon if it exists
     };
     
@@ -188,31 +184,6 @@ export function AddEditStage({ stage, isEditing = false, onSave, customerId }: A
               </Select>
             </div>
             
-            <div className="grid gap-2">
-              <Label htmlFor="deadline">Deadline (Optional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : "Select a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
             
             <div className="grid gap-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
