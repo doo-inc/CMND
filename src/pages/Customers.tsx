@@ -18,6 +18,8 @@ import { CustomerData } from "@/types/customers";
 import { toast } from "sonner";
 import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 
+import { sortStagesByOrder } from "@/utils/stageOrdering";
+
 const Customers = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,8 +135,6 @@ const Customers = () => {
   };
 
   const extractUniqueStages = (allLifecycleStages: any[]) => {
-    const { sortStagesByOrder } = require('@/utils/stageOrdering');
-    
     const stages = allLifecycleStages
       .map(stage => stage.name)
       .filter((stage, index, arr) => arr.indexOf(stage) === index)
