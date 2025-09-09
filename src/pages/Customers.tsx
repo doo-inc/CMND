@@ -286,7 +286,12 @@ const Customers = () => {
         return;
       }
       
-      exportCustomersToExcel(customers);
+      // Fetch fresh lifecycle stages data for accurate export
+      const { data: lifecycleStages } = await supabase
+        .from('lifecycle_stages')
+        .select('*');
+      
+      exportCustomersToExcel(customers, lifecycleStages || []);
       toast.success(`Exported ${customers.length} customers to Excel`);
     } catch (error) {
       console.error("Export error:", error);
