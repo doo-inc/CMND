@@ -11,69 +11,26 @@ export interface PipelineStageData {
   customers: CustomerData[];
 }
 
-const PIPELINE_STAGES = [
-  "Lead",
-  "Qualified", 
-  "Demo",
-  "Proposal",
-  "Contract",
-  "Implementation",
-  "Live"
-];
+// Use centralized pipeline rules and status helpers
+import { PIPELINE_STAGE_ORDER, LIFECYCLE_TO_PIPELINE_MAPPING } from "@/utils/pipelineRules";
+import { isCompletedLike, isInProgressLike } from "@/utils/stageStatus";
 
-// Map completed lifecycle stages to pipeline stages (normalized keys)
-const LIFECYCLE_TO_PIPELINE_MAPPING: Record<string, string> = {
-  // Lead stage
-  "prospect": "Lead",
-  "meeting set": "Lead",
-  // Qualified stage
-  "qualified lead": "Qualified",
-  "discovery call": "Qualified",
-  // Demo stage
-  "demo": "Demo",
-  // Proposal stage
-  "proposal sent": "Proposal",
-  "proposal approved": "Proposal",
-  // Contract stage
-  "contract sent": "Contract",
-  "contract signed": "Contract",
-  // Implementation stage
-  "onboarding": "Implementation",
-  "technical setup": "Implementation",
-  "training": "Implementation",
-  // Live stage
-  "go live": "Live",
-  "payment processed": "Live"
-};
+const PIPELINE_STAGES = PIPELINE_STAGE_ORDER;
 
-// Define pipeline stage order for determining furthest stage
-const PIPELINE_STAGE_ORDER = ["Lead", "Qualified", "Demo", "Proposal", "Contract", "Implementation", "Live"];
-
-// Helper function to normalize stage names for mapping (updated to handle hyphens/underscores)
-const normalize = (s?: string) => (s || "").trim().toLowerCase().replace(/[_\s\-]+/g, ' ');
-
-// Function to determine the furthest pipeline stage based on completed lifecycle stages
-const getFurthestPipelineStage = (completedStages: string[]): string => {
-  // Canonicalize completed stages for comparison
-  const canonicalCompleted = completedStages.map(canonicalizeStageName);
-  
-  // Map canonical lifecycle stages to pipeline stages
-  const pipelineStages = canonicalCompleted
-    .map(stage => LIFECYCLE_TO_PIPELINE_MAPPING[normalize(stage)])
+// Determine the furthest pipeline stage from a list of lifecycle stage names
+const getFurthestPipelineStage = (reachedStageNames: string[]): string => {
+  const mapped = reachedStageNames
+    .map(name => LIFECYCLE_TO_PIPELINE_MAPPING[canonicalizeStageName(name)] || LIFECYCLE_TO_PIPELINE_MAPPING[name])
     .filter(Boolean) as string[];
-  
-  if (pipelineStages.length === 0) return "Lead";
-  
-  // Find the furthest stage in the pipeline
-  let furthestStageIndex = -1;
-  for (const stage of pipelineStages) {
-    const index = PIPELINE_STAGE_ORDER.indexOf(stage);
-    if (index > furthestStageIndex) {
-      furthestStageIndex = index;
-    }
+
+  if (mapped.length === 0) return "Lead";
+
+  let furthestIdx = -1;
+  for (const stage of mapped) {
+    const idx = PIPELINE_STAGE_ORDER.indexOf(stage);
+    if (idx > furthestIdx) furthestIdx = idx;
   }
-  
-  return furthestStageIndex >= 0 ? PIPELINE_STAGE_ORDER[furthestStageIndex] : "Lead";
+  return furthestIdx >= 0 ? PIPELINE_STAGE_ORDER[furthestIdx] : "Lead";
 };
 
 export const usePipelineData = () => {
@@ -111,18 +68,18 @@ export const usePipelineData = () => {
 
       console.log('Lifecycle stages fetched:', lifecycleStages);
 
-      // Group lifecycle stages by customer ID (only count completed stages for pipeline positioning)
-      const stagesByCustomer: Record<string, string[]> = {};
-      lifecycleStages?.forEach(stage => {
-        if ((stage.status || '').toLowerCase() === 'done') { // Only use completed stages for pipeline positioning
-          if (!stagesByCustomer[stage.customer_id]) {
-            stagesByCustomer[stage.customer_id] = [];
-          }
-          // Store canonical name for consistent mapping
-          const canonicalName = canonicalizeStageName(stage.name);
-          stagesByCustomer[stage.customer_id].push(canonicalName);
-        }
-      });
+// Group lifecycle stages by customer ID (count completed OR in-progress as reached)
+const stagesByCustomer: Record<string, string[]> = {};
+lifecycleStages?.forEach(stage => {
+  if (isCompletedLike(stage.status) || isInProgressLike(stage.status)) {
+    if (!stagesByCustomer[stage.customer_id]) {
+      stagesByCustomer[stage.customer_id] = [];
+    }
+    // Store canonical name for consistent mapping
+    const canonicalName = canonicalizeStageName(stage.name);
+    stagesByCustomer[stage.customer_id].push(canonicalName);
+  }
+});
 
       // Transform customers to CustomerData format with pipeline stage determination
       const transformedCustomers: CustomerData[] = (customers || []).map(customer => {

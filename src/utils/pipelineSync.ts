@@ -1,66 +1,19 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { canonicalizeStageName } from "@/utils/stageNames";
+import { isCompletedLike, isInProgressLike, getOperationalStatusFromArray } from "@/utils/stageStatus";
+import { PIPELINE_STAGE_ORDER, LIFECYCLE_TO_PIPELINE_MAPPING, getFurthestPipelineStageFromNames } from "@/utils/pipelineRules";
 
-// Map completed lifecycle stages to pipeline stages
-const LIFECYCLE_TO_PIPELINE_MAPPING: Record<string, string> = {
-  "Prospect": "Lead",
-  "Meeting Set": "Lead",
-  "Qualified Lead": "Qualified", 
-  "Demo": "Demo",
-  "Discovery Call": "Demo",
-  "Proposal Sent": "Proposal",
-  "Proposal Approved": "Proposal", 
-  "Contract Sent": "Contract",
-  "Contract Signed": "Contract",
-  "Onboarding": "Implementation",
-  "Technical Setup": "Implementation",
-  "Training": "Implementation",
-  "Go Live": "Live"
+
+const computePipelineStage = (stages: any[]): string => {
+  const reached = stages
+    .filter((s: any) => isCompletedLike(s.status) || isInProgressLike(s.status))
+    .map((s: any) => canonicalizeStageName(s.name));
+  return getFurthestPipelineStageFromNames(reached);
 };
 
-const PIPELINE_STAGE_ORDER = ["Lead", "Qualified", "Demo", "Proposal", "Contract", "Implementation", "Live"];
-
-const getFurthestPipelineStage = (completedStages: string[]): string => {
-  const pipelineStages = completedStages
-    .map(stage => LIFECYCLE_TO_PIPELINE_MAPPING[stage])
-    .filter(Boolean);
-  
-  if (pipelineStages.length === 0) return "Lead";
-  
-  let furthestStageIndex = -1;
-  for (const stage of pipelineStages) {
-    const index = PIPELINE_STAGE_ORDER.indexOf(stage);
-    if (index > furthestStageIndex) {
-      furthestStageIndex = index;
-    }
-  }
-  
-  return PIPELINE_STAGE_ORDER[furthestStageIndex] || "Lead";
-};
-
-const getOperationalStatus = (stages: any[]): "not-started" | "in-progress" | "done" | "blocked" => {
-  if (!stages || stages.length === 0) return "not-started";
-  
-  // Check if customer has completed "Go Live" stage
-  const hasCompletedGoLive = stages.some(stage => 
-    stage.name === "Go Live" && stage.status === "done"
-  );
-  
-  if (hasCompletedGoLive) return "done";
-  
-  // Check if any stage is blocked
-  const hasBlockedStages = stages.some(stage => stage.status === "blocked");
-  if (hasBlockedStages) return "blocked";
-  
-  // Check if any stage is in progress
-  const hasInProgressStages = stages.some(stage => stage.status === "in-progress");
-  if (hasInProgressStages) return "in-progress";
-  
-  // Check if any stage is completed (but not Go Live)
-  const hasCompletedStages = stages.some(stage => stage.status === "done");
-  if (hasCompletedStages) return "in-progress";
-  
-  return "not-started";
+const computeOperationalStatus = (stages: any[]): "not-started" | "in-progress" | "done" | "blocked" => {
+  return getOperationalStatusFromArray(stages);
 };
 
 export const syncCustomerPipelineStages = async (): Promise<boolean> => {
