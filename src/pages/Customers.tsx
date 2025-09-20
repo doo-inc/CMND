@@ -247,7 +247,12 @@ const Customers = () => {
     // Run pipeline sync before fetching data to ensure consistency
     const initializeCustomersPage = async () => {
       console.log("🔄 Customers page initializing - running pipeline sync");
-      await syncCustomerPipelineStages();
+      try {
+        const syncResult = await syncCustomerPipelineStages();
+        console.log("✅ Pipeline sync completed successfully:", syncResult);
+      } catch (error) {
+        console.error("❌ Pipeline sync failed:", error);
+      }
       fetchCustomers();
     };
     
@@ -275,7 +280,12 @@ const Customers = () => {
 
   const handleRefresh = async () => {
     console.log('=== Running Pipeline Sync Before Refresh ===');
-    await syncCustomerPipelineStages();
+    try {
+      const syncResult = await syncCustomerPipelineStages();
+      console.log("✅ Refresh pipeline sync completed:", syncResult);
+    } catch (error) {
+      console.error("❌ Refresh pipeline sync failed:", error);
+    }
     fetchCustomers(true);
   };
 
