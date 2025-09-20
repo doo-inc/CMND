@@ -21,6 +21,10 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
     console.log("=== PIPELINE SYNC STARTED ===");
     const startTime = Date.now();
     
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log("🔐 Auth context:", { user: user?.id, email: user?.email, error: authError });
+    
     // Fetch all customers, excluding churned customers from pipeline sync
     const { data: customers, error: customersError } = await supabase
       .from('customers')
@@ -82,26 +86,39 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
         .map(s => s.name);
       
       console.log(`🔍 ${customer.name}:`);
+      console.log(`   - Current DB: stage="${customer.stage}", status="${customer.status}"`);
       console.log(`   - Completed stages: [${completedStages.join(', ')}]`);
       console.log(`   - In progress stages: [${inProgressStages.join(', ')}]`);
       console.log(`   - Computed pipeline stage: ${newPipelineStage}`);
       console.log(`   - Computed status: ${newOperationalStatus}`);
       
+      // Special logging for Gulf Air
+      if (customer.name === 'Gulf Air') {
+        console.log(`🔴 GULF AIR DEBUG:`);
+        console.log(`   - Customer ID: ${customer.id}`);
+        console.log(`   - Total stages found: ${customerStages.length}`);
+        console.log(`   - Stage details:`, customerStages.map(s => ({ name: s.name, status: s.status })));
+        console.log(`   - Should update? ${customer.stage !== newPipelineStage || customer.status !== newOperationalStatus}`);
+      }
+      
       // Only update if stage or status has changed
       if (customer.stage !== newPipelineStage || customer.status !== newOperationalStatus) {
         console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${newPipelineStage}, Status ${customer.status} -> ${newOperationalStatus}`);
         
-        const { error: updateError } = await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from('customers')
           .update({
             stage: newPipelineStage,
             status: newOperationalStatus
           })
-          .eq('id', customer.id);
+          .eq('id', customer.id)
+          .select();
 
         if (updateError) {
           console.error(`❌ Error updating customer ${customer.name}:`, updateError);
+          console.error(`❌ Full error details:`, JSON.stringify(updateError, null, 2));
         } else {
+          console.log(`✅ Successfully updated ${customer.name}:`, updateData);
           updatedCount++;
           syncResults.push({
             customer: customer.name,
