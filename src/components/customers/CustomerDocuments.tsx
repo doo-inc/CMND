@@ -25,6 +25,7 @@ export const CustomerDocuments = ({ customerId }: CustomerDocumentsProps) => {
     queryKey: ['customer-documents', customerId],
     queryFn: async () => {
       console.log('CustomerDocuments: Fetching documents for customer:', customerId);
+      console.log('CustomerDocuments: Auth user:', await supabase.auth.getUser());
       
       const { data, error } = await supabase
         .from('documents')
@@ -34,10 +35,12 @@ export const CustomerDocuments = ({ customerId }: CustomerDocumentsProps) => {
 
       if (error) {
         console.error('CustomerDocuments: Error fetching documents:', error);
+        console.error('CustomerDocuments: Full error details:', JSON.stringify(error, null, 2));
         throw error;
       }
 
       console.log('CustomerDocuments: Fetched documents:', data?.length || 0);
+      console.log('CustomerDocuments: Documents data:', data);
       return data as Document[];
     },
     enabled: !!customerId,
