@@ -138,11 +138,22 @@ export function CustomerForm({
     }
     
     try {
-      // Get the final logo value from the avatar component
+      // Get the final logo value from the avatar component (with timeout protection)
+      let finalLogoValue = data.logo;
       if (avatarUploadRef.current) {
-        const finalLogoValue = avatarUploadRef.current.getPendingValue();
-        data.logo = finalLogoValue;
+        try {
+          const timeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Avatar load timeout')), 3000)
+          );
+          finalLogoValue = await Promise.race([
+            Promise.resolve(avatarUploadRef.current.getPendingValue()),
+            timeout
+          ]) as string;
+        } catch (err) {
+          console.warn('Avatar value retrieval failed, using existing:', err);
+        }
       }
+      data.logo = finalLogoValue;
       
       // Get contracts from the contracts list component
       const contracts = contractsListRef.current?.getContracts() || [];
@@ -153,6 +164,7 @@ export function CustomerForm({
       await onSubmit(data, contracts, documents);
     } catch (error) {
       console.error('CustomerForm: Error during submission:', error);
+      throw error;
     }
   };
 
