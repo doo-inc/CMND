@@ -247,6 +247,10 @@ const TeamManagementPage = () => {
           console.error('Function returned error:', response.data.error);
           toast.error(`Email failed to send: ${response.data.error}. Use the copy link button below to share manually.`);
           console.log('Manual invitation link:', inviteLink);
+        } else if (response.data && response.data.warning) {
+          // Email service not configured, but invitation created successfully
+          console.warn('Email service not configured:', response.data.warning);
+          toast.warning(`Invitation created! ${response.data.message || 'Share the link manually.'}`);
         } else {
           console.log('Email sent successfully:', response.data);
           toast.success(`Invitation sent successfully to ${data.email}!`);

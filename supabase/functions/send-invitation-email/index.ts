@@ -1,15 +1,22 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 
 console.log("Loading send-invitation-email function...");
 
-// Validate RESEND_API_KEY at startup
+// Check RESEND_API_KEY at startup
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 console.log("RESEND_API_KEY status:", RESEND_API_KEY ? "SET" : "NOT SET");
 
-// Initialize Resend even if key is missing (we'll check later)
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+// Dynamically import Resend only when needed
+let Resend: any = null;
+if (RESEND_API_KEY) {
+  try {
+    const resendModule = await import("npm:resend@2.0.0");
+    Resend = resendModule.Resend;
+    console.log("Resend module loaded successfully");
+  } catch (error) {
+    console.error("Failed to load Resend module:", error);
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,20 +111,25 @@ serve(async (req) => {
     console.log("Email recipient:", invitation.email);
     console.log("Email sender: DOO Command <hello@doo.ooo>");
     
-    if (!resend) {
-      console.error("Resend client not initialized - API key missing");
+    // Check if Resend is configured
+    if (!RESEND_API_KEY || !Resend) {
+      console.error("Email service not configured - returning success without sending");
       return new Response(
         JSON.stringify({ 
-          error: "Email service not configured",
-          details: "RESEND_API_KEY is not set in environment",
-          hint: "Please configure RESEND_API_KEY in Supabase edge function secrets"
+          success: true,
+          warning: "Email service not configured",
+          message: "Invitation created but email not sent. Share the link manually.",
+          hint: "Configure RESEND_API_KEY to enable email notifications"
         }),
         { 
-          status: 500, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
+
+    // Initialize Resend client
+    const resend = new Resend(RESEND_API_KEY);
 
     let emailResponse;
     try {
