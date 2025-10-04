@@ -6,13 +6,10 @@ console.log("Loading send-invitation-email function...");
 
 // Validate RESEND_API_KEY at startup
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-if (!RESEND_API_KEY) {
-  console.error("CRITICAL: RESEND_API_KEY is not set!");
-} else {
-  console.log("RESEND_API_KEY is configured:", RESEND_API_KEY.substring(0, 10) + "...");
-}
+console.log("RESEND_API_KEY status:", RESEND_API_KEY ? "SET" : "NOT SET");
 
-const resend = new Resend(RESEND_API_KEY);
+// Initialize Resend even if key is missing (we'll check later)
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,23 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    // Validate RESEND_API_KEY before processing
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not configured");
-      return new Response(
-        JSON.stringify({ 
-          error: "Email service not configured. Please set RESEND_API_KEY.",
-          details: "The RESEND_API_KEY environment variable is missing"
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     console.log("Processing invitation email request");
-    console.log("RESEND_API_KEY exists:", !!RESEND_API_KEY);
     
     const body = await req.text();
     console.log("Raw request body length:", body.length);
@@ -123,6 +104,21 @@ serve(async (req) => {
     console.log("Email recipient:", invitation.email);
     console.log("Email sender: DOO Command <hello@doo.ooo>");
     
+    if (!resend) {
+      console.error("Resend client not initialized - API key missing");
+      return new Response(
+        JSON.stringify({ 
+          error: "Email service not configured",
+          details: "RESEND_API_KEY is not set in environment",
+          hint: "Please configure RESEND_API_KEY in Supabase edge function secrets"
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     let emailResponse;
     try {
       // Send email using Resend
