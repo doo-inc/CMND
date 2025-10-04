@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LifecycleTracker } from "@/components/lifecycle/LifecycleTracker";
+import { DocumentGenerationPanel } from "@/components/documents/DocumentGenerationPanel";
 import { 
   Select,
   SelectContent,
@@ -264,12 +265,19 @@ const Lifecycle = () => {
         </div>
 
         {selectedCustomerData && (
-          <LifecycleTracker
-            customerId={selectedCustomerData.id}
-            customerName={selectedCustomerData.name}
-            stages={customerStages}
-            onStagesUpdate={handleStagesUpdate}
-          />
+          <>
+            <DocumentGenerationPanel
+              customerId={selectedCustomerData.id}
+              customerName={selectedCustomerData.name}
+            />
+            
+            <LifecycleTracker
+              customerId={selectedCustomerData.id}
+              customerName={selectedCustomerData.name}
+              stages={customerStages}
+              onStagesUpdate={handleStagesUpdate}
+            />
+          </>
         )}
         
         {loading && (

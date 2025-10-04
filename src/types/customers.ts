@@ -22,6 +22,12 @@ export interface Customer {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  company_registration_number?: string | null;
+  legal_address?: string | null;
+  representative_name?: string | null;
+  representative_title?: string | null;
+  payment_terms_days?: number | null;
+  currency?: string | null;
   created_at: string;
   updated_at: string;
 }

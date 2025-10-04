@@ -251,20 +251,26 @@ export type Database = {
           annual_rate: number | null
           churn_date: string | null
           churn_method: string | null
+          company_registration_number: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
           contract_size: number | null
           country: string | null
           created_at: string
+          currency: string | null
           description: string | null
           estimated_deal_value: number | null
           go_live_date: string | null
           id: string
           industry: string | null
+          legal_address: string | null
           logo: string | null
           name: string
           owner_id: string | null
+          payment_terms_days: number | null
+          representative_name: string | null
+          representative_title: string | null
           segment: string | null
           setup_fee: number | null
           stage: string | null
@@ -276,20 +282,26 @@ export type Database = {
           annual_rate?: number | null
           churn_date?: string | null
           churn_method?: string | null
+          company_registration_number?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contract_size?: number | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           description?: string | null
           estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
           industry?: string | null
+          legal_address?: string | null
           logo?: string | null
           name: string
           owner_id?: string | null
+          payment_terms_days?: number | null
+          representative_name?: string | null
+          representative_title?: string | null
           segment?: string | null
           setup_fee?: number | null
           stage?: string | null
@@ -301,20 +313,26 @@ export type Database = {
           annual_rate?: number | null
           churn_date?: string | null
           churn_method?: string | null
+          company_registration_number?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contract_size?: number | null
           country?: string | null
           created_at?: string
+          currency?: string | null
           description?: string | null
           estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
           industry?: string | null
+          legal_address?: string | null
           logo?: string | null
           name?: string
           owner_id?: string | null
+          payment_terms_days?: number | null
+          representative_name?: string | null
+          representative_title?: string | null
           segment?: string | null
           setup_fee?: number | null
           stage?: string | null
@@ -371,6 +389,53 @@ export type Database = {
           },
           {
             foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_documents: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          document_type: string
+          file_path: string
+          format: string
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          metadata: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          document_type: string
+          file_path: string
+          format: string
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          document_type?: string
+          file_path?: string
+          format?: string
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"

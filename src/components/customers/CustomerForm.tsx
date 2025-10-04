@@ -40,6 +40,12 @@ const customerFormSchema = z.object({
   contact_name: z.string().optional(),
   contact_email: z.string().email("Invalid email format").optional().or(z.literal("")),
   contact_phone: z.string().optional(),
+  company_registration_number: z.string().optional(),
+  legal_address: z.string().optional(),
+  representative_name: z.string().optional(),
+  representative_title: z.string().optional(),
+  payment_terms_days: z.number().nullable().optional(),
+  currency: z.string().optional(),
 });
 
 export type CustomerFormData = z.infer<typeof customerFormSchema>;
@@ -86,6 +92,12 @@ export function CustomerForm({
       contact_name: initialData?.contact_name || "",
       contact_email: initialData?.contact_email || "",
       contact_phone: initialData?.contact_phone || "",
+      company_registration_number: initialData?.company_registration_number || "",
+      legal_address: initialData?.legal_address || "",
+      representative_name: initialData?.representative_name || "",
+      representative_title: initialData?.representative_title || "",
+      payment_terms_days: initialData?.payment_terms_days || 14,
+      currency: initialData?.currency || "BD",
     },
   });
 
@@ -407,6 +419,123 @@ export function CustomerForm({
                   <FormLabel>Contact Phone</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter contact phone" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Legal & Company Information Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Legal & Company Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="company_registration_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Registration Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter registration number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="currency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="BD">BD - Bahraini Dinar</SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="SAR">SAR - Saudi Riyal</SelectItem>
+                      <SelectItem value="AED">AED - UAE Dirham</SelectItem>
+                      <SelectItem value="KWD">KWD - Kuwaiti Dinar</SelectItem>
+                      <SelectItem value="QAR">QAR - Qatari Riyal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="legal_address"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Legal Address</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Enter full legal address" 
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="representative_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Representative Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter representative name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="representative_title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Representative Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., CEO, Managing Director" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="payment_terms_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Terms (Days)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="14"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? null : parseInt(value) || null);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
