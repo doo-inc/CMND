@@ -66,23 +66,44 @@ export const DocumentGenerationDialog = ({
         includeLogo
       });
 
-      const { data, error } = await supabase.functions.invoke('generate-customer-documents', {
-        body: {
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Direct fetch to edge function with proper error handling
+      const functionUrl = `https://vnhwhyufevcixgelsujb.supabase.co/functions/v1/generate-customer-documents`;
+      
+      console.log('[DOC-GEN-DIALOG] Calling function at:', functionUrl);
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaHdoeXVmZXZjaXhnZWxzdWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDY5ODMsImV4cCI6MjA1OTEyMjk4M30.HR91tc5clF0FBUbmRkr2aPdZydMerpSH3A-IQUYK8ds'
+        },
+        body: JSON.stringify({
           customer_id: customerId,
           document_types: selectedDocuments,
           format: 'pdf',
           options: {
             include_logo: includeLogo
           }
-        }
+        })
       });
 
-      console.log('[DOC-GEN-DIALOG] Function response:', { data, error });
-
-      if (error) {
-        console.error('[DOC-GEN-DIALOG] Function invocation error:', error);
-        throw error;
+      console.log('[DOC-GEN-DIALOG] Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DOC-GEN-DIALOG] Error response:', errorText);
+        throw new Error(`Function returned ${response.status}: ${errorText}`);
       }
+
+      const data = await response.json();
+      console.log('[DOC-GEN-DIALOG] Function response data:', data);
 
       if (data.success && data.documents.length > 0) {
         setGeneratedDocuments(data.documents);
@@ -95,20 +116,11 @@ export const DocumentGenerationDialog = ({
 
       if (data.errors && data.errors.length > 0) {
         setErrors(data.errors);
-        toast({
-          title: "Some documents failed",
-          description: `${data.errors.length} document(s) encountered errors`,
-          variant: "destructive"
-        });
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Generation failed');
       }
 
     } catch (error: any) {
       console.error('[DOC-GEN-DIALOG] Document generation error:', error);
-      const errorMessage = error?.message || error?.error_description || error?.msg || 'Failed to generate documents';
+      const errorMessage = error?.message || 'Failed to generate documents';
       toast({
         title: "Generation failed",
         description: errorMessage,
