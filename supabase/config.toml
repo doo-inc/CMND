@@ -35,3 +35,9 @@ verify_jwt = true
 
 [functions.send-invitation-email]
 verify_jwt = true
+
+[functions.generate-customer-documents]
+verify_jwt = true
+
+[functions.hubspot-sync]
+verify_jwt = true
