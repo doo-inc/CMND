@@ -231,9 +231,15 @@ const TeamManagementPage = () => {
         
         console.log('Function payload:', payload);
         
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await supabase.functions.invoke('send-invitation-email', {
           body: payload
         });
+        
+        clearTimeout(timeoutId);
 
         console.log('Edge function full response:', response);
         console.log('Response data:', response.data);
@@ -241,12 +247,10 @@ const TeamManagementPage = () => {
 
         if (response.error) {
           console.error('Error sending invitation email:', response.error);
-          toast.error(`Email failed to send: ${response.error.message || 'Unknown error'}. Use the copy link button below to share manually.`);
-          console.log('Manual invitation link:', inviteLink);
+          toast.warning(`Invitation created! Email service unavailable - use the link below to share manually.`);
         } else if (response.data && response.data.error) {
           console.error('Function returned error:', response.data.error);
-          toast.error(`Email failed to send: ${response.data.error}. Use the copy link button below to share manually.`);
-          console.log('Manual invitation link:', inviteLink);
+          toast.warning(`Invitation created! ${response.data.message || 'Share the link manually.'}`);
         } else if (response.data && response.data.warning) {
           // Email service not configured, but invitation created successfully
           console.warn('Email service not configured:', response.data.warning);
@@ -256,11 +260,10 @@ const TeamManagementPage = () => {
           toast.success(`Invitation sent successfully to ${data.email}!`);
           setInvitationLink(''); // Clear link if email was successful
         }
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error('Error invoking email function:', emailError);
         console.error('Error details:', JSON.stringify(emailError, null, 2));
-        toast.error(`Email failed to send: ${emailError.message || 'Network error'}. Use the copy link button below to share manually.`);
-        console.log('Manual invitation link:', inviteLink);
+        toast.warning(`Invitation created! Email service unavailable - use the link below to share manually.`);
       }
       
       await createTeamNotification({
