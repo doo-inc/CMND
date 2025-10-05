@@ -15,27 +15,30 @@ const corsHeaders = {
 async function drawProfessionalHeader(page: any, dooLogoBytes: Uint8Array, customerLogoBytes: Uint8Array | null, pdfDoc: any) {
   const { width, height } = page.getSize();
   const gradientHeight = 80;
-  const gradientSteps = 150;
+  const gradientSteps = 200; // More steps for smoother gradient
   
+  // Smooth horizontal gradient: purple (right) to black with low opacity (left)
   for (let i = 0; i < gradientSteps; i++) {
-    const y = height - (i * gradientHeight / gradientSteps);
+    const x = (i * width / gradientSteps);
     const ratio = i / gradientSteps;
-    let r, g, b;
-    if (ratio < 0.4) {
-      const localRatio = ratio / 0.4;
-      r = DOO_PURPLE[0] + (DOO_LIGHT_PURPLE[0] - DOO_PURPLE[0]) * localRatio;
-      g = DOO_PURPLE[1] + (DOO_LIGHT_PURPLE[1] - DOO_PURPLE[1]) * localRatio;
-      b = DOO_PURPLE[2] + (DOO_LIGHT_PURPLE[2] - DOO_PURPLE[2]) * localRatio;
-    } else {
-      const localRatio = (ratio - 0.4) / 0.6;
-      r = DOO_LIGHT_PURPLE[0] + (DOO_WHITE[0] - DOO_LIGHT_PURPLE[0]) * localRatio;
-      g = DOO_LIGHT_PURPLE[1] + (DOO_WHITE[1] - DOO_LIGHT_PURPLE[1]) * localRatio;
-      b = DOO_LIGHT_PURPLE[2] + (DOO_WHITE[2] - DOO_LIGHT_PURPLE[2]) * localRatio;
-    }
-    page.drawRectangle({ x: 0, y: y - (gradientHeight / gradientSteps), width: width, height: gradientHeight / gradientSteps + 1, color: rgb(r, g, b) });
+    
+    // Purple on right (ratio = 1), black on left (ratio = 0)
+    const r = 0 + (DOO_PURPLE[0] * ratio);
+    const g = 0 + (DOO_PURPLE[1] * ratio);
+    const b = 0 + (DOO_PURPLE[2] * ratio);
+    const opacity = 0.15 + (0.25 * ratio); // Low opacity: 0.15 to 0.4
+    
+    page.drawRectangle({ 
+      x: x, 
+      y: height - gradientHeight, 
+      width: (width / gradientSteps) + 1, 
+      height: gradientHeight, 
+      color: rgb(r, g, b),
+      opacity: opacity
+    });
   }
 
-  // DOO logo - scale proportionally, don't stretch
+  // DOO logo - positioned properly for formal documents
   try {
     const dooLogoImage = await pdfDoc.embedPng(dooLogoBytes);
     const originalWidth = dooLogoImage.width;
@@ -44,10 +47,10 @@ async function drawProfessionalHeader(page: any, dooLogoBytes: Uint8Array, custo
     const scale = Math.min(120 / originalWidth, 1);
     const scaledWidth = originalWidth * scale;
     const scaledHeight = originalHeight * scale;
-    // Position logo higher up and to the left
+    // Position: a bit to the left and down for formal placement
     page.drawImage(dooLogoImage, { 
-      x: 35, 
-      y: height - 90, 
+      x: 30, 
+      y: height - 105, 
       width: scaledWidth, 
       height: scaledHeight 
     });
@@ -78,11 +81,11 @@ function formatCurrency(amount: number, currency: string = 'BD') {
 }
 
 async function generateProposal(customer: any, pdfDoc: any, font: any, boldFont: any, dooLogoBytes: Uint8Array, customerLogoBytes: Uint8Array | null) {
-  const { width: pageWidth } = pdfDoc.getPages()[0].getSize();
-  
   // Page 1: Cover
   const page1 = pdfDoc.addPage([595, 842]);
   await drawProfessionalHeader(page1, dooLogoBytes, customerLogoBytes, pdfDoc);
+  
+  const { width: pageWidth } = page1.getSize();
   
   // Center the title
   const titleText = 'AI CX PROPOSAL';
