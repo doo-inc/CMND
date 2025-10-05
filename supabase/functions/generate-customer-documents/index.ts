@@ -36,16 +36,33 @@ async function drawProfessionalHeader(page: any, dooLogoBytes: Uint8Array, custo
   }
 
   // DOO logo - scale proportionally, don't stretch
-  const dooLogoImage = await pdfDoc.embedPng(dooLogoBytes);
-  const logoDims = dooLogoImage.scale(0.5); // Scale to 50% to get proper size
-  page.drawImage(dooLogoImage, { x: 50, y: height - 70, width: logoDims.width, height: logoDims.height });
+  try {
+    const dooLogoImage = await pdfDoc.embedPng(dooLogoBytes);
+    const originalWidth = dooLogoImage.width;
+    const originalHeight = dooLogoImage.height;
+    // Scale to reasonable size (max 120px width)
+    const scale = Math.min(120 / originalWidth, 1);
+    const scaledWidth = originalWidth * scale;
+    const scaledHeight = originalHeight * scale;
+    page.drawImage(dooLogoImage, { 
+      x: 50, 
+      y: height - 45 - scaledHeight, 
+      width: scaledWidth, 
+      height: scaledHeight 
+    });
+    console.log('DOO logo embedded successfully:', scaledWidth, 'x', scaledHeight);
+  } catch (e) {
+    console.error('DOO logo embedding error:', e);
+  }
 
   if (customerLogoBytes) {
     try {
       const customerLogoImage = await pdfDoc.embedPng(customerLogoBytes);
       const customerLogoDims = customerLogoImage.scale(0.1);
       page.drawImage(customerLogoImage, { x: width - 110, y: height - 70, width: customerLogoDims.width, height: customerLogoDims.height });
-    } catch (e) { console.error('Customer logo error:', e); }
+    } catch (e) { 
+      console.error('Customer logo error:', e); 
+    }
   }
 }
 
@@ -614,8 +631,13 @@ serve(async (req) => {
 
     // Fetch DOO logo
     const dooLogoUrl = 'https://cdn.prod.website-files.com/68ac62e7fc79b26131535066/68ad505697774505c5b64767_doo-logo.png';
+    console.log('Fetching DOO logo from:', dooLogoUrl);
     const dooLogoResponse = await fetch(dooLogoUrl);
+    if (!dooLogoResponse.ok) {
+      throw new Error(`Failed to fetch DOO logo: ${dooLogoResponse.status}`);
+    }
     const dooLogoBytes = new Uint8Array(await dooLogoResponse.arrayBuffer());
+    console.log('DOO logo fetched successfully, size:', dooLogoBytes.length, 'bytes');
 
     // Fetch customer logo if available
     let customerLogoBytes: Uint8Array | null = null;

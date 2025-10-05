@@ -33,7 +33,7 @@ export const DocumentGenerationDialog = ({
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>(['proposal', 'service_agreement', 'sla', 'quotation']);
   const [includeLogo, setIncludeLogo] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedDocuments, setGeneratedDocuments] = useState<Array<{ type: string; download_url: string }>>([]);
+  const [generatedDocuments, setGeneratedDocuments] = useState<Array<{ type: string; file_path: string; download_url: string }>>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -134,6 +134,52 @@ export const DocumentGenerationDialog = ({
     }
   };
 
+  const handleDownloadDocument = async (doc: { type: string; file_path: string; download_url: string }) => {
+    try {
+      // Get the file data as a blob using storage.download (same as GeneratedDocumentsList)
+      const { data, error } = await supabase.storage
+        .from('customer-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+      
+      if (!data) {
+        throw new Error('No file data received');
+      }
+
+      // Create a blob URL and trigger download
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from document type
+      const docLabel = DOCUMENT_LABELS[doc.type as keyof typeof DOCUMENT_LABELS] || doc.type;
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `${docLabel.replace(/\s+/g, '_')}_${timestamp}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download started",
+        description: "Check your Downloads folder"
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download failed",
+        description: "Could not download the document",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleClose = () => {
     if (!isGenerating) {
       setGeneratedDocuments([]);
@@ -211,7 +257,7 @@ export const DocumentGenerationDialog = ({
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => window.open(doc.download_url, '_blank')}
+                    onClick={() => handleDownloadDocument(doc)}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download
