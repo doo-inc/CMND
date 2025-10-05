@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText } from "lucide-react";
+import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, FilePlus } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 const mainNavItems = [
@@ -19,6 +19,11 @@ const mainNavItems = [
     title: "Contracts",
     icon: FileText,
     path: "/contracts"
+  },
+  {
+    title: "Generate Documents",
+    icon: FilePlus,
+    path: "/generate-documents"
   },
   {
     title: "Partnerships",

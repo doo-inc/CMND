@@ -29,7 +29,7 @@ export interface Customer {
   payment_terms_days?: number | null;
   currency?: string | null;
   service_type?: 'text' | 'voice' | 'both' | null;
-  text_plan?: 'basic' | 'growth' | null;
+  text_plan?: 'basic' | 'growth' | 'pro' | 'scale' | 'enterprise' | 'large_enterprise' | null;
   text_ai_responses?: number | null;
   voice_tier?: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null;
   voice_hours?: number | null;
