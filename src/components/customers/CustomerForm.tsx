@@ -46,6 +46,12 @@ const customerFormSchema = z.object({
   representative_title: z.string().optional(),
   payment_terms_days: z.number().nullable().optional(),
   currency: z.string().optional(),
+  service_type: z.enum(['text', 'voice', 'both']).nullable().optional(),
+  text_plan: z.enum(['basic', 'growth']).nullable().optional(),
+  text_ai_responses: z.number().nullable().optional(),
+  voice_tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']).nullable().optional(),
+  voice_hours: z.number().nullable().optional(),
+  voice_price_per_hour: z.number().nullable().optional(),
 });
 
 export type CustomerFormData = z.infer<typeof customerFormSchema>;
@@ -98,6 +104,12 @@ export function CustomerForm({
       representative_title: initialData?.representative_title || "",
       payment_terms_days: initialData?.payment_terms_days || 14,
       currency: initialData?.currency || "BD",
+      service_type: (initialData as any)?.service_type || null,
+      text_plan: (initialData as any)?.text_plan || null,
+      text_ai_responses: (initialData as any)?.text_ai_responses || null,
+      voice_tier: (initialData as any)?.voice_tier || null,
+      voice_hours: (initialData as any)?.voice_hours || null,
+      voice_price_per_hour: (initialData as any)?.voice_price_per_hour || null,
     },
   });
 
@@ -360,6 +372,161 @@ export function CustomerForm({
                 )}
               />
             </div>
+          </div>
+
+          {/* Service Plan Section */}
+          <div className="space-y-4 pt-6 border-t">
+            <h3 className="text-lg font-semibold">Service Plan Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="service_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Service Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select service type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-background z-50">
+                        <SelectItem value="text">Text AI</SelectItem>
+                        <SelectItem value="voice">Voice AI</SelectItem>
+                        <SelectItem value="both">Text & Voice AI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Text Plan Fields - Show if service_type is 'text' or 'both' */}
+            {(form.watch("service_type") === "text" || form.watch("service_type") === "both") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <FormField
+                  control={form.control}
+                  name="text_plan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Text Plan</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select plan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-background z-50">
+                          <SelectItem value="basic">Basic Plan</SelectItem>
+                          <SelectItem value="growth">Growth Plan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="text_ai_responses"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>AI Responses (Monthly)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 1000"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === "" ? null : parseInt(value) || null);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Voice Plan Fields - Show if service_type is 'voice' or 'both' */}
+            {(form.watch("service_type") === "voice" || form.watch("service_type") === "both") && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                <FormField
+                  control={form.control}
+                  name="voice_tier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Voice Tier</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select tier" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-background z-50">
+                          <SelectItem value="tier_1">Tier 1 (100-399 hrs)</SelectItem>
+                          <SelectItem value="tier_2">Tier 2 (400-999 hrs)</SelectItem>
+                          <SelectItem value="tier_3">Tier 3 (1,000-2,999 hrs)</SelectItem>
+                          <SelectItem value="tier_4">Tier 4 (3,000+ hrs)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="voice_hours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monthly Hours</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 150"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === "" ? null : parseInt(value) || null);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="voice_price_per_hour"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price per Hour ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="e.g., 25.00"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === "" ? null : parseFloat(value) || null);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </div>
         </div>
 

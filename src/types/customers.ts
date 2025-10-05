@@ -28,6 +28,12 @@ export interface Customer {
   representative_title?: string | null;
   payment_terms_days?: number | null;
   currency?: string | null;
+  service_type?: 'text' | 'voice' | 'both' | null;
+  text_plan?: 'basic' | 'growth' | null;
+  text_ai_responses?: number | null;
+  voice_tier?: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null;
+  voice_hours?: number | null;
+  voice_price_per_hour?: number | null;
   created_at: string;
   updated_at: string;
 }

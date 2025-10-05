@@ -272,11 +272,17 @@ export type Database = {
           representative_name: string | null
           representative_title: string | null
           segment: string | null
+          service_type: string | null
           setup_fee: number | null
           stage: string | null
           status: string | null
           subscription_end_date: string | null
+          text_ai_responses: number | null
+          text_plan: string | null
           updated_at: string
+          voice_hours: number | null
+          voice_price_per_hour: number | null
+          voice_tier: string | null
         }
         Insert: {
           annual_rate?: number | null
@@ -303,11 +309,17 @@ export type Database = {
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null
+          service_type?: string | null
           setup_fee?: number | null
           stage?: string | null
           status?: string | null
           subscription_end_date?: string | null
+          text_ai_responses?: number | null
+          text_plan?: string | null
           updated_at?: string
+          voice_hours?: number | null
+          voice_price_per_hour?: number | null
+          voice_tier?: string | null
         }
         Update: {
           annual_rate?: number | null
@@ -334,11 +346,17 @@ export type Database = {
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null
+          service_type?: string | null
           setup_fee?: number | null
           stage?: string | null
           status?: string | null
           subscription_end_date?: string | null
+          text_ai_responses?: number | null
+          text_plan?: string | null
           updated_at?: string
+          voice_hours?: number | null
+          voice_price_per_hour?: number | null
+          voice_tier?: string | null
         }
         Relationships: []
       }

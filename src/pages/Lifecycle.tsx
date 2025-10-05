@@ -107,10 +107,13 @@ const Lifecycle = () => {
         }
 
         if (data && data.length > 0) {
-          // Cast the status to the proper type
+          // Cast the status and service_type to proper types
           const typedCustomers = data.map(customer => ({
             ...customer,
-            status: customer.status as "not-started" | "in-progress" | "done" | "blocked" | "churned" | null
+            status: customer.status as "not-started" | "in-progress" | "done" | "blocked" | "churned" | null,
+            service_type: customer.service_type as 'text' | 'voice' | 'both' | null,
+            text_plan: customer.text_plan as 'basic' | 'growth' | null,
+            voice_tier: customer.voice_tier as 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null
           }));
           setCustomerList(typedCustomers);
           

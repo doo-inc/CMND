@@ -28,8 +28,8 @@ async function drawProfessionalHeader(
   // Compact header height
   const headerHeight = 60;
   
-  // Draw gradient-style header with multiple rectangles
-  const gradientSteps = 4;
+  // Draw smooth gradient with 25 steps for seamless transition
+  const gradientSteps = 25;
   for (let i = 0; i < gradientSteps; i++) {
     const ratio = i / gradientSteps;
     const r = DOO_PINK[0] + (DOO_PURPLE[0] - DOO_PINK[0]) * ratio;
@@ -125,6 +125,17 @@ function drawFooter(page: any, text: string, font: any, pageNum: number) {
   });
 }
 
+// Helper function to get voice tier details
+function getVoiceTierDetails(tier: string) {
+  const tiers: Record<string, { range: string, minimum: number }> = {
+    'tier_1': { range: '100–399 hours', minimum: 150 },
+    'tier_2': { range: '400–999 hours', minimum: 400 },
+    'tier_3': { range: '1,000–2,999 hours', minimum: 1000 },
+    'tier_4': { range: '3,000+ hours', minimum: 3000 },
+  };
+  return tiers[tier] || { range: 'N/A', minimum: 0 };
+}
+
 // Professional Customer Proposal
 async function generateProposal(
   customer: any, 
@@ -166,6 +177,7 @@ async function generateProposal(
   
   const infoLines = [
     `Company: ${customer.name}`,
+    `CR Number: ${customer.company_registration_number || 'N/A'}`,
     `Country: ${customer.country || 'N/A'}`,
     `Industry: ${customer.industry || 'N/A'}`,
     `Contact: ${customer.contact_name || 'N/A'}`,
@@ -256,6 +268,172 @@ async function generateProposal(
   
   yPos -= 40;
   
+  // Service Plan Details (if applicable)
+  if (customer.service_type) {
+    firstPage.drawText('Service Plan Details:', {
+      x: 50,
+      y: yPos,
+      size: 12,
+      font: boldFont,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 22;
+
+    const serviceTypeLabels = {
+      'text': 'Text AI Service',
+      'voice': 'Voice AI Service',
+      'both': 'Text & Voice AI Service'
+    };
+    
+    firstPage.drawText(`• Service Type: ${serviceTypeLabels[customer.service_type as keyof typeof serviceTypeLabels]}`, {
+      x: 50,
+      y: yPos,
+      size: 10,
+      font: regularFont,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPos -= 18;
+
+    if (customer.text_plan && (customer.service_type === 'text' || customer.service_type === 'both')) {
+      const planName = customer.text_plan === 'basic' ? 'Basic Plan' : 'Growth Plan';
+      firstPage.drawText(`• Text Plan: ${planName} (${customer.text_ai_responses?.toLocaleString() || 'N/A'} AI responses/month)`, {
+        x: 50,
+        y: yPos,
+        size: 10,
+        font: regularFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPos -= 18;
+    }
+
+    if (customer.voice_tier && (customer.service_type === 'voice' || customer.service_type === 'both')) {
+      const tierDetails = getVoiceTierDetails(customer.voice_tier);
+      firstPage.drawText(`• Voice Plan: Tier ${customer.voice_tier.replace('tier_', '')} (${tierDetails.range})`, {
+        x: 50,
+        y: yPos,
+        size: 10,
+        font: regularFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPos -= 18;
+      
+      if (customer.voice_hours) {
+        firstPage.drawText(`• Monthly Hours: ${customer.voice_hours} hours`, {
+          x: 50,
+          y: yPos,
+          size: 10,
+          font: regularFont,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPos -= 18;
+      }
+    }
+
+    yPos -= 10;
+  }
+  
+  yPos -= 30;
+
+  // Service Details Section
+  if (customer.service_type) {
+    firstPage.drawText('Service Details', {
+      x: 50,
+      y: yPos,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 25;
+
+    const serviceTypeLabels = {
+      'text': 'Text AI Service',
+      'voice': 'Voice AI Service',
+      'both': 'Text & Voice AI Service'
+    };
+    
+    firstPage.drawText(`Service Type: ${serviceTypeLabels[customer.service_type as keyof typeof serviceTypeLabels] || customer.service_type}`, {
+      x: 50,
+      y: yPos,
+      size: 11,
+      font: boldFont,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 25;
+
+    // Text Plan Details
+    if (customer.text_plan && (customer.service_type === 'text' || customer.service_type === 'both')) {
+      const planName = customer.text_plan === 'basic' ? 'Basic Plan' : 'Growth Plan';
+      firstPage.drawText(`Text Plan: ${planName}`, {
+        x: 60,
+        y: yPos,
+        size: 11,
+        font: regularFont,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPos -= 18;
+      
+      if (customer.text_ai_responses) {
+        firstPage.drawText(`• ${customer.text_ai_responses.toLocaleString()} AI responses per month`, {
+          x: 70,
+          y: yPos,
+          size: 10,
+          font: regularFont,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPos -= 18;
+      }
+    }
+
+    // Voice Plan Details
+    if (customer.voice_tier && (customer.service_type === 'voice' || customer.service_type === 'both')) {
+      const tierDetails = getVoiceTierDetails(customer.voice_tier);
+      firstPage.drawText(`Voice Plan: Tier ${customer.voice_tier.replace('tier_', '')} (${tierDetails.range})`, {
+        x: 60,
+        y: yPos,
+        size: 11,
+        font: regularFont,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPos -= 18;
+      
+      if (customer.voice_hours) {
+        firstPage.drawText(`• ${customer.voice_hours} hours per month commitment`, {
+          x: 70,
+          y: yPos,
+          size: 10,
+          font: regularFont,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPos -= 18;
+      }
+      
+      if (customer.voice_price_per_hour) {
+        firstPage.drawText(`• ${customer.voice_price_per_hour} ${currency} per hour`, {
+          x: 70,
+          y: yPos,
+          size: 10,
+          font: regularFont,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        yPos -= 18;
+        
+        if (customer.voice_hours) {
+          const annualCost = customer.voice_price_per_hour * customer.voice_hours * 12;
+          firstPage.drawText(`• Estimated annual cost: ${annualCost.toLocaleString()} ${currency}`, {
+            x: 70,
+            y: yPos,
+            size: 10,
+            font: boldFont,
+            color: rgb(DOO_PURPLE[0] / 255, DOO_PURPLE[1] / 255, DOO_PURPLE[2] / 255),
+          });
+          yPos -= 18;
+        }
+      }
+    }
+
+    yPos -= 15;
+  }
+  
   // Next Steps
   firstPage.drawText('Next Steps', {
     x: 50,
@@ -285,7 +463,7 @@ async function generateProposal(
     yPos -= 20;
   });
   
-  const footerText = 'DOO • www.doo.com • info@doo.com';
+  const footerText = 'DOO • hello@doo.ooo • Transforming Business with AI';
   drawFooter(firstPage, footerText, regularFont, 1);
 
   return await pdfDoc.save();
@@ -327,7 +505,20 @@ async function generateSLA(
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  yPos -= 35;
+  yPos -= 25;
+  
+  if (customer.company_registration_number) {
+    firstPage.drawText(`CR Number: ${customer.company_registration_number}`, {
+      x: 50,
+      y: yPos,
+      size: 10,
+      font: regularFont,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    yPos -= 10;
+  }
+  
+  yPos -= 25;
   
   // Service Availability
   firstPage.drawText('1. Service Availability', {
@@ -447,7 +638,7 @@ async function generateSLA(
     yPos -= 18;
   });
   
-  const footerText = 'DOO • www.doo.com • info@doo.com';
+  const footerText = 'DOO • hello@doo.ooo • Transforming Business with AI';
   drawFooter(firstPage, footerText, regularFont, 1);
 
   return await pdfDoc.save();
@@ -512,6 +703,7 @@ async function generateInvoice(
   
   const billToLines = [
     customer.name,
+    customer.company_registration_number ? `CR: ${customer.company_registration_number}` : '',
     customer.legal_address || '',
     customer.country || '',
     customer.contact_email || '',
@@ -681,7 +873,7 @@ async function generateInvoice(
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  const footerText = 'DOO • www.doo.com • info@doo.com';
+  const footerText = 'DOO • hello@doo.ooo • Transforming Business with AI';
   drawFooter(firstPage, footerText, regularFont, 1);
 
   return await pdfDoc.save();
@@ -729,19 +921,16 @@ serve(async (req) => {
       throw new Error('Customer not found');
     }
 
-    // Fetch DOO logo from storage
+    // Fetch DOO logo from CDN
     let dooLogoBytes: Uint8Array | null = null;
     try {
-      const { data: logoData } = await supabaseAdmin.storage
-        .from('customer-documents')
-        .download('templates/doo-logo-official.png');
-      
-      if (logoData) {
-        dooLogoBytes = new Uint8Array(await logoData.arrayBuffer());
-        console.log('[EDGE-FUNCTION] DOO logo loaded successfully');
+      const dooLogoResponse = await fetch('https://cdn.prod.website-files.com/68ac62e7fc79b26131535066/68ad505697774505c5b64767_doo-logo.png');
+      if (dooLogoResponse.ok) {
+        dooLogoBytes = new Uint8Array(await dooLogoResponse.arrayBuffer());
+        console.log('[EDGE-FUNCTION] DOO logo loaded successfully from CDN');
       }
     } catch (logoError) {
-      console.log('[EDGE-FUNCTION] Could not load DOO logo, will use text fallback');
+      console.log('[EDGE-FUNCTION] Could not load DOO logo from CDN, will use text fallback:', logoError);
     }
 
     // Fetch customer logo if available
