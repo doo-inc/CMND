@@ -467,7 +467,7 @@ async function generateSLA(customer: any, logoBytes: Uint8Array) {
   });
   
   currentY -= 30;
-  const supportText = `3.1 Support Channels\nClient can access support through:\n• Email: support@doo.tech (24/7 monitored)\n• Phone: +973-xxxx-xxxx (Business hours: 8 AM - 6 PM Bahrain time)\n• Web Portal: support.doo.tech (24/7 self-service)\n• Dedicated account manager (assigned within 5 business days)\n\n3.2 Response Time Commitments\n\nCritical Priority (System Down / Major Impact)\n• Initial Response: Within 1 hour\n• Status Updates: Every 2 hours until resolved\n• Resolution Target: Within 4 hours\n\nHigh Priority (Significant Impact)\n• Initial Response: Within 4 hours\n• Status Updates: Every 8 hours\n• Resolution Target: Within 24 hours\n\nMedium Priority (Minor Impact)\n• Initial Response: Within 24 hours\n• Resolution Target: Within 5 business days\n\nLow Priority (General Inquiries)\n• Initial Response: Within 48 hours\n• Resolution Target: Within 10 business days\n\n3.3 Escalation Process\nIf issue resolution exceeds committed timeframes, Client may escalate through:\nLevel 1: Support Team → Level 2: Technical Lead → Level 3: VP of Operations`;
+  const supportText = `3.1 Support Channels\nClient can access support through:\n• Email: support@doo.tech (24/7 monitored)\n• Phone: +973-xxxx-xxxx (Business hours: 8 AM - 6 PM Bahrain time)\n• Web Portal: support.doo.tech (24/7 self-service)\n• Dedicated account manager (assigned within 5 business days)\n\n3.2 Response Time Commitments\n\nCritical Priority (System Down / Major Impact)\n• Initial Response: Within 1 hour\n• Status Updates: Every 2 hours until resolved\n• Resolution Target: Within 4 hours\n\nHigh Priority (Significant Impact)\n• Initial Response: Within 4 hours\n• Status Updates: Every 8 hours\n• Resolution Target: Within 24 hours\n\nMedium Priority (Minor Impact)\n• Initial Response: Within 24 hours\n• Resolution Target: Within 5 business days\n\nLow Priority (General Inquiries)\n• Initial Response: Within 48 hours\n• Resolution Target: Within 10 business days\n\n3.3 Escalation Process\nIf issue resolution exceeds committed timeframes, Client may escalate through:\nLevel 1: Support Team -> Level 2: Technical Lead -> Level 3: VP of Operations`;
   
   supportText.split('\n').forEach(line => {
     page.drawText(line, {
@@ -856,7 +856,7 @@ serve(async (req) => {
     }
 
     // Fetch DOO logo
-    const logoResponse = await fetch('https://vnhwhyufevcixgelsujb.supabase.co/storage/v1/object/public/customer-avatars/doo-logo.png');
+    const logoResponse = await fetch('https://3f059955-c5b7-4494-b3eb-e1b47678f18d.lovableproject.com/lovable-uploads/doo-logo.png');
     const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
 
     const generatedDocs = [];
@@ -870,6 +870,9 @@ serve(async (req) => {
         switch (docType) {
           case 'proposal':
             pdfBytes = await generateProposal(customer, logoBytes);
+            break;
+          case 'service_agreement':
+            pdfBytes = await generateSLA(customer, logoBytes);
             break;
           case 'sla':
             pdfBytes = await generateSLA(customer, logoBytes);
