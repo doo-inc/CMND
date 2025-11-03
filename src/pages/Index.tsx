@@ -262,7 +262,7 @@ const Index = () => {
     {
       title: "Total Revenue",
       value: formattedActiveContracts,
-      description: "All revenue (current year)",
+      description: "All active contracts",
       icon: <DollarSign className="h-6 w-6" />
     },
     {

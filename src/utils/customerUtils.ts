@@ -172,16 +172,10 @@ export const getTotalPipelineValue = async (): Promise<number> => {
 
 export const getActiveContractsValue = async (): Promise<number> => {
   try {
-    const currentYear = new Date().getFullYear();
-    const yearStart = `${currentYear}-01-01`;
-    const yearEnd = `${currentYear}-12-31`;
-
     const { data, error } = await supabase
       .from('contracts')
       .select('setup_fee, annual_rate, value, start_date, end_date, status')
-      .or('status.eq.active,status.eq.pending,status.is.null')
-      .gte('end_date', yearStart)
-      .lte('start_date', yearEnd);
+      .or('status.eq.active,status.eq.pending,status.is.null');
 
     if (error) {
       console.error("Error fetching total revenue:", error);

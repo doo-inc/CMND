@@ -28,10 +28,6 @@ export const TotalRevenueDetail = () => {
   useEffect(() => {
     const fetchContracts = async () => {
       try {
-        const currentYear = new Date().getFullYear();
-        const yearStart = `${currentYear}-01-01`;
-        const yearEnd = `${currentYear}-12-31`;
-
         const { data, error } = await supabase
           .from('contracts')
           .select(`
@@ -46,9 +42,7 @@ export const TotalRevenueDetail = () => {
             payment_frequency,
             customers!inner(id, name)
           `)
-          .or('status.eq.active,status.eq.pending,status.is.null')
-          .gte('end_date', yearStart)
-          .lte('start_date', yearEnd);
+          .or('status.eq.active,status.eq.pending,status.is.null');
 
         if (error) throw error;
 
