@@ -4,7 +4,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { ContractCard } from "@/components/contracts/ContractCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy, Calendar, DollarSign, Target, AlertTriangle, Percent } from "lucide-react";
+import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy, Calendar, DollarSign, Target, AlertTriangle, Percent, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
@@ -51,6 +51,8 @@ const Index = () => {
   });
   const [arrData, setArrData] = useState({ totalARR: 0, liveCustomers: [], growthRate: 0 });
   const [churnRate, setChurnRate] = useState("0.0%");
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalContracts, setTotalContracts] = useState(0);
 
   const refreshMetrics = async () => {
     try {
@@ -64,7 +66,9 @@ const Index = () => {
         pitchToPayDays,
         payToLiveDays,
         arrDataResult,
-        churnRateResult
+        churnRateResult,
+        customersCountResult,
+        contractsCountResult
       ] = await Promise.all([
         getDealsPipeline(),
         getTotalPipelineValue(),
@@ -75,7 +79,9 @@ const Index = () => {
         calculatePitchToPayTime(),
         calculatePayToLiveTime(),
         getCustomerARRData(customers),
-        calculateChurnRate(180) // 6 months = ~180 days
+        calculateChurnRate(180), // 6 months = ~180 days
+        supabase.from('customers').select('*', { count: 'exact', head: true }),
+        supabase.from('contracts').select('*', { count: 'exact', head: true }).or('status.eq.active,status.eq.pending')
       ]);
 
       setMetrics({
@@ -91,6 +97,8 @@ const Index = () => {
       
       setArrData(arrDataResult);
       setChurnRate(churnRateResult);
+      setTotalCustomers(customersCountResult.count || 0);
+      setTotalContracts(contractsCountResult.count || 0);
     } catch (error) {
       console.error("Error refreshing metrics:", error);
     }
@@ -260,6 +268,18 @@ const Index = () => {
   
   const dashboardStats = [
     {
+      title: "Total Customers",
+      value: `${totalCustomers}`,
+      description: "All customers",
+      icon: <Users className="h-6 w-6" />
+    },
+    {
+      title: "Total Contracts",
+      value: `${totalContracts}`,
+      description: "Active & pending contracts",
+      icon: <FileText className="h-6 w-6" />
+    },
+    {
       title: "Total Revenue",
       value: formattedActiveContracts,
       description: "All active contracts",
@@ -337,7 +357,7 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {dashboardStats.map((stat, index) => {
-            const metricKeys = ["total-revenue", "total-arr", "live-customers", "pitch-to-pay", "deals-pipeline", "conversion-rate", "average-deal-size", "mrr", "pay-to-live", "churn-rate"];
+            const metricKeys = ["total-customers", "total-contracts", "total-revenue", "total-arr", "live-customers", "pitch-to-pay", "deals-pipeline", "conversion-rate", "average-deal-size", "mrr", "pay-to-live", "churn-rate"];
             return (
               <StatCard 
                 key={index} 

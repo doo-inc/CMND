@@ -7,6 +7,7 @@ import { TotalRevenueDetail } from "@/components/analytics/TotalRevenueDetail";
 import { TotalARRDetail } from "@/components/analytics/TotalARRDetail";
 import { LiveCustomersDetail } from "@/components/analytics/LiveCustomersDetail";
 import { TotalCustomersDetail } from "@/components/analytics/TotalCustomersDetail";
+import { TotalContractsDetail } from "@/components/analytics/TotalContractsDetail";
 import { DealsPipelineDetail } from "@/components/analytics/DealsPipelineDetail";
 import { ConversionRateDetail } from "@/components/analytics/ConversionRateDetail";
 import { AverageDealSizeDetail } from "@/components/analytics/AverageDealSizeDetail";
@@ -26,6 +27,7 @@ const AnalyticsDetail = () => {
       "total-arr": "Total ARR Details",
       "live-customers": "Live Customers Details",
       "total-customers": "Total Customers Details",
+      "total-contracts": "Total Contracts Details",
       "deals-pipeline": "Deals Pipeline Details",
       "conversion-rate": "Conversion Rate Details",
       "average-deal-size": "Average Deal Size Details",
@@ -47,6 +49,8 @@ const AnalyticsDetail = () => {
         return <LiveCustomersDetail />;
       case "total-customers":
         return <TotalCustomersDetail />;
+      case "total-contracts":
+        return <TotalContractsDetail />;
       case "deals-pipeline":
         return <DealsPipelineDetail />;
       case "conversion-rate":
