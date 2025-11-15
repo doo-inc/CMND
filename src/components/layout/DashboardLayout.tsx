@@ -282,7 +282,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
           <ScrollArea className="flex-1">
-            <main className="bg-background p-6">
+            <main className="dashboard-background p-6">
               <div className="animate-fade-in">
                 {children}
               </div>
