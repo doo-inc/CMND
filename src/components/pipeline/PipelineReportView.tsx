@@ -29,10 +29,12 @@ export const PipelineReportView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all_time">("all_time");
 
   useEffect(() => {
+    console.log("🚀 PipelineReportView mounted, starting data fetch");
     fetchReportData();
   }, []);
 
   const fetchReportData = async () => {
+    console.log("🔄 fetchReportData called - starting parallel fetches");
     setIsLoading(true);
     try {
       const [weekly, monthly, allTime] = await Promise.all([
@@ -40,11 +42,16 @@ export const PipelineReportView: React.FC = () => {
         fetchPipelineData(30),
         fetchPipelineData(null), // null for all-time
       ]);
+      console.log("✅ All report data fetched successfully", {
+        weekly: weekly.totalPipelineValue,
+        monthly: monthly.totalPipelineValue,
+        allTime: allTime.totalPipelineValue
+      });
       setWeeklyData(weekly);
       setMonthlyData(monthly);
       setAllTimeData(allTime);
     } catch (error) {
-      console.error("Failed to fetch report data:", error);
+      console.error("❌ Failed to fetch report data:", error);
       toast.error("Failed to load pipeline reports");
     } finally {
       setIsLoading(false);
