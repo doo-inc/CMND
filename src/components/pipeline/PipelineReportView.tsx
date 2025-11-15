@@ -24,8 +24,9 @@ interface PipelineReportData {
 export const PipelineReportView: React.FC = () => {
   const [weeklyData, setWeeklyData] = useState<PipelineReportData | null>(null);
   const [monthlyData, setMonthlyData] = useState<PipelineReportData | null>(null);
+  const [allTimeData, setAllTimeData] = useState<PipelineReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"weekly" | "monthly">("weekly");
+  const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all_time">("weekly");
 
   useEffect(() => {
     fetchReportData();
@@ -34,12 +35,14 @@ export const PipelineReportView: React.FC = () => {
   const fetchReportData = async () => {
     setIsLoading(true);
     try {
-      const [weekly, monthly] = await Promise.all([
+      const [weekly, monthly, allTime] = await Promise.all([
         fetchPipelineData(7),
         fetchPipelineData(30),
+        fetchPipelineData(null), // null for all-time
       ]);
       setWeeklyData(weekly);
       setMonthlyData(monthly);
+      setAllTimeData(allTime);
     } catch (error) {
       console.error("Failed to fetch report data:", error);
       toast.error("Failed to load pipeline reports");
@@ -48,9 +51,11 @@ export const PipelineReportView: React.FC = () => {
     }
   };
 
-  const fetchPipelineData = async (daysAgo: number): Promise<PipelineReportData> => {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysAgo);
+  const fetchPipelineData = async (daysAgo: number | null): Promise<PipelineReportData> => {
+    const startDate = daysAgo ? new Date() : null;
+    if (startDate && daysAgo) {
+      startDate.setDate(startDate.getDate() - daysAgo);
+    }
     const endDate = new Date();
 
     const { data: customers, error: customersError } = await supabase
@@ -60,12 +65,19 @@ export const PipelineReportView: React.FC = () => {
 
     if (customersError) throw customersError;
 
-    const { data: timelineEvents } = await supabase
+    // Fetch timeline events - filter by date only if startDate exists
+    const timelineQuery = supabase
       .from("customer_timeline")
       .select("*")
-      .gte("created_at", startDate.toISOString())
-      .lte("created_at", endDate.toISOString())
       .order("created_at", { ascending: false });
+    
+    if (startDate) {
+      timelineQuery
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
+    }
+    
+    const { data: timelineEvents } = await timelineQuery;
 
     const customerData = customers as Customer[];
 
@@ -94,6 +106,7 @@ export const PipelineReportView: React.FC = () => {
 
     const newCustomers = customerData
       .filter((c) => {
+        if (!startDate) return true; // For all-time, consider all customers as "tracked"
         const createdDate = new Date(c.created_at);
         return createdDate >= startDate && createdDate <= endDate;
       })
@@ -130,7 +143,7 @@ export const PipelineReportView: React.FC = () => {
 
     return {
       period: {
-        start: startDate.toLocaleDateString(),
+        start: startDate ? startDate.toLocaleDateString() : "Beginning",
         end: endDate.toLocaleDateString(),
       },
       stageDistribution,
@@ -151,7 +164,7 @@ export const PipelineReportView: React.FC = () => {
     return `$${value.toLocaleString()}`;
   };
 
-  const downloadReport = (data: PipelineReportData, type: "weekly" | "monthly") => {
+  const downloadReport = (data: PipelineReportData, type: "weekly" | "monthly" | "all_time") => {
     let report = `=== ${type.toUpperCase()} PIPELINE REPORT ===\n`;
     report += `Period: ${data.period.start} - ${data.period.end}\n`;
     report += `Generated: ${new Date().toLocaleString()}\n\n`;
@@ -197,12 +210,13 @@ export const PipelineReportView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pipeline-${type}-report-${new Date().toISOString().split("T")[0]}.txt`;
+    const reportName = type === "all_time" ? "all-time" : type;
+    link.download = `pipeline-${reportName}-report-${new Date().toISOString().split("T")[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success(`${type} report downloaded`);
+    toast.success(`${reportName.replace("-", " ")} report downloaded`);
   };
 
   const renderReportContent = (data: PipelineReportData | null) => {
@@ -335,14 +349,19 @@ export const PipelineReportView: React.FC = () => {
     );
   }
 
+  const getTabLabel = () => {
+    if (activeTab === "all_time") return "all time";
+    return activeTab;
+  };
+
   return (
     <Card className="p-6 animate-fade-in">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "weekly" | "monthly")}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "weekly" | "monthly" | "all_time")}>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold">Pipeline Reports</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Detailed analytics for {activeTab} pipeline performance
+              Detailed analytics for {getTabLabel()} pipeline performance
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -350,7 +369,7 @@ export const PipelineReportView: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => {
-                const data = activeTab === "weekly" ? weeklyData : monthlyData;
+                const data = activeTab === "weekly" ? weeklyData : activeTab === "monthly" ? monthlyData : allTimeData;
                 if (data) downloadReport(data, activeTab);
               }}
               className="hover-scale"
@@ -361,6 +380,7 @@ export const PipelineReportView: React.FC = () => {
             <TabsList>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="all_time">All Time</TabsTrigger>
             </TabsList>
           </div>
         </div>
@@ -371,6 +391,10 @@ export const PipelineReportView: React.FC = () => {
 
         <TabsContent value="monthly" className="mt-0">
           {renderReportContent(monthlyData)}
+        </TabsContent>
+
+        <TabsContent value="all_time" className="mt-0">
+          {renderReportContent(allTimeData)}
         </TabsContent>
       </Tabs>
     </Card>
