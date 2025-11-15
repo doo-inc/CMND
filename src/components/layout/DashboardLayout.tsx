@@ -170,7 +170,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full dashboard-background">
         <DashboardSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="backdrop-blur-lg bg-white/90 dark:bg-gray-900/90 border-b border-gray-200/50 dark:border-gray-700/50 h-16 flex items-center justify-between px-6 z-10 shadow-sm">
+          <header className="backdrop-blur-md bg-background/30 border-b border-border/30 h-16 flex items-center justify-between px-6 z-10">
             <div className="flex items-center">
               <SidebarTrigger className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-md transition-colors text-gray-700 dark:text-gray-200" />
             </div>

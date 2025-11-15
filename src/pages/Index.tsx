@@ -319,9 +319,7 @@ const Index = () => {
   
   return (
     <DashboardLayout>
-      <div className="dashboard-background">
-        {/* Main Content */}
-        <div className="space-y-12">
+      <div className="space-y-12">
           {/* Dashboard Header */}
           <div className="mb-12 pb-6 border-b border-border/50">
             <div className="flex flex-col gap-6">
@@ -405,7 +403,6 @@ const Index = () => {
             </div>
           </section>
         </div>
-      </div>
     </DashboardLayout>
   );
 };
