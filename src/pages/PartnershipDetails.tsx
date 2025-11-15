@@ -1,19 +1,25 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Trash2, HandHeart, FileText, Users, Clock, MapPin, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, HandHeart, FileText, Users, Clock, MapPin, Calendar, DollarSign, Link2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Partnership, PartnershipContact, PartnershipDocument, PartnershipTimeline, PARTNERSHIP_TYPE_LABELS, PARTNERSHIP_STATUS_LABELS } from "@/types/partnerships";
+import { PartnershipRevenueMetrics } from "@/components/partnerships/PartnershipRevenueMetrics";
+import { LinkedContractsTable } from "@/components/partnerships/LinkedContractsTable";
+import { PartnershipRevenueChart } from "@/components/partnerships/PartnershipRevenueChart";
+import { LinkContractDialog } from "@/components/partnerships/LinkContractDialog";
+import { getLinkedContracts, getAvailableContracts, calculatePartnershipRevenue } from "@/utils/partnershipRevenue";
 
 const PartnershipDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
   const { data: partnership, isLoading } = useQuery({
     queryKey: ['partnership', id],
@@ -70,6 +76,31 @@ const PartnershipDetails = () => {
       return data as PartnershipTimeline[];
     }
   });
+
+  const { data: linkedContracts = [], refetch: refetchLinkedContracts } = useQuery({
+    queryKey: ['partnership-linked-contracts', id],
+    queryFn: async () => {
+      if (!id) return [];
+      return await getLinkedContracts(id);
+    },
+    enabled: !!id
+  });
+
+  const { data: availableContracts = [], refetch: refetchAvailableContracts } = useQuery({
+    queryKey: ['partnership-available-contracts', id],
+    queryFn: async () => {
+      if (!id) return [];
+      return await getAvailableContracts(id);
+    },
+    enabled: !!id
+  });
+
+  const revenueSummary = calculatePartnershipRevenue(linkedContracts);
+
+  const handleContractLinked = () => {
+    refetchLinkedContracts();
+    refetchAvailableContracts();
+  };
 
   if (isLoading) {
     return (
@@ -217,6 +248,7 @@ const PartnershipDetails = () => {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue</TabsTrigger>
             <TabsTrigger value="contacts">Contacts ({contacts.length})</TabsTrigger>
             <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
             <TabsTrigger value="timeline">Timeline ({timeline.length})</TabsTrigger>
@@ -248,6 +280,47 @@ const PartnershipDetails = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="revenue" className="space-y-6">
+            <PartnershipRevenueMetrics
+              totalRevenue={revenueSummary.totalRevenue}
+              contractCount={revenueSummary.contractCount}
+              customerCount={revenueSummary.customerCount}
+              averageDealSize={revenueSummary.averageDealSize}
+            />
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Linked Contracts
+                  </CardTitle>
+                  <Button onClick={() => setIsLinkDialogOpen(true)} size="sm">
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Link Contract
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <LinkedContractsTable
+                  contracts={linkedContracts}
+                  onContractUnlinked={handleContractLinked}
+                />
+              </CardContent>
+            </Card>
+
+            <PartnershipRevenueChart contracts={linkedContracts} />
+
+            <LinkContractDialog
+              open={isLinkDialogOpen}
+              onOpenChange={setIsLinkDialogOpen}
+              partnershipId={id!}
+              partnershipName={partnership.name}
+              availableContracts={availableContracts}
+              onContractLinked={handleContractLinked}
+            />
           </TabsContent>
 
           <TabsContent value="contacts">

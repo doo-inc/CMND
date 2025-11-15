@@ -85,6 +85,7 @@ export interface Contract {
   renewal_date?: string | null;
   terms?: string | null;
   owner_id?: string | null;
+  partnership_id?: string | null;
   created_at: string;
   updated_at: string;
 }

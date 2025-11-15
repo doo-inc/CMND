@@ -24,6 +24,7 @@ export type Database = {
           id: string
           name: string
           owner_id: string | null
+          partnership_id: string | null
           payment_frequency: string | null
           renewal_date: string | null
           setup_fee: number | null
@@ -42,6 +43,7 @@ export type Database = {
           id?: string
           name: string
           owner_id?: string | null
+          partnership_id?: string | null
           payment_frequency?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
@@ -60,6 +62,7 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string | null
+          partnership_id?: string | null
           payment_frequency?: string | null
           renewal_date?: string | null
           setup_fee?: number | null
@@ -82,6 +85,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
             referencedColumns: ["id"]
           },
         ]
