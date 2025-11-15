@@ -17,29 +17,22 @@ interface PartnershipRevenueChartProps {
 }
 
 export const PartnershipRevenueChart = ({ contracts }: PartnershipRevenueChartProps) => {
-  // Group contracts by customer and calculate revenue
-  const revenueByCustomer = new Map<string, { name: string; revenue: number }>();
-  
-  contracts.forEach((contract) => {
-    const customerName = contract.customer?.name || "Unknown Customer";
-    const customerId = contract.customer_id;
-    const key = `${customerId}-${customerName}`;
-    
-    const current = revenueByCustomer.get(key) || { name: customerName, revenue: 0 };
-    current.revenue += calculateContractValue(contract);
-    revenueByCustomer.set(key, current);
-  });
-
-  const chartData = Array.from(revenueByCustomer.values())
+  // Sort contracts by value for visualization
+  const chartData = contracts
+    .map((contract) => ({
+      name: `${contract.customer?.name || "Unknown"} - ${contract.name}`,
+      revenue: calculateContractValue(contract),
+      customer: contract.customer?.name || "Unknown Customer"
+    }))
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10); // Show top 10 customers
+    .slice(0, 10); // Show top 10 contracts
 
   if (chartData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Revenue by Customer</CardTitle>
-          <CardDescription>Revenue generated from each customer through this partnership</CardDescription>
+          <CardTitle>Linked Contracts by Value</CardTitle>
+          <CardDescription>Top contracts this partnership helped close</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
@@ -53,26 +46,27 @@ export const PartnershipRevenueChart = ({ contracts }: PartnershipRevenueChartPr
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Revenue by Customer</CardTitle>
-        <CardDescription>Top customers generating revenue through this partnership</CardDescription>
+        <CardTitle>Linked Contracts by Value</CardTitle>
+        <CardDescription>Top contracts this partnership helped close</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} layout="horizontal">
+          <BarChart data={chartData} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis 
               type="number" 
-              tickFormatter={(value) => `$${value.toLocaleString()}`}
+              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
               className="text-xs"
             />
             <YAxis 
               type="category" 
-              dataKey="name" 
-              width={150}
+              dataKey="customer" 
+              width={120}
               className="text-xs"
             />
             <Tooltip
-              formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+              formatter={(value: number) => [`$${value.toLocaleString()}`, "Contract Value"]}
+              labelFormatter={(label) => `Customer: ${label}`}
               contentStyle={{
                 backgroundColor: 'hsl(var(--popover))',
                 border: '1px solid hsl(var(--border))',

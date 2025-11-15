@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Edit, Trash2, HandHeart, FileText, Users, Clock, MapPin, Calendar, DollarSign, Link2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Partnership, PartnershipContact, PartnershipDocument, PartnershipTimeline, PARTNERSHIP_TYPE_LABELS, PARTNERSHIP_STATUS_LABELS } from "@/types/partnerships";
 import { PartnershipRevenueMetrics } from "@/components/partnerships/PartnershipRevenueMetrics";
@@ -19,6 +19,7 @@ import { getLinkedContracts, getAvailableContracts, calculatePartnershipRevenue 
 const PartnershipDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
   const { data: partnership, isLoading } = useQuery({
@@ -100,6 +101,8 @@ const PartnershipDetails = () => {
   const handleContractLinked = () => {
     refetchLinkedContracts();
     refetchAvailableContracts();
+    // Invalidate top performers query to refresh main partnerships page
+    queryClient.invalidateQueries({ queryKey: ['top-partnerships-by-revenue'] });
   };
 
   if (isLoading) {
