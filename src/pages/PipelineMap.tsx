@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PipelineVisualization } from "@/components/pipeline/PipelineVisualization";
-import { PipelineReportView } from "@/components/pipeline/PipelineReportView";
 import { PipelineFilters } from "@/components/pipeline/PipelineFilters";
 import { PipelineValueTrend } from "@/components/pipeline/PipelineValueTrend";
+import { StalledCustomersSection } from "@/components/pipeline/StalledCustomersSection";
 import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
 import { usePipelineData } from "@/hooks/usePipelineData";
 import { usePipelineAnalytics } from "@/hooks/usePipelineAnalytics";
@@ -87,8 +87,8 @@ const PipelineMap = () => {
           </Button>
         </div>
 
-        {/* Pipeline Report View */}
-        <PipelineReportView />
+        {/* Pipeline Value Trend */}
+        <PipelineValueTrend trendData={trendData} />
 
         {/* Pipeline Filters */}
         <PipelineFilters
@@ -98,14 +98,14 @@ const PipelineMap = () => {
           onClearFilters={handleClearFilters}
         />
 
-        {/* Pipeline Value Trend */}
-        <PipelineValueTrend trendData={trendData} />
-
         {/* Pipeline Visualization */}
         <PipelineVisualization
           selectedCountries={selectedCountries}
           filteredCustomerIds={[]}
         />
+
+        {/* Stalled Customers */}
+        <StalledCustomersSection customers={allCustomers} />
       </div>
     </DashboardLayout>
   );
