@@ -26,7 +26,7 @@ export const PipelineReportView: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<PipelineReportData | null>(null);
   const [allTimeData, setAllTimeData] = useState<PipelineReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all_time">("weekly");
+  const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all_time">("all_time");
 
   useEffect(() => {
     fetchReportData();
@@ -91,15 +91,28 @@ export const PipelineReportView: React.FC = () => {
       stageDistribution[stage].value += customer.contract_size || 0;
     });
 
+    // Parse timeline events to extract actual stage changes
     const movedCustomers = timelineEvents
       ?.filter((e) => e.event_type === "stage_change")
       .slice(0, 10)
       .map((e) => {
         const customer = customerData.find((c) => c.id === e.customer_id);
+        // Parse event_description to extract previous and new stages
+        // Format: "Stage changed from X to Y" or similar
+        let fromStage = "Previous";
+        let toStage = customer?.stage || "Unknown";
+        
+        if (e.event_description) {
+          const fromMatch = e.event_description.match(/from\s+([^to]+)\s+to/i);
+          const toMatch = e.event_description.match(/to\s+(.+)$/i);
+          if (fromMatch) fromStage = fromMatch[1].trim();
+          if (toMatch) toStage = toMatch[1].trim();
+        }
+        
         return {
           name: customer?.name || "Unknown",
-          fromStage: "Previous",
-          toStage: customer?.stage || "Unknown",
+          fromStage,
+          toStage,
           value: customer?.contract_size || 0,
         };
       }) || [];
@@ -134,16 +147,24 @@ export const PipelineReportView: React.FC = () => {
         };
       });
 
-    const valueGained = movedCustomers.reduce((sum, c) => sum + c.value, 0);
-    const lostCustomers = customerData.filter((c) => c.stage === "Lost" || c.status === "churned");
-    const valueLost = lostCustomers.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+    // Calculate value gained/lost based on beneficial vs negative stage movements
+    const beneficialStages = ["Signed", "Go Live", "Renewing", "Upsell Opportunity"];
+    const negativeStages = ["Lost", "Churned", "At Risk"];
+    
+    const valueGained = movedCustomers
+      .filter(c => beneficialStages.some(s => c.toStage.includes(s)))
+      .reduce((sum, c) => sum + c.value, 0);
+    
+    const valueLost = movedCustomers
+      .filter(c => negativeStages.some(s => c.toStage.includes(s)))
+      .reduce((sum, c) => sum + c.value, 0);
     const totalPipelineValue = customerData.reduce((sum, c) => sum + (c.contract_size || 0), 0);
     const totalCustomers = customerData.length;
     const avgDealSize = totalCustomers > 0 ? totalPipelineValue / totalCustomers : 0;
 
     return {
       period: {
-        start: startDate ? startDate.toLocaleDateString() : "Beginning",
+        start: startDate ? startDate.toLocaleDateString() : "All Time",
         end: endDate.toLocaleDateString(),
       },
       stageDistribution,
@@ -230,7 +251,7 @@ export const PipelineReportView: React.FC = () => {
             <div className="flex items-center gap-3">
               <DollarSign className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Value</p>
+                <p className="text-sm text-muted-foreground">Current Pipeline Value</p>
                 <p className="text-2xl font-bold text-primary">{formatCurrency(data.totalPipelineValue)}</p>
               </div>
             </div>
@@ -239,7 +260,7 @@ export const PipelineReportView: React.FC = () => {
             <div className="flex items-center gap-3">
               <Users className="h-8 w-8 text-blue-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Customers</p>
+                <p className="text-sm text-muted-foreground">Current Active Customers</p>
                 <p className="text-2xl font-bold text-blue-600">{data.totalCustomers}</p>
               </div>
             </div>
@@ -248,7 +269,7 @@ export const PipelineReportView: React.FC = () => {
             <div className="flex items-center gap-3">
               <TrendingUp className="h-8 w-8 text-emerald-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Value Gained</p>
+                <p className="text-sm text-muted-foreground">Value Gained This Period</p>
                 <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.valueGained)}</p>
               </div>
             </div>
@@ -257,7 +278,7 @@ export const PipelineReportView: React.FC = () => {
             <div className="flex items-center gap-3">
               <TrendingDown className="h-8 w-8 text-red-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Value Lost</p>
+                <p className="text-sm text-muted-foreground">Value Lost This Period</p>
                 <p className="text-2xl font-bold text-red-600">{formatCurrency(data.valueLost)}</p>
               </div>
             </div>
@@ -281,7 +302,7 @@ export const PipelineReportView: React.FC = () => {
         {/* Customers Moved */}
         {data.movedCustomers.length > 0 && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Customers Moved ({data.movedCustomers.length})</h3>
+            <h3 className="text-lg font-semibold mb-4">Customers Moved This Period ({data.movedCustomers.length})</h3>
             <div className="space-y-2">
               {data.movedCustomers.map((customer, index) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors">
@@ -301,7 +322,7 @@ export const PipelineReportView: React.FC = () => {
         {/* New Customers */}
         {data.newCustomers.length > 0 && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">New Customers ({data.newCustomers.length})</h3>
+            <h3 className="text-lg font-semibold mb-4">New Customers This Period ({data.newCustomers.length})</h3>
             <div className="space-y-2">
               {data.newCustomers.map((customer, index) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors">
@@ -319,7 +340,8 @@ export const PipelineReportView: React.FC = () => {
         {/* Stalled Customers */}
         {data.stalledCustomers.length > 0 && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Stalled Customers ({data.stalledCustomers.length})</h3>
+            <h3 className="text-lg font-semibold mb-4">Currently Stalled Customers ({data.stalledCustomers.length})</h3>
+            <p className="text-xs text-muted-foreground mb-3">No activity for 14+ days</p>
             <div className="space-y-2">
               {data.stalledCustomers.map((customer, index) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
