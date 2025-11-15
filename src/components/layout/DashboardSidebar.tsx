@@ -26,7 +26,7 @@ const mainNavItems = [
     path: "/partnerships"
   },
   {
-    title: "Subscription Tracker",
+    title: "Subscriptions",
     icon: Clock,
     path: "/subscription-tracker"
   },
