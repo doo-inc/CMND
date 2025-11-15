@@ -35,10 +35,10 @@ export const StalledCustomersSection: React.FC<StalledCustomersSectionProps> = (
     <Card className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <AlertCircle className="h-5 w-5 text-orange-600" />
-        <h3 className="text-lg font-semibold">At-Risk Deals ({stalledCustomers.length})</h3>
+        <h3 className="text-lg font-semibold">Stalled Deals ({stalledCustomers.length})</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        High-value customers in early pipeline stages requiring attention
+        Deals in early pipeline stages that may need attention to move forward
       </p>
       <div className="space-y-2">
         {stalledCustomers.map((customer, index) => (
