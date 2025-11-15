@@ -60,6 +60,7 @@ export const PipelineReportView: React.FC = () => {
 
     console.log("🔍 Fetching pipeline data for:", { daysAgo, startDate: startDate?.toISOString(), endDate: endDate.toISOString() });
 
+    // Fetch customers and their lifecycle stages to calculate actual pipeline stages
     const { data: customers, error: customersError } = await supabase
       .from("customers")
       .select("*")
@@ -67,7 +68,51 @@ export const PipelineReportView: React.FC = () => {
 
     if (customersError) throw customersError;
 
-    console.log("📊 Total customers fetched:", customers?.length);
+    // Fetch all lifecycle stages to calculate pipeline stages
+    const { data: lifecycleStages, error: stagesError } = await supabase
+      .from("lifecycle_stages")
+      .select("*");
+
+    if (stagesError) throw stagesError;
+
+    // Group lifecycle stages by customer and calculate pipeline stages
+    const stagesByCustomer: Record<string, string[]> = {};
+    lifecycleStages?.forEach(stage => {
+      if (!stagesByCustomer[stage.customer_id]) {
+        stagesByCustomer[stage.customer_id] = [];
+      }
+      // Only include completed or in-progress stages
+      const status = (stage.status || "").toLowerCase();
+      if (status.includes("complete") || status.includes("done") || status.includes("progress")) {
+        const canonical = (stage.name || "").trim().replace(/\s+/g, " ");
+        stagesByCustomer[stage.customer_id].push(canonical);
+      }
+    });
+
+    // Calculate pipeline stage for each customer using the pipeline rules
+    const getFurthestStage = (stages: string[]): string => {
+      const stageOrder = [
+        "Lead", "Qualified", "Demo", "Proposal", "Contract", 
+        "Implementation", "Live", "Renewing"
+      ];
+      
+      for (let i = stageOrder.length - 1; i >= 0; i--) {
+        const targetStage = stageOrder[i];
+        if (stages.some(s => s.toLowerCase().includes(targetStage.toLowerCase()))) {
+          return targetStage;
+        }
+      }
+      return "Lead";
+    };
+
+    // Enrich customers with calculated pipeline stages
+    const enrichedCustomers = (customers || []).map(c => ({
+      ...c,
+      stage: getFurthestStage(stagesByCustomer[c.id] || [])
+    }));
+
+    console.log("📊 Total customers fetched:", enrichedCustomers?.length, "with calculated stages");
+
 
     // Fetch timeline events - filter by date only if startDate exists
     const timelineQuery = supabase
@@ -93,17 +138,19 @@ export const PipelineReportView: React.FC = () => {
       }))
     });
 
-    const customerData = customers as Customer[];
+    const customerData = enrichedCustomers as Customer[];
 
     const stageDistribution: Record<string, { count: number; value: number }> = {};
     customerData.forEach((customer) => {
-      const stage = customer.stage || "Unknown";
+      const stage = customer.stage || "Lead"; // Default to Lead if no stage
       if (!stageDistribution[stage]) {
         stageDistribution[stage] = { count: 0, value: 0 };
       }
       stageDistribution[stage].count++;
-      stageDistribution[stage].value += customer.contract_size || 0;
+      stageDistribution[stage].value += customer.contract_size || customer.estimated_deal_value || 0;
     });
+
+    console.log("📊 Stage distribution:", stageDistribution);
 
     // Parse timeline events to extract actual stage changes
     const movedCustomers = timelineEvents
@@ -136,7 +183,7 @@ export const PipelineReportView: React.FC = () => {
       .filter((c) => {
         const updatedDate = new Date(c.updated_at);
         const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / (1000 * 60 * 60 * 24));
-        return daysSince >= 14 && c.stage !== "Live" && c.stage !== "Lost";
+        return daysSince >= 14 && c.stage !== "Live" && c.stage !== "Lost" && c.stage !== "Churned";
       })
       .slice(0, 10)
       .map((c) => {
@@ -144,10 +191,13 @@ export const PipelineReportView: React.FC = () => {
         const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / (1000 * 60 * 60 * 24));
         return {
           name: c.name,
-          stage: c.stage || "Unknown",
+          stage: c.stage || "Lead",
           daysSinceUpdate: daysSince,
+          value: c.contract_size || c.estimated_deal_value || 0,
         };
       });
+
+    console.log("⏸️ Stalled customers:", stalledCustomers.length);
 
     // Calculate value gained/lost based on beneficial vs negative stage movements
     const beneficialStages = ["Signed", "Go Live", "Renewing", "Upsell Opportunity", "Live"];
@@ -161,7 +211,7 @@ export const PipelineReportView: React.FC = () => {
       .filter(c => negativeStages.some(s => c.toStage.includes(s)))
       .reduce((sum, c) => sum + c.value, 0);
     
-    const totalPipelineValue = customerData.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+    const totalPipelineValue = customerData.reduce((sum, c) => sum + (c.contract_size || c.estimated_deal_value || 0), 0);
     const totalCustomers = customerData.length;
     const avgDealSize = totalCustomers > 0 ? totalPipelineValue / totalCustomers : 0;
 
@@ -170,6 +220,7 @@ export const PipelineReportView: React.FC = () => {
       valueLost, 
       totalPipelineValue, 
       totalCustomers,
+      avgDealSize,
       movedToPositive: movedCustomers.filter(c => beneficialStages.some(s => c.toStage.includes(s))).length,
       movedToNegative: movedCustomers.filter(c => negativeStages.some(s => c.toStage.includes(s))).length
     });

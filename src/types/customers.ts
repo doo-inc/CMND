@@ -12,6 +12,7 @@ export interface Customer {
   status?: "not-started" | "in-progress" | "done" | "blocked" | "churned" | null;
   churn_date?: string | null;
   contract_size?: number | null;
+  estimated_deal_value?: number | null;
   setup_fee?: number | null;
   annual_rate?: number | null;
   go_live_date?: string | null;
