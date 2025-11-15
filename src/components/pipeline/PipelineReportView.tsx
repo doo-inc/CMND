@@ -1,0 +1,378 @@
+import React, { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, TrendingUp, TrendingDown, Users, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Customer } from "@/types/customers";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface PipelineReportData {
+  period: { start: string; end: string };
+  stageDistribution: Record<string, { count: number; value: number }>;
+  movedCustomers: Array<{ name: string; fromStage: string; toStage: string; value: number }>;
+  newCustomers: Array<{ name: string; stage: string; value: number }>;
+  stalledCustomers: Array<{ name: string; stage: string; daysSinceUpdate: number }>;
+  valueGained: number;
+  valueLost: number;
+  totalPipelineValue: number;
+  totalCustomers: number;
+  avgDealSize: number;
+}
+
+export const PipelineReportView: React.FC = () => {
+  const [weeklyData, setWeeklyData] = useState<PipelineReportData | null>(null);
+  const [monthlyData, setMonthlyData] = useState<PipelineReportData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"weekly" | "monthly">("weekly");
+
+  useEffect(() => {
+    fetchReportData();
+  }, []);
+
+  const fetchReportData = async () => {
+    setIsLoading(true);
+    try {
+      const [weekly, monthly] = await Promise.all([
+        fetchPipelineData(7),
+        fetchPipelineData(30),
+      ]);
+      setWeeklyData(weekly);
+      setMonthlyData(monthly);
+    } catch (error) {
+      console.error("Failed to fetch report data:", error);
+      toast.error("Failed to load pipeline reports");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPipelineData = async (daysAgo: number): Promise<PipelineReportData> => {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysAgo);
+    const endDate = new Date();
+
+    const { data: customers, error: customersError } = await supabase
+      .from("customers")
+      .select("*")
+      .neq("status", "churned");
+
+    if (customersError) throw customersError;
+
+    const { data: timelineEvents } = await supabase
+      .from("customer_timeline")
+      .select("*")
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString())
+      .order("created_at", { ascending: false });
+
+    const customerData = customers as Customer[];
+
+    const stageDistribution: Record<string, { count: number; value: number }> = {};
+    customerData.forEach((customer) => {
+      const stage = customer.stage || "Unknown";
+      if (!stageDistribution[stage]) {
+        stageDistribution[stage] = { count: 0, value: 0 };
+      }
+      stageDistribution[stage].count++;
+      stageDistribution[stage].value += customer.contract_size || 0;
+    });
+
+    const movedCustomers = timelineEvents
+      ?.filter((e) => e.event_type === "stage_change")
+      .slice(0, 10)
+      .map((e) => {
+        const customer = customerData.find((c) => c.id === e.customer_id);
+        return {
+          name: customer?.name || "Unknown",
+          fromStage: "Previous",
+          toStage: customer?.stage || "Unknown",
+          value: customer?.contract_size || 0,
+        };
+      }) || [];
+
+    const newCustomers = customerData
+      .filter((c) => {
+        const createdDate = new Date(c.created_at);
+        return createdDate >= startDate && createdDate <= endDate;
+      })
+      .slice(0, 10)
+      .map((c) => ({
+        name: c.name,
+        stage: c.stage || "Unknown",
+        value: c.contract_size || 0,
+      }));
+
+    const stalledCustomers = customerData
+      .filter((c) => {
+        const updatedDate = new Date(c.updated_at);
+        const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / (1000 * 60 * 60 * 24));
+        return daysSince >= 14 && c.stage !== "Live" && c.stage !== "Lost";
+      })
+      .slice(0, 10)
+      .map((c) => {
+        const updatedDate = new Date(c.updated_at);
+        const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          name: c.name,
+          stage: c.stage || "Unknown",
+          daysSinceUpdate: daysSince,
+        };
+      });
+
+    const valueGained = movedCustomers.reduce((sum, c) => sum + c.value, 0);
+    const lostCustomers = customerData.filter((c) => c.stage === "Lost" || c.status === "churned");
+    const valueLost = lostCustomers.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+    const totalPipelineValue = customerData.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+    const totalCustomers = customerData.length;
+    const avgDealSize = totalCustomers > 0 ? totalPipelineValue / totalCustomers : 0;
+
+    return {
+      period: {
+        start: startDate.toLocaleDateString(),
+        end: endDate.toLocaleDateString(),
+      },
+      stageDistribution,
+      movedCustomers,
+      newCustomers,
+      stalledCustomers,
+      valueGained,
+      valueLost,
+      totalPipelineValue,
+      totalCustomers,
+      avgDealSize,
+    };
+  };
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+    return `$${value.toLocaleString()}`;
+  };
+
+  const downloadReport = (data: PipelineReportData, type: "weekly" | "monthly") => {
+    let report = `=== ${type.toUpperCase()} PIPELINE REPORT ===\n`;
+    report += `Period: ${data.period.start} - ${data.period.end}\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+    report += `=== PIPELINE OVERVIEW ===\n`;
+    report += `Total Pipeline Value: ${formatCurrency(data.totalPipelineValue)}\n`;
+    report += `Total Customers: ${data.totalCustomers}\n`;
+    report += `Average Deal Size: ${formatCurrency(data.avgDealSize)}\n`;
+    report += `Value Gained: ${formatCurrency(data.valueGained)}\n`;
+    report += `Value Lost: ${formatCurrency(data.valueLost)}\n\n`;
+
+    report += `=== STAGE DISTRIBUTION ===\n`;
+    Object.entries(data.stageDistribution).forEach(([stage, stats]) => {
+      report += `${stage}: ${stats.count} customers (${formatCurrency(stats.value)})\n`;
+    });
+    report += `\n`;
+
+    if (data.movedCustomers.length > 0) {
+      report += `=== CUSTOMERS MOVED (${data.movedCustomers.length}) ===\n`;
+      data.movedCustomers.forEach((c) => {
+        report += `- ${c.name}: ${c.fromStage} → ${c.toStage} (${formatCurrency(c.value)})\n`;
+      });
+      report += `\n`;
+    }
+
+    if (data.newCustomers.length > 0) {
+      report += `=== NEW CUSTOMERS (${data.newCustomers.length}) ===\n`;
+      data.newCustomers.forEach((c) => {
+        report += `- ${c.name} (${c.stage}): ${formatCurrency(c.value)}\n`;
+      });
+      report += `\n`;
+    }
+
+    if (data.stalledCustomers.length > 0) {
+      report += `=== STALLED CUSTOMERS (${data.stalledCustomers.length}) ===\n`;
+      data.stalledCustomers.forEach((c) => {
+        report += `- ${c.name} (${c.stage}): ${c.daysSinceUpdate} days since last update\n`;
+      });
+      report += `\n`;
+    }
+
+    const blob = new Blob([report], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pipeline-${type}-report-${new Date().toISOString().split("T")[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`${type} report downloaded`);
+  };
+
+  const renderReportContent = (data: PipelineReportData | null) => {
+    if (!data) return null;
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Total Value</p>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(data.totalPipelineValue)}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+            <div className="flex items-center gap-3">
+              <Users className="h-8 w-8 text-blue-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Total Customers</p>
+                <p className="text-2xl font-bold text-blue-600">{data.totalCustomers}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-8 w-8 text-emerald-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Value Gained</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.valueGained)}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20">
+            <div className="flex items-center gap-3">
+              <TrendingDown className="h-8 w-8 text-red-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Value Lost</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(data.valueLost)}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Stage Distribution */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Stage Distribution</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(data.stageDistribution).map(([stage, stats]) => (
+              <div key={stage} className="p-4 rounded-lg bg-muted/50 border border-border">
+                <p className="font-medium">{stage}</p>
+                <p className="text-sm text-muted-foreground">{stats.count} customers</p>
+                <p className="text-lg font-bold text-primary">{formatCurrency(stats.value)}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Customers Moved */}
+        {data.movedCustomers.length > 0 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Customers Moved ({data.movedCustomers.length})</h3>
+            <div className="space-y-2">
+              {data.movedCustomers.map((customer, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{customer.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {customer.fromStage} → {customer.toStage}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-primary">{formatCurrency(customer.value)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* New Customers */}
+        {data.newCustomers.length > 0 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">New Customers ({data.newCustomers.length})</h3>
+            <div className="space-y-2">
+              {data.newCustomers.map((customer, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{customer.name}</span>
+                    <span className="text-sm text-muted-foreground">({customer.stage})</span>
+                  </div>
+                  <span className="font-semibold text-primary">{formatCurrency(customer.value)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Stalled Customers */}
+        {data.stalledCustomers.length > 0 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Stalled Customers ({data.stalledCustomers.length})</h3>
+            <div className="space-y-2">
+              {data.stalledCustomers.map((customer, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{customer.name}</span>
+                    <span className="text-sm text-muted-foreground">({customer.stage})</span>
+                  </div>
+                  <span className="text-sm text-orange-600">{customer.daysSinceUpdate} days inactive</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-6 animate-fade-in">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "weekly" | "monthly")}>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">Pipeline Reports</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Detailed analytics for {activeTab} pipeline performance
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const data = activeTab === "weekly" ? weeklyData : monthlyData;
+                if (data) downloadReport(data, activeTab);
+              }}
+              className="hover-scale"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            <TabsList>
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        <TabsContent value="weekly" className="mt-0">
+          {renderReportContent(weeklyData)}
+        </TabsContent>
+
+        <TabsContent value="monthly" className="mt-0">
+          {renderReportContent(monthlyData)}
+        </TabsContent>
+      </Tabs>
+    </Card>
+  );
+};
