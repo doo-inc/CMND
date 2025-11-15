@@ -320,51 +320,74 @@ const Index = () => {
   
   return (
     <DashboardLayout>
-      <div className="flex gap-6">
-        {/* Main Content Area */}
-        <div className="flex-1 space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Main Content */}
+        <div className="flex-1 space-y-8">
+          {/* Dashboard Header */}
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Dashboard
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Real-time business analytics and insights
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3">
                 <Button 
                   onClick={refreshMetrics} 
                   disabled={isRefreshing}
                   variant="outline"
-                  size="sm"
+                  size="default"
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Refresh Analytics
                 </Button>
-                {lastRefreshedAt && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last refreshed at {lastRefreshedAt.toLocaleTimeString()}
-                  </p>
-                )}
+                <Button onClick={() => navigate("/customers/new")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Customer
+                </Button>
               </div>
-              <Button onClick={() => navigate("/customers/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Customer
-              </Button>
+              {lastRefreshedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Last refreshed at {lastRefreshedAt.toLocaleTimeString()}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dashboardStats.map((stat, index) => (
-              <StatCard key={index} {...stat} />
-            ))}
-          </div>
+          {/* KPI Cards Section */}
+          <section>
+            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+              Key Performance Indicators
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+              {dashboardStats.map((stat, index) => (
+                <StatCard key={index} {...stat} />
+              ))}
+            </div>
+          </section>
 
-          {/* Charts Grid - Two Columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RevenueTrendChart isRefreshing={isRefreshing} />
-            <PendingContracts isRefreshing={isRefreshing} />
-          </div>
+          {/* Charts Section */}
+          <section>
+            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+              Analytics Overview
+            </h2>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="xl:col-span-1">
+                <RevenueTrendChart isRefreshing={isRefreshing} />
+              </div>
+              <div className="xl:col-span-1">
+                <PendingContracts isRefreshing={isRefreshing} />
+              </div>
+            </div>
+          </section>
         </div>
 
         {/* Right Sidebar Panel */}
-        <div className="w-96">
+        <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-6 lg:self-start">
           <UpdatesPanel />
         </div>
       </div>
