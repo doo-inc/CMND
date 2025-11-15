@@ -76,14 +76,19 @@ export const RevenueTrendChart = ({ isRefreshing }: RevenueTrendChartProps) => {
 
   if (loading) {
     return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Total Revenue Growth
-          </CardTitle>
+      <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card to-card/80 h-full">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Total Revenue Growth</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Cumulative revenue over time</p>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="h-64 flex items-center justify-center">
             <p className="text-muted-foreground">Loading...</p>
           </div>
@@ -94,14 +99,19 @@ export const RevenueTrendChart = ({ isRefreshing }: RevenueTrendChartProps) => {
 
   if (data.length < 2) {
     return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Total Revenue Growth
-          </CardTitle>
+      <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card to-card/80 h-full">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Total Revenue Growth</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Cumulative revenue over time</p>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="h-64 flex flex-col items-center justify-center text-center">
             <TrendingUp className="h-12 w-12 mb-2 opacity-50 text-muted-foreground" />
             <p className="text-muted-foreground">Insufficient data to display revenue growth</p>
@@ -113,14 +123,19 @@ export const RevenueTrendChart = ({ isRefreshing }: RevenueTrendChartProps) => {
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
-          Total Revenue Growth
-        </CardTitle>
+    <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card to-card/80 h-full">
+      <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+            <TrendingUp className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-xl font-bold">Total Revenue Growth</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Cumulative revenue over time</p>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

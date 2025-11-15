@@ -74,11 +74,16 @@ export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="text-xl font-bold">Pending Contracts</CardTitle>
-          <CardDescription>Recent and upcoming agreements</CardDescription>
+    <Card className="h-full flex flex-col overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card to-card/80">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-xl font-bold">Pending Contracts</CardTitle>
+            <CardDescription className="text-xs">Recent and upcoming agreements</CardDescription>
+          </div>
         </div>
         <Button 
           variant="ghost" 
@@ -88,7 +93,7 @@ export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
           View All →
         </Button>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 p-6">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}

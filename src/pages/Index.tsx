@@ -320,62 +320,80 @@ const Index = () => {
   
   return (
     <DashboardLayout>
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-8 dashboard-background">
         {/* Main Content */}
-        <div className="flex-1 space-y-8">
+        <div className="flex-1 space-y-12">
           {/* Dashboard Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-12 pb-6 border-b border-border/50">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
                 Dashboard
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-base text-muted-foreground font-light">
                 Real-time business analytics and insights
               </p>
             </div>
             
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-3">
               <div className="flex items-center gap-3">
                 <Button 
                   onClick={refreshMetrics} 
                   disabled={isRefreshing}
                   variant="outline"
-                  size="default"
+                  size="lg"
+                  className="min-w-[180px] h-11 font-medium"
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Refresh Analytics
                 </Button>
-                <Button onClick={() => navigate("/customers/new")}>
+                <Button 
+                  onClick={() => navigate("/customers/new")}
+                  size="lg"
+                  className="min-w-[180px] h-11 font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Customer
                 </Button>
               </div>
               {lastRefreshedAt && (
-                <p className="text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                   Last refreshed at {lastRefreshedAt.toLocaleTimeString()}
-                </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* KPI Cards Section */}
-          <section>
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
-              Key Performance Indicators
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-primary to-purple-500 rounded-full" />
+              <h2 className="text-2xl font-bold tracking-tight">
+                Key Performance Indicators
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
               {dashboardStats.map((stat, index) => (
-                <StatCard key={index} {...stat} />
+                <div 
+                  key={index}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <StatCard {...stat} />
+                </div>
               ))}
             </div>
           </section>
 
           {/* Charts Section */}
-          <section>
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
-              Analytics Overview
-            </h2>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-primary to-purple-500 rounded-full" />
+              <h2 className="text-2xl font-bold tracking-tight">
+                Analytics Overview
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               <div className="xl:col-span-1">
                 <RevenueTrendChart isRefreshing={isRefreshing} />
               </div>

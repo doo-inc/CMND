@@ -146,4 +146,11 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  .dashboard-background {
+    background-image: 
+      radial-gradient(at 40% 20%, hsla(var(--primary)/0.05) 0, transparent 50%),
+      radial-gradient(at 80% 0%, hsla(var(--primary)/0.03) 0, transparent 50%),
+      radial-gradient(at 0% 50%, hsla(var(--primary)/0.03) 0, transparent 50%);
+  }
 }

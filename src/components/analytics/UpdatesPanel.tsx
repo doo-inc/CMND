@@ -178,11 +178,18 @@ export const UpdatesPanel = () => {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Activity Updates</CardTitle>
+    <Card className="border-0 shadow-xl bg-gradient-to-br from-card to-card/80 h-full">
+      <CardHeader className="border-b border-border/50 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle className="text-xl font-bold">Activity Updates</CardTitle>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-6">
         <Tabs value={period} onValueChange={(v) => setPeriod(v as 'weekly' | 'monthly')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="weekly">Weekly</TabsTrigger>
