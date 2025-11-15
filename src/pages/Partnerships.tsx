@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Partnership, PartnershipType, PartnershipStatus, PARTNERSHIP_TYPE_LABELS, PARTNERSHIP_STATUS_LABELS } from "@/types/partnerships";
 import { Link } from "react-router-dom";
+import { TopPerformersChart } from "@/components/partnerships/TopPerformersChart";
 
 const Partnerships = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -205,6 +206,9 @@ const Partnerships = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Top Performers Section */}
+        <TopPerformersChart />
 
         {/* Partnerships Grid */}
         {isLoading ? (
