@@ -1,11 +1,34 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PipelineVisualization } from "@/components/pipeline/PipelineVisualization";
+import { StageMovementInsights } from "@/components/pipeline/StageMovementInsights";
+import { PipelineFilters } from "@/components/pipeline/PipelineFilters";
+import { PipelineValueTrend } from "@/components/pipeline/PipelineValueTrend";
 import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
+import { usePipelineData } from "@/hooks/usePipelineData";
+import { usePipelineAnalytics } from "@/hooks/usePipelineAnalytics";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 const PipelineMap = () => {
-  // Run pipeline sync when page loads to ensure accurate data
+  const { pipelineData, isLoading, refetch } = usePipelineData();
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [filteredCustomerIds, setFilteredCustomerIds] = useState<string[]>([]);
+
+  // Get all customers from pipeline data
+  const allCustomers = pipelineData.flatMap((stage) => stage.customers);
+  
+  // Get analytics data
+  const { insights, trendData } = usePipelineAnalytics(allCustomers);
+
+  // Extract unique countries
+  const uniqueCountries = Array.from(
+    new Set(allCustomers.map((c) => c.country).filter(Boolean))
+  ).sort();
+
+  // Run pipeline sync when page loads
   useEffect(() => {
     const initializePipelineMap = async () => {
       console.log("🔄 PipelineMap: Running pipeline sync on page load");
@@ -15,37 +38,88 @@ const PipelineMap = () => {
     initializePipelineMap();
   }, []);
 
+  // Handle manual sync
+  const handleManualSync = async () => {
+    console.log("🔄 Manual pipeline sync triggered from Pipeline Map");
+    toast.loading("Syncing pipeline data...");
+    try {
+      await syncCustomerPipelineStages();
+      await refetch();
+      toast.success("Pipeline synced successfully!");
+      console.log("✅ Manual sync completed");
+    } catch (error) {
+      console.error("❌ Manual sync failed:", error);
+      toast.error("Failed to sync pipeline");
+    }
+  };
+
+  // Handle insight click to filter customers
+  const handleInsightClick = (type: string) => {
+    const insight = Object.values(insights).find((i) => i.type === type);
+    if (insight) {
+      setFilteredCustomerIds(insight.customers.map((c) => c.id));
+      toast.info(`Filtered to ${insight.count} customers`);
+    }
+  };
+
+  // Handle country filter change
+  const handleCountryChange = (countries: string[]) => {
+    setSelectedCountries(countries);
+    setFilteredCustomerIds([]);
+  };
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSelectedCountries([]);
+    setFilteredCustomerIds([]);
+    toast.info("Filters cleared");
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold">Pipeline Map</h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Visual overview of customer lifecycle stages and contract values
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Pipeline Map
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Real-time overview of customer lifecycle stages and pipeline performance
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                console.log("🔄 Manual pipeline sync triggered from Pipeline Map");
-                try {
-                  const result = await syncCustomerPipelineStages();
-                  console.log("✅ Manual sync completed:", result);
-                  // Trigger page refresh
-                  window.location.reload();
-                } catch (error) {
-                  console.error("❌ Manual sync failed:", error);
-                }
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Manual Sync
-            </button>
-          </div>
+          <Button
+            onClick={handleManualSync}
+            disabled={isLoading}
+            className="hover-scale"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Sync Pipeline
+          </Button>
         </div>
-        
-        <PipelineVisualization />
+
+        {/* Stage Movement Insights */}
+        <StageMovementInsights
+          insights={insights}
+          onInsightClick={handleInsightClick}
+        />
+
+        {/* Pipeline Filters */}
+        <PipelineFilters
+          countries={uniqueCountries}
+          selectedCountries={selectedCountries}
+          onCountryChange={handleCountryChange}
+          onClearFilters={handleClearFilters}
+        />
+
+        {/* Pipeline Value Trend */}
+        <PipelineValueTrend trendData={trendData} />
+
+        {/* Pipeline Visualization */}
+        <PipelineVisualization
+          selectedCountries={selectedCountries}
+          filteredCustomerIds={filteredCustomerIds}
+        />
       </div>
     </DashboardLayout>
   );
