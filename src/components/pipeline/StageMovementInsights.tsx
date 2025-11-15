@@ -18,12 +18,10 @@ interface StageMovementInsightsProps {
     valueGained: MovementInsight;
     valueLost: MovementInsight;
   };
-  onInsightClick: (type: MovementInsight['type']) => void;
 }
 
 export const StageMovementInsights: React.FC<StageMovementInsightsProps> = ({
   insights,
-  onInsightClick,
 }) => {
   const insightCards = [
     {
@@ -86,8 +84,7 @@ export const StageMovementInsights: React.FC<StageMovementInsightsProps> = ({
         return (
           <Card
             key={insight.type}
-            className={`${insight.bgColor} ${insight.borderColor} border-2 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105 animate-fade-in`}
-            onClick={() => onInsightClick(insight.type)}
+            className={`${insight.bgColor} ${insight.borderColor} border-2 transition-all duration-300 animate-fade-in`}
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
