@@ -320,9 +320,9 @@ const Index = () => {
   
   return (
     <DashboardLayout>
-      <div className="flex flex-col lg:flex-row gap-8 dashboard-background">
+      <div className="dashboard-background">
         {/* Main Content */}
-        <div className="flex-1 space-y-12">
+        <div className="space-y-12">
           {/* Dashboard Header */}
           <div className="flex items-center justify-between mb-12 pb-6 border-b border-border/50">
             <div>
@@ -385,7 +385,7 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Charts Section */}
+          {/* Analytics Overview Section */}
           <section className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-1 h-8 bg-gradient-to-b from-primary to-purple-500 rounded-full" />
@@ -393,20 +393,18 @@ const Index = () => {
                 Analytics Overview
               </h2>
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <div className="xl:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
                 <RevenueTrendChart isRefreshing={isRefreshing} />
               </div>
-              <div className="xl:col-span-1">
+              <div className="lg:col-span-1">
                 <PendingContracts isRefreshing={isRefreshing} />
+              </div>
+              <div className="lg:col-span-2 xl:col-span-1">
+                <UpdatesPanel />
               </div>
             </div>
           </section>
-        </div>
-
-        {/* Right Sidebar Panel */}
-        <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-6 lg:self-start">
-          <UpdatesPanel />
         </div>
       </div>
     </DashboardLayout>
