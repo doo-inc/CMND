@@ -93,17 +93,6 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       const newPipelineStage = computePipelineStage(customerStages);
       const newOperationalStatus = computeOperationalStatus(customerStages);
       
-      // MANUAL FIX FOR GULF AIR - Force correct stage based on known data
-      let finalPipelineStage = newPipelineStage;
-      let finalOperationalStatus = newOperationalStatus;
-      
-      if (customer.name.trim() === 'Gulf Air') {
-        // Force Gulf Air to Demo stage since we know it has completed stages through Demo
-        finalPipelineStage = 'Demo';
-        finalOperationalStatus = 'in-progress';
-        console.log(`🔧 MANUAL FIX APPLIED FOR GULF AIR: Forcing stage to Demo`);
-      }
-      
       // Log stage computation details
       const completedStages = customerStages
         .filter(s => isCompletedLike(s.status))
@@ -119,24 +108,15 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       console.log(`   - Computed pipeline stage: ${newPipelineStage}`);
       console.log(`   - Computed status: ${newOperationalStatus}`);
       
-      // Special logging for Gulf Air
-      if (customer.name === 'Gulf Air') {
-        console.log(`🔴 GULF AIR DEBUG:`);
-        console.log(`   - Customer ID: ${customer.id}`);
-        console.log(`   - Total stages found: ${customerStages.length}`);
-        console.log(`   - Stage details:`, customerStages.map(s => ({ name: s.name, status: s.status })));
-        console.log(`   - Should update? ${customer.stage !== newPipelineStage || customer.status !== newOperationalStatus}`);
-      }
-      
       // Only update if stage or status has changed
-      if (customer.stage !== finalPipelineStage || customer.status !== finalOperationalStatus) {
-        console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${finalPipelineStage}, Status ${customer.status} -> ${finalOperationalStatus}`);
+      if (customer.stage !== newPipelineStage || customer.status !== newOperationalStatus) {
+        console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${newPipelineStage}, Status ${customer.status} -> ${newOperationalStatus}`);
         
         const { data: updateData, error: updateError } = await supabase
           .from('customers')
           .update({
-            stage: finalPipelineStage,
-            status: finalOperationalStatus
+            stage: newPipelineStage,
+            status: newOperationalStatus
           })
           .eq('id', customer.id)
           .select();
@@ -150,9 +130,9 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
           syncResults.push({
             customer: customer.name,
             oldStage: customer.stage || 'null',
-            newStage: finalPipelineStage,
+            newStage: newPipelineStage,
             oldStatus: customer.status || 'null',
-            newStatus: finalOperationalStatus,
+            newStatus: newOperationalStatus,
             stages: [...completedStages, ...inProgressStages]
           });
         }
