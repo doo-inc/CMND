@@ -47,7 +47,7 @@ export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
             name
           )
         `)
-        .in('status', ['pending', 'active'])
+        .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(7);
 
@@ -82,7 +82,7 @@ export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
           </div>
           <div>
             <CardTitle className="text-xl font-bold">Pending Contracts</CardTitle>
-            <CardDescription className="text-xs">Recent and upcoming agreements</CardDescription>
+            <CardDescription className="text-xs">Awaiting signature or activation</CardDescription>
           </div>
         </div>
         <Button 

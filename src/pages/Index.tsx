@@ -296,7 +296,6 @@ const Index = () => {
     {
       title: "Monthly Recurring Revenue",
       value: formattedMRR,
-      description: "Current MRR",
       change: { value: 8, type: "increase" as const },
       icon: <TrendingUp className="h-6 w-6" />,
       onClick: () => navigate('/analytics/mrr')
@@ -394,14 +393,14 @@ const Index = () => {
               </h2>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 xl:col-span-1">
+                <UpdatesPanel />
+              </div>
               <div className="lg:col-span-1">
                 <RevenueTrendChart isRefreshing={isRefreshing} />
               </div>
               <div className="lg:col-span-1">
                 <PendingContracts isRefreshing={isRefreshing} />
-              </div>
-              <div className="lg:col-span-2 xl:col-span-1">
-                <UpdatesPanel />
               </div>
             </div>
           </section>
