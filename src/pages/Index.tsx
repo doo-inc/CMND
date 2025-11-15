@@ -4,7 +4,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { ContractCard } from "@/components/contracts/ContractCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy, Calendar, DollarSign, Target, AlertTriangle, Percent, FileText } from "lucide-react";
+import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock, Briefcase, LifeBuoy, Calendar, DollarSign, Target, AlertTriangle, Percent, FileText, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
@@ -27,8 +27,11 @@ import {
   calculateAverageGoLiveTime,
   calculateChurnRate,
   calculateSalesLifecycle,
-  formatCurrency
+  formatCurrency,
+  getCustomersAtRisk
 } from "@/utils/customerUtils";
+import { RevenueTrendChart } from "@/components/analytics/RevenueTrendChart";
+import { UpdatesPanel } from "@/components/analytics/UpdatesPanel";
 
 const Index = () => {
   // Enable performance monitoring
@@ -53,8 +56,12 @@ const Index = () => {
   const [churnRate, setChurnRate] = useState("0.0%");
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [totalContracts, setTotalContracts] = useState(0);
+  const [customersAtRisk, setCustomersAtRisk] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   const refreshMetrics = async () => {
+    setIsRefreshing(true);
     try {
       const [
         dealsPipeline,
@@ -68,7 +75,8 @@ const Index = () => {
         arrDataResult,
         churnRateResult,
         customersCountResult,
-        contractsCountResult
+        contractsCountResult,
+        customersAtRiskResult
       ] = await Promise.all([
         getDealsPipeline(),
         getTotalPipelineValue(),
@@ -81,7 +89,8 @@ const Index = () => {
         getCustomerARRData(customers),
         calculateChurnRate(180), // 6 months = ~180 days
         supabase.from('customers').select('*', { count: 'exact', head: true }),
-        supabase.from('contracts').select('*', { count: 'exact', head: true }).or('status.eq.active,status.eq.pending')
+        supabase.from('contracts').select('*', { count: 'exact', head: true }).or('status.eq.active,status.eq.pending'),
+        getCustomersAtRisk()
       ]);
 
       setMetrics({
@@ -99,8 +108,12 @@ const Index = () => {
       setChurnRate(churnRateResult);
       setTotalCustomers(customersCountResult.count || 0);
       setTotalContracts(contractsCountResult.count || 0);
+      setCustomersAtRisk(customersAtRiskResult);
+      setLastRefreshedAt(new Date());
     } catch (error) {
       console.error("Error refreshing metrics:", error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -338,38 +351,62 @@ const Index = () => {
       title: "Churn Rate",
       value: churnRate,
       description: "Last 6 months",
-      icon: <Percent className="h-6 w-6" />
+      icon: <Percent className="h-6 w-6" />,
+      onClick: () => navigate('/analytics/churn-rate')
+    },
+    {
+      title: "Customers At Risk",
+      value: `${customersAtRisk}`,
+      description: "Renewals in next 30 days",
+      icon: <AlertTriangle className="h-6 w-6" />,
+      onClick: () => navigate('/analytics/customers-at-risk')
     }
   ];
   
   
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/customers/new")}>
-              <Plus className="mr-2 h-4 w-4" /> Add Customer
-            </Button>
+      <div className="flex gap-6">
+        {/* Main Content Area */}
+        <div className="flex-1 space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <Button 
+                  onClick={refreshMetrics} 
+                  disabled={isRefreshing}
+                  variant="outline"
+                  size="sm"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh Analytics
+                </Button>
+                {lastRefreshedAt && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last refreshed at {lastRefreshedAt.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+              <Button onClick={() => navigate("/customers/new")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {dashboardStats.map((stat, index) => {
-            const metricKeys = ["total-customers", "total-contracts", "total-revenue", "total-arr", "live-customers", "pitch-to-pay", "deals-pipeline", "conversion-rate", "average-deal-size", "mrr", "pay-to-live", "churn-rate"];
-            return (
-              <StatCard 
-                key={index} 
-                {...stat} 
-                onClick={() => navigate(`/analytics/${metricKeys[index]}`)}
-              />
-            );
-          })}
-        </div>
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {dashboardStats.map((stat, index) => (
+              <StatCard key={index} {...stat} />
+            ))}
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="col-span-2 bg-card dark:bg-gray-800">
+          {/* Revenue Trend Chart */}
+          <RevenueTrendChart isRefreshing={isRefreshing} />
+
+          {/* Pending Contracts */}
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-medium">
                 Pending Contracts
@@ -397,31 +434,37 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-card dark:bg-gray-800">
+          {/* Quick Actions */}
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-medium">
-                Quick Actions
-              </CardTitle>
+              <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/customers")}>
-                <Users className="mr-2 h-4 w-4" />
-                Manage Customers
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/lifecycle")}>
-                <Calendar className="mr-2 h-4 w-4" />
-                Customer Lifecycle
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/partnerships")}>
-                <HandHeart className="mr-2 h-4 w-4" />
-                Manage Partnerships
-              </Button>
-              <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/tasks")}>
-                <Kanban className="mr-2 h-4 w-4" />
-                Manage Tasks
-              </Button>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <Button variant="outline" className="flex flex-col h-auto py-4" onClick={() => navigate("/customers")}>
+                  <Users className="h-6 w-6 mb-2" />
+                  <span>Manage Customers</span>
+                </Button>
+                <Button variant="outline" className="flex flex-col h-auto py-4" onClick={() => navigate("/lifecycle")}>
+                  <Kanban className="h-6 w-6 mb-2" />
+                  <span>Lifecycle Tracking</span>
+                </Button>
+                <Button variant="outline" className="flex flex-col h-auto py-4" onClick={() => navigate("/partnerships")}>
+                  <HandHeart className="h-6 w-6 mb-2" />
+                  <span>Partnerships</span>
+                </Button>
+                <Button variant="outline" className="flex flex-col h-auto py-4" onClick={() => navigate("/tasks")}>
+                  <BarChart3 className="h-6 w-6 mb-2" />
+                  <span>Tasks Board</span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Right Sidebar Panel */}
+        <div className="w-80">
+          <UpdatesPanel />
         </div>
       </div>
     </DashboardLayout>

@@ -515,6 +515,38 @@ export const calculateSalesLifecycle = async (): Promise<number> => {
   }
 };
 
+export const getCustomersAtRisk = async (): Promise<number> => {
+  try {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const { data, error } = await supabase
+      .from('contracts')
+      .select(`
+        id,
+        customer_id,
+        renewal_date,
+        customers!inner(id, status)
+      `)
+      .gte('renewal_date', today.toISOString())
+      .lte('renewal_date', thirtyDaysFromNow.toISOString())
+      .in('customers.status', ['done', 'active']);
+
+    if (error) {
+      console.error("Error fetching customers at risk:", error);
+      return 0;
+    }
+
+    // Count unique customers
+    const uniqueCustomers = new Set(data?.map(contract => contract.customer_id));
+    return uniqueCustomers.size;
+  } catch (error) {
+    console.error("Error in getCustomersAtRisk:", error);
+    return 0;
+  }
+};
+
 export const calculateChurnRate = async (periodDays: number = 30): Promise<string> => {
   try {
     const periodStartDate = new Date();
