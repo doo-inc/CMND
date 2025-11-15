@@ -11,7 +11,6 @@ import { usePipelineAnalytics } from "@/hooks/usePipelineAnalytics";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 const PipelineMap = () => {
   const { pipelineData, isLoading, refetch } = usePipelineData();
@@ -53,49 +52,6 @@ const PipelineMap = () => {
     }
   };
 
-  // Manual fix for specific customer issues
-  const handleFixGulfAir = async () => {
-    console.log("🔧 Manual fix for Gulf Air triggered");
-    toast.loading("Fixing Gulf Air stage...");
-    try {
-      // Fetch Gulf Air's lifecycle stages
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id, name')
-        .ilike('name', '%gulf air%')
-        .single();
-      
-      if (!customer) {
-        toast.error("Gulf Air not found");
-        return;
-      }
-
-      const { data: stages } = await supabase
-        .from('lifecycle_stages')
-        .select('name, status')
-        .eq('customer_id', customer.id);
-
-      console.log("Gulf Air stages:", stages);
-
-      // Based on lifecycle stages, Gulf Air should be in Proposal stage
-      const { error } = await supabase
-        .from('customers')
-        .update({
-          stage: 'Proposal',
-          status: 'in-progress'
-        })
-        .eq('id', customer.id);
-
-      if (error) throw error;
-
-      await refetch();
-      toast.success("Gulf Air stage updated to Proposal!");
-    } catch (error) {
-      console.error("❌ Manual fix failed:", error);
-      toast.error("Failed to fix Gulf Air");
-    }
-  };
-
 
   // Handle country filter change
   const handleCountryChange = (countries: string[]) => {
@@ -128,13 +84,6 @@ const PipelineMap = () => {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Sync Pipeline
-          </Button>
-          <Button
-            onClick={handleFixGulfAir}
-            variant="outline"
-            className="hover-scale"
-          >
-            Fix Gulf Air
           </Button>
         </div>
 
