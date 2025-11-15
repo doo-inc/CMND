@@ -17,7 +17,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, change, icon, description, onClick }: StatCardProps) {
   return (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
+    <Card className="cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary" onClick={onClick}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
