@@ -8,8 +8,15 @@ import { getFurthestPipelineStageFromNames } from "@/utils/pipelineRules";
 const computePipelineStage = (stages: any[]): string => {
   const reached = stages
     .filter((s: any) => isCompletedLike(s.status) || isInProgressLike(s.status))
-    .map((s: any) => canonicalizeStageName(s.name));
-  return getFurthestPipelineStageFromNames(reached);
+    .map((s: any) => {
+      const canonical = canonicalizeStageName(s.name);
+      console.log(`      Stage mapping: "${s.name}" (${s.status}) -> canonical: "${canonical}"`);
+      return canonical;
+    });
+  
+  const pipelineStage = getFurthestPipelineStageFromNames(reached);
+  console.log(`      Reached stages: [${reached.join(', ')}] -> Pipeline: ${pipelineStage}`);
+  return pipelineStage;
 };
 
 const computeOperationalStatus = (stages: any[]): "not-started" | "in-progress" | "done" | "blocked" => {
@@ -23,7 +30,6 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log("🔐 Auth context:", { user: user?.id, email: user?.email, error: authError });
     
     if (authError || !user) {
       console.error("❌ Authentication failed in pipeline sync:", authError);
@@ -34,7 +40,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
     const { data: customers, error: customersError } = await supabase
       .from('customers')
       .select('id, name, stage, status')
-      .neq('status', 'churned');
+      .or('status.is.null,status.neq.churned');
 
     if (customersError) {
       console.error("❌ Error fetching customers:", customersError);
@@ -54,6 +60,24 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
     }
 
     console.log(`📋 Found ${allLifecycleStages?.length || 0} lifecycle stages`);
+    
+    // Debug: Check if Gulf Air exists in both datasets
+    const gulfAirCustomer = customers?.find(c => c.name?.toLowerCase().includes('gulf air'));
+    if (gulfAirCustomer) {
+      console.log(`🔍 GULF AIR FOUND IN CUSTOMERS:`, {
+        id: gulfAirCustomer.id,
+        name: gulfAirCustomer.name,
+        currentStage: gulfAirCustomer.stage,
+        currentStatus: gulfAirCustomer.status
+      });
+      
+      const gulfAirStages = allLifecycleStages?.filter(s => s.customer_id === gulfAirCustomer.id);
+      console.log(`🔍 GULF AIR LIFECYCLE STAGES (${gulfAirStages?.length || 0}):`, 
+        gulfAirStages?.map(s => ({ name: s.name, status: s.status }))
+      );
+    } else {
+      console.log(`⚠️ Gulf Air NOT found in customers list`);
+    }
 
     // Group stages by customer
     const stagesByCustomer: Record<string, any[]> = {};
@@ -64,18 +88,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       stagesByCustomer[stage.customer_id].push(stage);
     });
 
-    console.log(`🔄 Processing ${Object.keys(stagesByCustomer).length} customers with stages`);
-    
-    // Debug Gulf Air specifically
-    const gulfAirCustomer = customers?.find(c => c.name === 'Gulf Air');
-    if (gulfAirCustomer) {
-      const gulfAirStages = stagesByCustomer[gulfAirCustomer.id] || [];
-      console.log(`🔴 GULF AIR STAGE GROUPING DEBUG:`);
-      console.log(`   - Customer ID: ${gulfAirCustomer.id}`);
-      console.log(`   - Stages found in grouping: ${gulfAirStages.length}`);
-      console.log(`   - Stage names: [${gulfAirStages.map(s => s.name).join(', ')}]`);
-      console.log(`   - All customer IDs with stages: [${Object.keys(stagesByCustomer).join(', ')}]`);
-    }
+    console.log(`🔄 Grouped stages for ${Object.keys(stagesByCustomer).length} customers`);
 
     let updatedCount = 0;
     const syncResults: Array<{
@@ -101,12 +114,18 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
         .filter(s => isInProgressLike(s.status))
         .map(s => s.name);
       
-      console.log(`🔍 ${customer.name}:`);
-      console.log(`   - Current DB: stage="${customer.stage}", status="${customer.status}"`);
-      console.log(`   - Completed stages: [${completedStages.join(', ')}]`);
-      console.log(`   - In progress stages: [${inProgressStages.join(', ')}]`);
-      console.log(`   - Computed pipeline stage: ${newPipelineStage}`);
-      console.log(`   - Computed status: ${newOperationalStatus}`);
+      // Special detailed logging for Gulf Air
+      if (customer.name?.toLowerCase().includes('gulf air')) {
+        console.log(`🔴🔴🔴 GULF AIR SYNC DETAILS:`);
+        console.log(`   Customer ID: ${customer.id}`);
+        console.log(`   Stages found for this customer ID: ${customerStages.length}`);
+        console.log(`   All stages:`, customerStages.map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) })));
+        console.log(`   Completed stages: [${completedStages.join(', ')}]`);
+        console.log(`   In progress stages: [${inProgressStages.join(', ')}]`);
+        console.log(`   Computed pipeline stage: ${newPipelineStage}`);
+        console.log(`   Computed status: ${newOperationalStatus}`);
+        console.log(`   Current DB: stage="${customer.stage}", status="${customer.status}"`);
+      }
       
       // Only update if stage or status has changed
       if (customer.stage !== newPipelineStage || customer.status !== newOperationalStatus) {
@@ -123,7 +142,6 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
 
         if (updateError) {
           console.error(`❌ Error updating customer ${customer.name}:`, updateError);
-          console.error(`❌ Full error details:`, JSON.stringify(updateError, null, 2));
         } else {
           console.log(`✅ Successfully updated ${customer.name}:`, updateData);
           updatedCount++;
@@ -136,8 +154,6 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
             stages: [...completedStages, ...inProgressStages]
           });
         }
-      } else {
-        console.log(`✅ No changes needed for ${customer.name}`);
       }
     }
 

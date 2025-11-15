@@ -73,18 +73,30 @@ export const usePipelineData = () => {
 
       console.log('Lifecycle stages fetched:', lifecycleStages);
 
-// Group lifecycle stages by customer ID (count completed OR in-progress as reached)
-const stagesByCustomer: Record<string, string[]> = {};
-lifecycleStages?.forEach(stage => {
-  if (isCompletedLike(stage.status) || isInProgressLike(stage.status)) {
-    if (!stagesByCustomer[stage.customer_id]) {
-      stagesByCustomer[stage.customer_id] = [];
-    }
-    // Store canonical name for consistent mapping
-    const canonicalName = canonicalizeStageName(stage.name);
-    stagesByCustomer[stage.customer_id].push(canonicalName);
-  }
-});
+      // Group lifecycle stages by customer ID (count completed OR in-progress as reached)
+      const stagesByCustomer: Record<string, string[]> = {};
+      lifecycleStages?.forEach(stage => {
+        if (isCompletedLike(stage.status) || isInProgressLike(stage.status)) {
+          if (!stagesByCustomer[stage.customer_id]) {
+            stagesByCustomer[stage.customer_id] = [];
+          }
+          // Store canonical name for consistent mapping
+          const canonicalName = canonicalizeStageName(stage.name);
+          stagesByCustomer[stage.customer_id].push(canonicalName);
+        }
+      });
+      
+      // Debug Gulf Air specifically in usePipelineData
+      const gulfAirCustomer = customers?.find(c => c.name?.toLowerCase().includes('gulf air'));
+      if (gulfAirCustomer) {
+        console.log('🔍 GULF AIR DEBUG IN usePipelineData:');
+        console.log('  Customer ID:', gulfAirCustomer.id);
+        console.log('  All lifecycle stages for Gulf Air:', 
+          lifecycleStages?.filter(s => s.customer_id === gulfAirCustomer.id)
+            .map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) }))
+        );
+        console.log('  Filtered stages (completed/in-progress):', stagesByCustomer[gulfAirCustomer.id]);
+      }
 
       // Transform customers to CustomerData format with pipeline stage determination
       const transformedCustomers: CustomerData[] = (customers || []).map(customer => {
