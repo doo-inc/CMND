@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Loader2, TrendingUp, Users, Target, AlertCircle } from "lucide-react";
+import { Download, Loader2, TrendingUp, Users, Target, AlertCircle, HandHeart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateWeeklyReport, generateMonthlyReport } from "@/utils/reportGeneration";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { format } from "date-fns";
 
 interface ActivityItem {
   id: string;
-  type: 'lifecycle' | 'customer' | 'lead' | 'churn';
+  type: 'lifecycle' | 'customer' | 'lead' | 'churn' | 'partnership';
   customerName: string;
   details: string;
   date: string;
@@ -22,6 +22,7 @@ interface DetailedData {
   newCustomers: ActivityItem[];
   newLeads: ActivityItem[];
   churns: ActivityItem[];
+  newPartnerships: ActivityItem[];
 }
 
 export const UpdatesPanel = () => {
@@ -108,7 +109,23 @@ export const UpdatesPanel = () => {
       date: format(new Date(customer.churn_date), 'MMM dd')
     })) || [];
 
-    return { lifecycleChanges, newCustomers, newLeads, churns };
+    // Fetch new partnerships
+    const { data: partnershipsData } = await supabase
+      .from('partnerships')
+      .select('id, name, created_at, status, partnership_type')
+      .gte('created_at', daysAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    const newPartnerships: ActivityItem[] = partnershipsData?.map((partnership: any) => ({
+      id: partnership.id,
+      type: 'partnership' as const,
+      customerName: partnership.name,
+      details: partnership.partnership_type.replace('_', ' '),
+      date: format(new Date(partnership.created_at), 'MMM dd')
+    })) || [];
+
+    return { lifecycleChanges, newCustomers, newLeads, churns, newPartnerships };
   };
 
   useEffect(() => {
@@ -230,6 +247,12 @@ export const UpdatesPanel = () => {
                     title="Churns"
                     items={currentData.churns}
                     icon={<AlertCircle className="h-4 w-4" />}
+                  />
+
+                  <ActivitySection
+                    title="New Partnerships"
+                    items={currentData.newPartnerships}
+                    icon={<HandHeart className="h-4 w-4" />}
                   />
                 </div>
               </ScrollArea>
