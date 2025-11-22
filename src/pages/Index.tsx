@@ -340,6 +340,13 @@ const Index = () => {
       onClick: () => navigate(buildFilteredUrl('/analytics/pitch-to-pay', selectedCountries, dateRange.from, dateRange.to))
     },
     {
+      title: "Pay to Live",
+      value: metrics.payToLiveDays > 0 ? `${metrics.payToLiveDays} days` : "N/A",
+      description: "Payment to Go Live",
+      icon: <Activity className="h-6 w-6" />,
+      onClick: () => navigate('/analytics/pay-to-live')
+    },
+    {
       title: "Deals Pipeline",
       value: formattedDealsPipeline,
       description: `${metrics.dealsPipeline.count} active deals`,
@@ -366,13 +373,6 @@ const Index = () => {
       change: { value: 8, type: "increase" as const },
       icon: <TrendingUp className="h-6 w-6" />,
       onClick: () => navigate(buildFilteredUrl('/analytics/mrr', selectedCountries, dateRange.from, dateRange.to))
-    },
-    {
-      title: "Pay to Live",
-      value: metrics.payToLiveDays > 0 ? `${metrics.payToLiveDays} days` : "N/A",
-      description: "Payment to Go Live",
-      icon: <Activity className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/pay-to-live')
     },
     {
       title: "Churn Rate",
