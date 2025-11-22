@@ -12,21 +12,35 @@ interface MonthlyRevenue {
 
 interface RevenueTrendChartProps {
   isRefreshing?: boolean;
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
 }
 
-export const RevenueTrendChart = ({ isRefreshing }: RevenueTrendChartProps) => {
+export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }: RevenueTrendChartProps) => {
   const [data, setData] = useState<MonthlyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRevenueTrend = async () => {
     setLoading(true);
     try {
-      // Get ALL contracts ever created, ordered by date
-      const { data: contracts, error } = await supabase
+      let query = supabase
         .from('contracts')
-        .select('created_at, setup_fee, annual_rate, status')
+        .select('created_at, setup_fee, annual_rate, status, customers!inner(country)')
         .in('status', ['active', 'pending', 'expired'])
         .order('created_at', { ascending: true });
+
+      if (countries && countries.length > 0) {
+        query = query.in('customers.country', countries);
+      }
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom.toISOString());
+      }
+      if (dateTo) {
+        query = query.lte('created_at', dateTo.toISOString());
+      }
+
+      const { data: contracts, error } = await query;
 
       if (error) throw error;
 
@@ -72,7 +86,7 @@ export const RevenueTrendChart = ({ isRefreshing }: RevenueTrendChartProps) => {
 
   useEffect(() => {
     fetchRevenueTrend();
-  }, [isRefreshing]);
+  }, [isRefreshing, countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

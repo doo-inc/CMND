@@ -20,19 +20,19 @@ interface PendingContract {
   created_at: string;
 }
 
-export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
+export function PendingContracts({ isRefreshing, countries, dateFrom, dateTo }: { isRefreshing?: boolean; countries?: string[]; dateFrom?: Date; dateTo?: Date }) {
   const [contracts, setContracts] = useState<PendingContract[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchPendingContracts();
-  }, [isRefreshing]);
+  }, [isRefreshing, countries, dateFrom, dateTo]);
 
   const fetchPendingContracts = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('contracts')
         .select(`
           id,
@@ -44,12 +44,25 @@ export function PendingContracts({ isRefreshing }: { isRefreshing?: boolean }) {
           created_at,
           customers!inner(
             id,
-            name
+            name,
+            country
           )
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(7);
+
+      if (countries && countries.length > 0) {
+        query = query.in('customers.country', countries);
+      }
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom.toISOString());
+      }
+      if (dateTo) {
+        query = query.lte('created_at', dateTo.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

@@ -31,6 +31,7 @@ import {
 import { RevenueTrendChart } from "@/components/analytics/RevenueTrendChart";
 import { UpdatesPanel } from "@/components/analytics/UpdatesPanel";
 import { PendingContracts } from "@/components/analytics/PendingContracts";
+import { DashboardFilters } from "@/components/analytics/DashboardFilters";
 
 const Index = () => {
   // Enable performance monitoring
@@ -56,10 +57,24 @@ const Index = () => {
   const [customersAtRisk, setCustomersAtRisk] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  
+  // Filter state
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
 
   const refreshMetrics = async () => {
     setIsRefreshing(true);
     try {
+      // Build filter params
+      const filterParams = {
+        countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+        dateFrom: dateRange.from,
+        dateTo: dateRange.to,
+      };
+
       const [
         dealsPipeline,
         totalPipelineValue,
@@ -75,19 +90,19 @@ const Index = () => {
         contractsCountResult,
         customersAtRiskResult
       ] = await Promise.all([
-        getDealsPipeline(),
-        getTotalPipelineValue(),
-        getActiveContractsValue(),
-        getConversionRate(),
-        getAverageDealSize(),
-        getMRR(),
-        calculatePitchToPayTime(),
-        calculatePayToLiveTime(),
-        getCustomerARRData(customers),
-        calculateChurnRate(180), // 6 months = ~180 days
-        supabase.from('customers').select('*', { count: 'exact', head: true }),
-        supabase.from('contracts').select('*', { count: 'exact', head: true }).or('status.eq.active,status.eq.pending'),
-        getCustomersAtRisk()
+        getDealsPipeline(filterParams),
+        getTotalPipelineValue(filterParams),
+        getActiveContractsValue(filterParams),
+        getConversionRate(filterParams),
+        getAverageDealSize(filterParams),
+        getMRR(filterParams),
+        calculatePitchToPayTime(filterParams),
+        calculatePayToLiveTime(filterParams),
+        getCustomerARRData(customers, filterParams),
+        calculateChurnRate(180, filterParams),
+        getFilteredCustomersCount(filterParams),
+        getFilteredContractsCount(filterParams),
+        getCustomersAtRisk(filterParams)
       ]);
 
       setMetrics({
@@ -216,7 +231,49 @@ const Index = () => {
 
   useEffect(() => {
     refreshMetrics();
-  }, [customers]);
+  }, [customers, selectedCountries, dateRange]);
+
+  const getFilteredCustomersCount = async (filterParams: any) => {
+    let query = supabase.from('customers').select('*', { count: 'exact', head: true });
+    
+    if (filterParams.countries) {
+      query = query.in('country', filterParams.countries);
+    }
+    if (filterParams.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+    
+    const { count } = await query;
+    return { count };
+  };
+
+  const getFilteredContractsCount = async (filterParams: any) => {
+    let query = supabase
+      .from('contracts')
+      .select('*, customers!inner(*)', { count: 'exact', head: true })
+      .or('status.eq.active,status.eq.pending');
+    
+    if (filterParams.countries) {
+      query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+    
+    const { count } = await query;
+    return { count };
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCountries([]);
+    setDateRange({ from: undefined, to: undefined });
+  };
 
   // Calculate dashboard metrics  
   const formattedARR = formatCurrency(arrData.totalARR, false);
@@ -361,6 +418,17 @@ const Index = () => {
             </div>
           </div>
 
+          {/* Filters Section */}
+          <section className="mb-8">
+            <DashboardFilters
+              selectedCountries={selectedCountries}
+              dateRange={dateRange}
+              onCountryChange={setSelectedCountries}
+              onDateRangeChange={setDateRange}
+              onClearFilters={handleClearFilters}
+            />
+          </section>
+
           {/* KPI Cards Section */}
           <section className="space-y-6">
             <div className="flex items-center gap-3">
@@ -392,13 +460,27 @@ const Index = () => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               <div className="lg:col-span-2 xl:col-span-1">
-                <UpdatesPanel />
+                <UpdatesPanel 
+                  countries={selectedCountries.length > 0 ? selectedCountries : undefined}
+                  dateFrom={dateRange.from}
+                  dateTo={dateRange.to}
+                />
               </div>
               <div className="lg:col-span-1">
-                <RevenueTrendChart isRefreshing={isRefreshing} />
+                <RevenueTrendChart 
+                  isRefreshing={isRefreshing}
+                  countries={selectedCountries.length > 0 ? selectedCountries : undefined}
+                  dateFrom={dateRange.from}
+                  dateTo={dateRange.to}
+                />
               </div>
               <div className="lg:col-span-1">
-                <PendingContracts isRefreshing={isRefreshing} />
+                <PendingContracts 
+                  isRefreshing={isRefreshing}
+                  countries={selectedCountries.length > 0 ? selectedCountries : undefined}
+                  dateFrom={dateRange.from}
+                  dateTo={dateRange.to}
+                />
               </div>
             </div>
           </section>

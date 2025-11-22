@@ -25,7 +25,13 @@ interface DetailedData {
   newPartnerships: ActivityItem[];
 }
 
-export const UpdatesPanel = () => {
+interface UpdatesPanelProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps) => {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
   const [weeklyData, setWeeklyData] = useState<DetailedData | null>(null);
   const [monthlyData, setMonthlyData] = useState<DetailedData | null>(null);
@@ -36,12 +42,23 @@ export const UpdatesPanel = () => {
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - days);
 
+    // Apply custom date range if provided
+    const startDate = dateFrom || daysAgo;
+    const endDate = dateTo || new Date();
+
     // Fetch lifecycle changes with customer names
-    const { data: lifecycleData } = await supabase
+    let lifecycleQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, name, status_changed_at, customers(name)')
-      .gte('status_changed_at', daysAgo.toISOString())
+      .select('customer_id, name, status_changed_at, customers!inner(name, country)')
+      .gte('status_changed_at', startDate.toISOString())
+      .lte('status_changed_at', endDate.toISOString())
       .order('status_changed_at', { ascending: false });
+
+    if (countries && countries.length > 0) {
+      lifecycleQuery = lifecycleQuery.in('customers.country', countries);
+    }
+
+    const { data: lifecycleData } = await lifecycleQuery;
 
     // Get unique customers with latest stage only
     const customerStagesMap = new Map();
@@ -61,12 +78,19 @@ export const UpdatesPanel = () => {
     }));
 
     // Fetch new customers (contracts created)
-    const { data: contractsData } = await supabase
+    let contractsQuery = supabase
       .from('contracts')
-      .select('id, name, created_at, customers(name)')
-      .gte('created_at', daysAgo.toISOString())
+      .select('id, name, created_at, customers!inner(name, country)')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false })
       .limit(10);
+
+    if (countries && countries.length > 0) {
+      contractsQuery = contractsQuery.in('customers.country', countries);
+    }
+
+    const { data: contractsData } = await contractsQuery;
 
     const newCustomers: ActivityItem[] = contractsData?.map((contract: any) => ({
       id: contract.id,
@@ -77,12 +101,19 @@ export const UpdatesPanel = () => {
     })) || [];
 
     // Fetch new leads (customers added)
-    const { data: leadsData } = await supabase
+    let leadsQuery = supabase
       .from('customers')
-      .select('id, name, created_at')
-      .gte('created_at', daysAgo.toISOString())
+      .select('id, name, created_at, country')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false })
       .limit(10);
+
+    if (countries && countries.length > 0) {
+      leadsQuery = leadsQuery.in('country', countries);
+    }
+
+    const { data: leadsData } = await leadsQuery;
 
     const newLeads: ActivityItem[] = leadsData?.map((lead: any) => ({
       id: lead.id,
@@ -93,13 +124,20 @@ export const UpdatesPanel = () => {
     })) || [];
 
     // Fetch churns
-    const { data: churnsData } = await supabase
+    let churnsQuery = supabase
       .from('customers')
-      .select('id, name, churn_date')
+      .select('id, name, churn_date, country')
       .eq('status', 'churned')
-      .gte('churn_date', daysAgo.toISOString())
+      .gte('churn_date', startDate.toISOString())
+      .lte('churn_date', endDate.toISOString())
       .order('churn_date', { ascending: false })
       .limit(10);
+
+    if (countries && countries.length > 0) {
+      churnsQuery = churnsQuery.in('country', countries);
+    }
+
+    const { data: churnsData } = await churnsQuery;
 
     const churns: ActivityItem[] = churnsData?.map((customer: any) => ({
       id: customer.id,
@@ -110,12 +148,19 @@ export const UpdatesPanel = () => {
     })) || [];
 
     // Fetch new partnerships
-    const { data: partnershipsData } = await supabase
+    let partnershipsQuery = supabase
       .from('partnerships')
-      .select('id, name, created_at, status, partnership_type')
-      .gte('created_at', daysAgo.toISOString())
+      .select('id, name, created_at, status, partnership_type, country')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false })
       .limit(10);
+
+    if (countries && countries.length > 0) {
+      partnershipsQuery = partnershipsQuery.in('country', countries);
+    }
+
+    const { data: partnershipsData } = await partnershipsQuery;
 
     const newPartnerships: ActivityItem[] = partnershipsData?.map((partnership: any) => ({
       id: partnership.id,
@@ -146,7 +191,7 @@ export const UpdatesPanel = () => {
     };
 
     loadData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   const handleGenerateReport = async () => {
     setGenerating(true);

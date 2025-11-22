@@ -13,13 +13,30 @@ export const formatCurrency = (amount: number, includeDecimals: boolean = true):
   return formattedAmount;
 };
 
-export const getLiveCustomers = async (): Promise<CustomerData[]> => {
+export interface FilterParams {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const getLiveCustomers = async (filterParams?: FilterParams): Promise<CustomerData[]> => {
   try {
-    // Get all customers who have active contracts (not churned)
-    const { data, error } = await supabase
+    let query = supabase
       .from('customers')
       .select('*')
       .neq('status', 'churned');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching live customers:", error);
@@ -47,9 +64,9 @@ export const getLiveCustomers = async (): Promise<CustomerData[]> => {
   }
 };
 
-export const getCustomerARRData = async (customers: CustomerData[]) => {
+export const getCustomerARRData = async (customers: CustomerData[], filterParams?: FilterParams) => {
   try {
-    const { data: contractsData, error: contractsError } = await supabase
+    let query = supabase
       .from('contracts')
       .select(`
         annual_rate,
@@ -66,6 +83,18 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
         )
       `)
       .or('status.eq.active,status.eq.pending,status.is.null');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data: contractsData, error: contractsError } = await query;
 
     if (contractsError) {
       console.error("Error fetching ARR from contracts:", contractsError);
@@ -119,13 +148,24 @@ export const getCustomerARRData = async (customers: CustomerData[]) => {
   }
 };
 
-export const getDealsPipeline = async () => {
+export const getDealsPipeline = async (filterParams?: FilterParams) => {
   try {
-    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
-    const { data, error } = await supabase
+    let query = supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value, stage, status')
+      .select('contract_size, estimated_deal_value, stage, status, country, created_at')
       .or('status.is.null,status.neq.churned.and.status.neq.done');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching deals pipeline:", error);
@@ -147,13 +187,24 @@ export const getDealsPipeline = async () => {
   }
 };
 
-export const getTotalPipelineValue = async (): Promise<number> => {
+export const getTotalPipelineValue = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
-    const { data, error } = await supabase
+    let query = supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value, stage, status')
+      .select('contract_size, estimated_deal_value, stage, status, country, created_at')
       .or('status.is.null,status.neq.churned.and.status.neq.done');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching total pipeline value:", error);
@@ -169,12 +220,24 @@ export const getTotalPipelineValue = async (): Promise<number> => {
   }
 };
 
-export const getActiveContractsValue = async (): Promise<number> => {
+export const getActiveContractsValue = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('contracts')
-      .select('setup_fee, annual_rate, value, start_date, end_date, status')
+      .select('setup_fee, annual_rate, value, start_date, end_date, status, created_at, customers!inner(country)')
       .or('status.eq.active,status.eq.pending,status.is.null');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching total revenue:", error);
@@ -208,17 +271,32 @@ export const getActiveContractsValue = async (): Promise<number> => {
   }
 };
 
-export const getConversionRate = async (): Promise<number> => {
+export const getConversionRate = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    const { data: totalCustomers, error: totalError } = await supabase
+    let totalQuery = supabase
       .from('customers')
       .select('id', { count: 'exact' });
 
-    // Get all customers with status = "done" (live customers)
-    const { data: liveCustomers, error: liveError } = await supabase
+    let liveQuery = supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .eq('status', 'done');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      totalQuery = totalQuery.in('country', filterParams.countries);
+      liveQuery = liveQuery.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      totalQuery = totalQuery.gte('created_at', filterParams.dateFrom.toISOString());
+      liveQuery = liveQuery.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      totalQuery = totalQuery.lte('created_at', filterParams.dateTo.toISOString());
+      liveQuery = liveQuery.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const [{ data: totalCustomers, error: totalError }, { data: liveCustomers, error: liveError }] = 
+      await Promise.all([totalQuery, liveQuery]);
 
     if (totalError || liveError) {
       console.error("Error calculating conversion rate:", totalError || liveError);
@@ -235,13 +313,24 @@ export const getConversionRate = async (): Promise<number> => {
   }
 };
 
-export const getAverageDealSize = async (): Promise<number> => {
+export const getAverageDealSize = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    // Use same logic as DealsPipelineDetail: include customers that are not churned and not done (include NULL status)
-    const { data, error } = await supabase
+    let query = supabase
       .from('customers')
-      .select('contract_size, estimated_deal_value, status')
+      .select('contract_size, estimated_deal_value, status, country, created_at')
       .or('status.is.null,status.neq.churned.and.status.neq.done');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching average deal size:", error);
@@ -262,13 +351,25 @@ export const getAverageDealSize = async (): Promise<number> => {
   }
 };
 
-export const getMRR = async (): Promise<number> => {
+export const getMRR = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('contracts')
-      .select('annual_rate, end_date, status')
+      .select('annual_rate, end_date, status, created_at, customers!inner(country)')
       .or('status.eq.active,status.eq.pending,status.is.null')
       .gt('end_date', new Date().toISOString());
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching MRR from contracts:", error);
@@ -286,20 +387,35 @@ export const getMRR = async (): Promise<number> => {
   }
 };
 
-export const calculatePitchToPayTime = async (): Promise<number> => {
+export const calculatePitchToPayTime = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    // Get all Discovery Call and Payment Processed stages that are done (using canonical names)
-    const { data: discoveryStages, error: discoveryError } = await supabase
+    let discoveryQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name')
+      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
-    const { data: paymentStages, error: paymentError } = await supabase
+    let paymentQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name')
+      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      discoveryQuery = discoveryQuery.in('customers.country', filterParams.countries);
+      paymentQuery = paymentQuery.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      discoveryQuery = discoveryQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
+      paymentQuery = paymentQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      discoveryQuery = discoveryQuery.lte('customers.created_at', filterParams.dateTo.toISOString());
+      paymentQuery = paymentQuery.lte('customers.created_at', filterParams.dateTo.toISOString());
+    }
+
+    const [{ data: discoveryStages, error: discoveryError }, { data: paymentStages, error: paymentError }] = 
+      await Promise.all([discoveryQuery, paymentQuery]);
 
     if (discoveryError || paymentError) {
       console.error("Error fetching pitch to pay stages:", discoveryError || paymentError);
@@ -345,20 +461,35 @@ export const calculatePitchToPayTime = async (): Promise<number> => {
   }
 };
 
-export const calculatePayToLiveTime = async (): Promise<number> => {
+export const calculatePayToLiveTime = async (filterParams?: FilterParams): Promise<number> => {
   try {
-    // Get all Payment Processed and Go Live stages that are done (using canonical names)
-    const { data: paymentStages, error: paymentError } = await supabase
+    let paymentQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name')
+      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
-    const { data: goLiveStages, error: goLiveError } = await supabase
+    let goLiveQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name')
+      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      paymentQuery = paymentQuery.in('customers.country', filterParams.countries);
+      goLiveQuery = goLiveQuery.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      paymentQuery = paymentQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
+      goLiveQuery = goLiveQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      paymentQuery = paymentQuery.lte('customers.created_at', filterParams.dateTo.toISOString());
+      goLiveQuery = goLiveQuery.lte('customers.created_at', filterParams.dateTo.toISOString());
+    }
+
+    const [{ data: paymentStages, error: paymentError }, { data: goLiveStages, error: goLiveError }] = 
+      await Promise.all([paymentQuery, goLiveQuery]);
 
     if (paymentError || goLiveError) {
       console.error("Error fetching pay to live stages:", paymentError || goLiveError);
@@ -515,23 +646,36 @@ export const calculateSalesLifecycle = async (): Promise<number> => {
   }
 };
 
-export const getCustomersAtRisk = async (): Promise<number> => {
+export const getCustomersAtRisk = async (filterParams?: FilterParams): Promise<number> => {
   try {
     const today = new Date();
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('contracts')
       .select(`
         id,
         customer_id,
         renewal_date,
-        customers!inner(id, status)
+        created_at,
+        customers!inner(id, status, country)
       `)
       .gte('renewal_date', today.toISOString())
       .lte('renewal_date', thirtyDaysFromNow.toISOString())
       .in('customers.status', ['done', 'active']);
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      query = query.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      query = query.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching customers at risk:", error);
@@ -547,29 +691,50 @@ export const getCustomersAtRisk = async (): Promise<number> => {
   }
 };
 
-export const calculateChurnRate = async (periodDays: number = 30): Promise<string> => {
+export const calculateChurnRate = async (periodDays: number = 30, filterParams?: FilterParams): Promise<string> => {
   try {
     const periodStartDate = new Date();
     periodStartDate.setDate(periodStartDate.getDate() - periodDays);
     
-    // Get all customers with active contracts at period start
-    const { data: liveCustomersAtStart, error: liveStartError } = await supabase
+    let liveStartQuery = supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .neq('status', 'churned')
       .lt('created_at', periodStartDate.toISOString());
 
-    const { data: churnedCustomers, error: churnError } = await supabase
+    let churnQuery = supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .eq('status', 'churned')
       .gte('churn_date', periodStartDate.toISOString())
       .lte('churn_date', new Date().toISOString());
 
-    const { data: totalCustomers, error: totalError } = await supabase
+    let totalQuery = supabase
       .from('customers')
       .select('id', { count: 'exact' })
       .neq('status', 'churned');
+
+    if (filterParams?.countries && filterParams.countries.length > 0) {
+      liveStartQuery = liveStartQuery.in('country', filterParams.countries);
+      churnQuery = churnQuery.in('country', filterParams.countries);
+      totalQuery = totalQuery.in('country', filterParams.countries);
+    }
+    if (filterParams?.dateFrom) {
+      liveStartQuery = liveStartQuery.gte('created_at', filterParams.dateFrom.toISOString());
+      churnQuery = churnQuery.gte('created_at', filterParams.dateFrom.toISOString());
+      totalQuery = totalQuery.gte('created_at', filterParams.dateFrom.toISOString());
+    }
+    if (filterParams?.dateTo) {
+      liveStartQuery = liveStartQuery.lte('created_at', filterParams.dateTo.toISOString());
+      churnQuery = churnQuery.lte('created_at', filterParams.dateTo.toISOString());
+      totalQuery = totalQuery.lte('created_at', filterParams.dateTo.toISOString());
+    }
+
+    const [
+      { data: liveCustomersAtStart, error: liveStartError },
+      { data: churnedCustomers, error: churnError },
+      { data: totalCustomers, error: totalError }
+    ] = await Promise.all([liveStartQuery, churnQuery, totalQuery]);
 
     if (liveStartError || churnError || totalError) {
       console.error("Error calculating churn rate:", liveStartError || churnError || totalError);
