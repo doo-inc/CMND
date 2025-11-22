@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 export default function ProjectManager() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -90,7 +91,7 @@ export default function ProjectManager() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-6">
+      <DashboardLayout>
         <div className="max-w-7xl mx-auto">
           <Skeleton className="h-12 w-64 mb-6" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -98,13 +99,13 @@ export default function ProjectManager() {
             <Skeleton className="h-[600px] lg:col-span-2" />
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (customers.length === 0) {
     return (
-      <div className="min-h-screen bg-background p-6">
+      <DashboardLayout>
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -122,12 +123,12 @@ export default function ProjectManager() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <DashboardLayout>
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -299,6 +300,6 @@ export default function ProjectManager() {
           )}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
