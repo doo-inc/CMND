@@ -25,7 +25,13 @@ interface ContractDetail {
   created_at: string;
 }
 
-export const TotalContractsDetail = () => {
+interface TotalContractsDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContractsDetailProps) => {
   const [contracts, setContracts] = useState<ContractDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -40,7 +46,7 @@ export const TotalContractsDetail = () => {
   useEffect(() => {
     const fetchContracts = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('contracts')
           .select(`
             id,
@@ -54,12 +60,26 @@ export const TotalContractsDetail = () => {
             end_date,
             renewal_date,
             created_at,
-            customers (
+            customers!inner (
               name,
-              logo
+              logo,
+              country
             )
-          `)
-          .order('created_at', { ascending: false });
+          `);
+        
+        if (countries && countries.length > 0) {
+          query = query.in('customers.country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
 
@@ -98,7 +118,7 @@ export const TotalContractsDetail = () => {
     };
 
     fetchContracts();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   const getStatusBadge = (status: string | null) => {
     if (status === 'active') return <Badge variant="default">Active</Badge>;

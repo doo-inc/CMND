@@ -25,7 +25,13 @@ interface RiskDeal {
   }>;
 }
 
-export const DealsAtRiskDetail = () => {
+interface DealsAtRiskDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const DealsAtRiskDetail = ({ countries, dateFrom, dateTo }: DealsAtRiskDetailProps) => {
   const [deals, setDeals] = useState<RiskDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -41,7 +47,7 @@ export const DealsAtRiskDetail = () => {
     const fetchRiskDeals = async () => {
       try {
         // Get customers with blocked lifecycle stages that are past their deadline
-        const { data: lifecycleData, error: lifecycleError } = await supabase
+        let query = supabase
           .from('lifecycle_stages')
           .select(`
             customer_id,
@@ -55,7 +61,8 @@ export const DealsAtRiskDetail = () => {
               stage,
               estimated_deal_value,
               created_at,
-              status
+              status,
+              country
             )
           `)
           .eq('status', 'blocked')
@@ -63,6 +70,20 @@ export const DealsAtRiskDetail = () => {
           .lt('status_changed_at', new Date().toISOString())
           .not('customers.status', 'eq', 'done')
           .not('customers.status', 'eq', 'churned');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('customers.country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('customers.created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('customers.created_at', dateTo.toISOString());
+        }
+        
+        const { data: lifecycleData, error: lifecycleError } = await query;
 
         if (lifecycleError) throw lifecycleError;
 
@@ -138,7 +159,7 @@ export const DealsAtRiskDetail = () => {
     };
 
     fetchRiskDeals();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   const getRiskBadge = (riskLevel: string, daysOverdue: number) => {
     const variants = {

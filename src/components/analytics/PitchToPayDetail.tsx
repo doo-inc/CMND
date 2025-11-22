@@ -29,7 +29,13 @@ interface PitchToPayStats {
   timeDistribution: { range: string; count: number; percentage: number }[];
 }
 
-export const PitchToPayDetail = () => {
+interface PitchToPayDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const PitchToPayDetail = ({ countries, dateFrom, dateTo }: PitchToPayDetailProps) => {
   const [data, setData] = useState<PitchToPayData[]>([]);
   const [stats, setStats] = useState<PitchToPayStats>({
     averageDays: 0,
@@ -68,9 +74,23 @@ export const PitchToPayDetail = () => {
         if (!discoveryStages || !paymentStages) return;
 
         // Get customer details
-        const { data: customers, error: customersError } = await supabase
+        let customersQuery = supabase
           .from('customers')
-          .select('id, name, segment, country, estimated_deal_value');
+          .select('id, name, segment, country, estimated_deal_value, created_at');
+        
+        if (countries && countries.length > 0) {
+          customersQuery = customersQuery.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          customersQuery = customersQuery.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          customersQuery = customersQuery.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data: customers, error: customersError } = await customersQuery;
 
         if (customersError) throw customersError;
 
@@ -156,7 +176,7 @@ export const PitchToPayDetail = () => {
     };
 
     fetchPitchToPayData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

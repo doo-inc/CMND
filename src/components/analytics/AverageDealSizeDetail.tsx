@@ -16,7 +16,13 @@ interface DealSizeData {
   sizeDistribution: { range: string; count: number; percentage: number }[];
 }
 
-export const AverageDealSizeDetail = () => {
+interface AverageDealSizeDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDealSizeDetailProps) => {
   const [data, setData] = useState<DealSizeData>({
     averageDealSize: 0,
     totalDeals: 0,
@@ -32,12 +38,26 @@ export const AverageDealSizeDetail = () => {
     const fetchDealSizeData = async () => {
       try {
         // Get pipeline customers (not live, not churned) with estimated deal values
-        const { data: customers, error } = await supabase
+        let query = supabase
           .from('customers')
           .select('*')
           .not('status', 'eq', 'done')
           .not('status', 'eq', 'churned')
           .gt('estimated_deal_value', 0);
+        
+        if (countries && countries.length > 0) {
+          query = query.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data: customers, error } = await query;
 
         if (error) throw error;
 
@@ -103,7 +123,7 @@ export const AverageDealSizeDetail = () => {
     };
 
     fetchDealSizeData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

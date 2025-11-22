@@ -32,6 +32,7 @@ import { RevenueTrendChart } from "@/components/analytics/RevenueTrendChart";
 import { UpdatesPanel } from "@/components/analytics/UpdatesPanel";
 import { PendingContracts } from "@/components/analytics/PendingContracts";
 import { DashboardFilters } from "@/components/analytics/DashboardFilters";
+import { buildFilteredUrl } from "@/utils/filterUtils";
 
 const Index = () => {
   // Enable performance monitoring
@@ -292,70 +293,70 @@ const Index = () => {
       value: `${totalCustomers}`,
       description: "All customers",
       icon: <Users className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/total-customers')
+      onClick: () => navigate(buildFilteredUrl('/analytics/total-customers', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Total Contracts",
       value: `${totalContracts}`,
       description: "Active & pending contracts",
       icon: <FileText className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/total-contracts')
+      onClick: () => navigate(buildFilteredUrl('/analytics/total-contracts', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Total Revenue",
       value: formattedActiveContracts,
       description: "All active contracts",
       icon: <DollarSign className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/total-revenue')
+      onClick: () => navigate(buildFilteredUrl('/analytics/total-revenue', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Total ARR",
       value: formattedARR,
       change: { value: 14, type: "increase" as const },
       icon: <BarChart3 className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/total-arr')
+      onClick: () => navigate(buildFilteredUrl('/analytics/total-arr', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Live Customers",
       value: `${arrData.liveCustomers.length}`,
       change: { value: 5, type: "increase" as const },
       icon: <LifeBuoy className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/live-customers')
+      onClick: () => navigate(buildFilteredUrl('/analytics/live-customers', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Pitch to Pay",
       value: metrics.pitchToPayDays > 0 ? `${metrics.pitchToPayDays} days` : "N/A",
       description: "Discovery to Payment",
       icon: <Clock className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/pitch-to-pay')
+      onClick: () => navigate(buildFilteredUrl('/analytics/pitch-to-pay', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Deals Pipeline",
       value: formattedDealsPipeline,
       description: `${metrics.dealsPipeline.count} active deals`,
       icon: <TrendingUp className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/deals-pipeline')
+      onClick: () => navigate(buildFilteredUrl('/analytics/deals-pipeline', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Conversion Rate",
       value: `${metrics.conversionRate.toFixed(1)}%`,
       description: "Lead to customer",
       icon: <Target className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/conversion-rate')
+      onClick: () => navigate(buildFilteredUrl('/analytics/conversion-rate', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Average Deal Size",
       value: formattedAverageDeal,
       description: "Pipeline average",
       icon: <BarChart3 className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/average-deal-size')
+      onClick: () => navigate(buildFilteredUrl('/analytics/average-deal-size', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Monthly Recurring Revenue",
       value: formattedMRR,
       change: { value: 8, type: "increase" as const },
       icon: <TrendingUp className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/mrr')
+      onClick: () => navigate(buildFilteredUrl('/analytics/mrr', selectedCountries, dateRange.from, dateRange.to))
     },
     {
       title: "Pay to Live",
@@ -369,7 +370,7 @@ const Index = () => {
       value: churnRate,
       description: "Last 6 months",
       icon: <Percent className="h-6 w-6" />,
-      onClick: () => navigate('/analytics/churn-rate')
+      onClick: () => navigate(buildFilteredUrl('/analytics/churn-rate', selectedCountries, dateRange.from, dateRange.to))
     }
   ];
   

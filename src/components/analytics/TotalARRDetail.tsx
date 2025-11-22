@@ -12,7 +12,13 @@ interface ARRCustomer {
   annual_revenue: number;
 }
 
-export const TotalARRDetail = () => {
+interface TotalARRDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailProps) => {
   const [customers, setCustomers] = useState<ARRCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalARR, setTotalARR] = useState(0);
@@ -21,14 +27,29 @@ export const TotalARRDetail = () => {
   useEffect(() => {
     const fetchARRDetails = async () => {
       try {
-        const { data: contractsData, error: contractsError } = await supabase
+        let query = supabase
           .from('contracts')
           .select(`
             annual_rate,
             customer_id,
-            customers!inner(id, name, status)
+            created_at,
+            customers!inner(id, name, status, country)
           `)
           .or('status.eq.active,status.eq.pending,status.is.null');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('customers.country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data: contractsData, error: contractsError } = await query;
 
         if (contractsError) throw contractsError;
 
@@ -66,7 +87,7 @@ export const TotalARRDetail = () => {
     };
 
     fetchARRDetails();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

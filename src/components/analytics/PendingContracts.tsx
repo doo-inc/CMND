@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractCard } from "@/components/contracts/ContractCard";
 import { FileText } from "lucide-react";
+import { buildFilteredUrl } from "@/utils/filterUtils";
 
 interface PendingContract {
   id: string;
@@ -101,7 +102,7 @@ export function PendingContracts({ isRefreshing, countries, dateFrom, dateTo }: 
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => navigate('/contracts')}
+          onClick={() => navigate(buildFilteredUrl('/contracts', countries, dateFrom, dateTo))}
         >
           View All →
         </Button>

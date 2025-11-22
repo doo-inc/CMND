@@ -12,7 +12,13 @@ interface ChurnedCustomer {
   churn_date: string;
 }
 
-export const ChurnRateDetail = () => {
+interface ChurnRateDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetailProps) => {
   const [customers, setCustomers] = useState<ChurnedCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [churnRate, setChurnRate] = useState(0);
@@ -25,19 +31,33 @@ export const ChurnRateDetail = () => {
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        const { data: allCustomers, error: allError } = await supabase
+        let allCustomersQuery = supabase.from('customers').select('*, country, created_at');
+        let churnedQuery = supabase
           .from('customers')
-          .select('*');
-
-        if (allError) throw allError;
-
-        const { data: churnedCustomers, error: churnError } = await supabase
-          .from('customers')
-          .select('id, name, churn_date')
+          .select('id, name, churn_date, country, created_at')
           .eq('status', 'churned')
           .not('churn_date', 'is', null)
-          .gte('churn_date', thirtyDaysAgo.toISOString())
-          .order('churn_date', { ascending: false });
+          .gte('churn_date', thirtyDaysAgo.toISOString());
+        
+        if (countries && countries.length > 0) {
+          allCustomersQuery = allCustomersQuery.in('country', countries);
+          churnedQuery = churnedQuery.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          allCustomersQuery = allCustomersQuery.gte('created_at', dateFrom.toISOString());
+          churnedQuery = churnedQuery.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          allCustomersQuery = allCustomersQuery.lte('created_at', dateTo.toISOString());
+          churnedQuery = churnedQuery.lte('created_at', dateTo.toISOString());
+        }
+
+        const { data: allCustomers, error: allError } = await allCustomersQuery;
+        if (allError) throw allError;
+
+        const { data: churnedCustomers, error: churnError } = await churnedQuery.order('churn_date', { ascending: false });
 
         if (churnError) throw churnError;
 
@@ -56,7 +76,7 @@ export const ChurnRateDetail = () => {
     };
 
     fetchChurnData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

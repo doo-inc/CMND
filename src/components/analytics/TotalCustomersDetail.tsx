@@ -23,7 +23,13 @@ interface CustomerDetail {
   owner_id: string | null;
 }
 
-export const TotalCustomersDetail = () => {
+interface TotalCustomersDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCustomersDetailProps) => {
   const [customers, setCustomers] = useState<CustomerDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -38,10 +44,23 @@ export const TotalCustomersDetail = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('customers')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .select('*');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
 
@@ -76,7 +95,7 @@ export const TotalCustomersDetail = () => {
     };
 
     fetchCustomers();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   const getStatusBadge = (status: string | null) => {
     if (!status || status === 'done') return <Badge variant="default">Live</Badge>;

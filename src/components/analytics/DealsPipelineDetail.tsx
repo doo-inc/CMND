@@ -12,7 +12,13 @@ interface PipelineCustomer {
   estimated_deal_value: number;
 }
 
-export const DealsPipelineDetail = () => {
+interface DealsPipelineDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const DealsPipelineDetail = ({ countries, dateFrom, dateTo }: DealsPipelineDetailProps) => {
   const [customers, setCustomers] = useState<PipelineCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalValue, setTotalValue] = useState(0);
@@ -21,11 +27,24 @@ export const DealsPipelineDetail = () => {
   useEffect(() => {
     const fetchPipelineCustomers = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('customers')
-          .select('id, name, estimated_deal_value')
-          .or('status.is.null,status.neq.churned.and.status.neq.done')
-          .order('estimated_deal_value', { ascending: false });
+          .select('id, name, estimated_deal_value, country, created_at')
+          .or('status.is.null,status.neq.churned.and.status.neq.done');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data, error } = await query.order('estimated_deal_value', { ascending: false });
 
         if (error) throw error;
 
@@ -47,7 +66,7 @@ export const DealsPipelineDetail = () => {
     };
 
     fetchPipelineCustomers();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

@@ -22,7 +22,13 @@ interface LiveCustomer {
   setup_fee: number;
 }
 
-export const LiveCustomersDetail = () => {
+interface LiveCustomersDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustomersDetailProps) => {
   const [customers, setCustomers] = useState<LiveCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -31,7 +37,7 @@ export const LiveCustomersDetail = () => {
     const fetchLiveCustomers = async () => {
       try {
         // Use the same logic as dashboard - get ARR data from contracts
-        const { data: contractsData, error } = await supabase
+        let query = supabase
           .from('contracts')
           .select(`
             annual_rate,
@@ -40,6 +46,7 @@ export const LiveCustomersDetail = () => {
             customer_id,
             status,
             end_date,
+            created_at,
             customers!inner(
               id,
               name,
@@ -53,6 +60,20 @@ export const LiveCustomersDetail = () => {
           `)
           .or('status.eq.active,status.eq.pending,status.is.null')
           .gt('end_date', new Date().toISOString());
+        
+        if (countries && countries.length > 0) {
+          query = query.in('customers.country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data: contractsData, error } = await query;
 
         if (error) throw error;
 
@@ -104,7 +125,7 @@ export const LiveCustomersDetail = () => {
     };
 
     fetchLiveCustomers();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

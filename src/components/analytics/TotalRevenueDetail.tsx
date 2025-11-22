@@ -14,7 +14,13 @@ interface ContractDetail {
   value: number;
 }
 
-export const TotalRevenueDetail = () => {
+interface TotalRevenueDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenueDetailProps) => {
   const [contracts, setContracts] = useState<ContractDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -23,7 +29,7 @@ export const TotalRevenueDetail = () => {
   useEffect(() => {
     const fetchContracts = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('contracts')
           .select(`
             id,
@@ -31,9 +37,24 @@ export const TotalRevenueDetail = () => {
             value,
             setup_fee,
             annual_rate,
-            customers!inner(id, name)
+            created_at,
+            customers!inner(id, name, country)
           `)
           .or('status.eq.active,status.eq.pending,status.is.null');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('customers.country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -63,7 +84,7 @@ export const TotalRevenueDetail = () => {
     };
 
     fetchContracts();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

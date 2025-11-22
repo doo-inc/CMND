@@ -11,7 +11,13 @@ interface Customer {
   status: string | null;
 }
 
-export const ConversionRateDetail = () => {
+interface ConversionRateDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const ConversionRateDetail = ({ countries, dateFrom, dateTo }: ConversionRateDetailProps) => {
   const [liveCustomers, setLiveCustomers] = useState<Customer[]>([]);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
@@ -21,9 +27,23 @@ export const ConversionRateDetail = () => {
   useEffect(() => {
     const fetchConversionData = async () => {
       try {
-        const { data: customers, error } = await supabase
+        let query = supabase
           .from('customers')
-          .select('id, name, status');
+          .select('id, name, status, country, created_at');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data: customers, error } = await query;
 
         if (error) throw error;
 
@@ -42,7 +62,7 @@ export const ConversionRateDetail = () => {
     };
 
     fetchConversionData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (

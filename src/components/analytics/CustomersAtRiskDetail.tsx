@@ -13,14 +13,20 @@ interface CustomerAtRisk {
   days_until_renewal: number;
 }
 
-export const CustomersAtRiskDetail = () => {
+interface CustomersAtRiskDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const CustomersAtRiskDetail = ({ countries, dateFrom, dateTo }: CustomersAtRiskDetailProps) => {
   const [customers, setCustomers] = useState<CustomerAtRisk[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCustomersAtRisk();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   const fetchCustomersAtRisk = async () => {
     try {
@@ -28,18 +34,33 @@ export const CustomersAtRiskDetail = () => {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('contracts')
         .select(`
           id,
           renewal_date,
           annual_rate,
           setup_fee,
-          customers!inner(id, name, status)
+          created_at,
+          customers!inner(id, name, status, country, created_at)
         `)
         .gte('renewal_date', today.toISOString())
         .lte('renewal_date', thirtyDaysFromNow.toISOString())
         .in('customers.status', ['done', 'active']);
+      
+      if (countries && countries.length > 0) {
+        query = query.in('customers.country', countries);
+      }
+      
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom.toISOString());
+      }
+      
+      if (dateTo) {
+        query = query.lte('created_at', dateTo.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

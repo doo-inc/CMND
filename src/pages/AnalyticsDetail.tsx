@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { decodeFiltersFromQueryString, FilterParams } from "@/utils/filterUtils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { TotalRevenueDetail } from "@/components/analytics/TotalRevenueDetail";
@@ -20,7 +21,15 @@ import { CustomersAtRiskDetail } from "@/components/analytics/CustomersAtRiskDet
 const AnalyticsDetail = () => {
   const { metric } = useParams<{ metric: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [title, setTitle] = useState("");
+  const [filterParams, setFilterParams] = useState<FilterParams>({});
+
+  useEffect(() => {
+    // Parse filters from URL
+    const filters = decodeFiltersFromQueryString(searchParams);
+    setFilterParams(filters);
+  }, [searchParams]);
 
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -42,33 +51,35 @@ const AnalyticsDetail = () => {
   }, [metric]);
 
   const renderDetailComponent = () => {
+    const { countries, dateFrom, dateTo } = filterParams;
+    
     switch (metric) {
       case "total-revenue":
-        return <TotalRevenueDetail />;
+        return <TotalRevenueDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "total-arr":
-        return <TotalARRDetail />;
+        return <TotalARRDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "live-customers":
-        return <LiveCustomersDetail />;
+        return <LiveCustomersDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "total-customers":
-        return <TotalCustomersDetail />;
+        return <TotalCustomersDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "total-contracts":
-        return <TotalContractsDetail />;
+        return <TotalContractsDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "deals-pipeline":
-        return <DealsPipelineDetail />;
+        return <DealsPipelineDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "conversion-rate":
-        return <ConversionRateDetail />;
+        return <ConversionRateDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "average-deal-size":
-        return <AverageDealSizeDetail />;
+        return <AverageDealSizeDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "mrr":
-        return <MRRDetail />;
+        return <MRRDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "deals-at-risk":
-        return <DealsAtRiskDetail />;
+        return <DealsAtRiskDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "churn-rate":
-        return <ChurnRateDetail />;
+        return <ChurnRateDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "pitch-to-pay":
-        return <PitchToPayDetail />;
+        return <PitchToPayDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "customers-at-risk":
-        return <CustomersAtRiskDetail />;
+        return <CustomersAtRiskDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       default:
         return (
           <div className="text-center py-8">

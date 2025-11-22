@@ -12,7 +12,13 @@ interface MRRCustomer {
   monthly_revenue: number;
 }
 
-export const MRRDetail = () => {
+interface MRRDetailProps {
+  countries?: string[];
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
   const [customers, setCustomers] = useState<MRRCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMRR, setTotalMRR] = useState(0);
@@ -21,14 +27,30 @@ export const MRRDetail = () => {
   useEffect(() => {
     const fetchMRRData = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('customers')
           .select(`
             id,
             name,
-            contracts!inner(annual_rate, status, end_date)
+            country,
+            created_at,
+            contracts!inner(annual_rate, status, end_date, created_at)
           `)
           .neq('status', 'churned');
+        
+        if (countries && countries.length > 0) {
+          query = query.in('country', countries);
+        }
+        
+        if (dateFrom) {
+          query = query.gte('created_at', dateFrom.toISOString());
+        }
+        
+        if (dateTo) {
+          query = query.lte('created_at', dateTo.toISOString());
+        }
+        
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -73,7 +95,7 @@ export const MRRDetail = () => {
     };
 
     fetchMRRData();
-  }, []);
+  }, [countries, dateFrom, dateTo]);
 
   if (loading) {
     return (
