@@ -15,6 +15,7 @@ export const formatCurrency = (amount: number, includeDecimals: boolean = true):
 
 export interface FilterParams {
   countries?: string[];
+  segments?: string[];
   dateFrom?: Date;
   dateTo?: Date;
 }
@@ -28,6 +29,9 @@ export const getLiveCustomers = async (filterParams?: FilterParams): Promise<Cus
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -86,6 +90,9 @@ export const getCustomerARRData = async (customers: CustomerData[], filterParams
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('customers.segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -158,6 +165,9 @@ export const getDealsPipeline = async (filterParams?: FilterParams) => {
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('country', filterParams.countries);
     }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('segment', filterParams.segments);
+    }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
     }
@@ -197,6 +207,9 @@ export const getTotalPipelineValue = async (filterParams?: FilterParams): Promis
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('country', filterParams.countries);
     }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('segment', filterParams.segments);
+    }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
     }
@@ -229,6 +242,9 @@ export const getActiveContractsValue = async (filterParams?: FilterParams): Prom
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('customers.segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -286,6 +302,10 @@ export const getConversionRate = async (filterParams?: FilterParams): Promise<nu
       totalQuery = totalQuery.in('country', filterParams.countries);
       liveQuery = liveQuery.in('country', filterParams.countries);
     }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      totalQuery = totalQuery.in('segment', filterParams.segments);
+      liveQuery = liveQuery.in('segment', filterParams.segments);
+    }
     if (filterParams?.dateFrom) {
       totalQuery = totalQuery.gte('created_at', filterParams.dateFrom.toISOString());
       liveQuery = liveQuery.gte('created_at', filterParams.dateFrom.toISOString());
@@ -322,6 +342,9 @@ export const getAverageDealSize = async (filterParams?: FilterParams): Promise<n
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -362,6 +385,9 @@ export const getMRR = async (filterParams?: FilterParams): Promise<number> => {
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('customers.country', filterParams.countries);
     }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('customers.segment', filterParams.segments);
+    }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
     }
@@ -391,19 +417,23 @@ export const calculatePitchToPayTime = async (filterParams?: FilterParams): Prom
   try {
     let discoveryQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
+      .select('customer_id, status_changed_at, name, customers!inner(country, segment, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
     let paymentQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
+      .select('customer_id, status_changed_at, name, customers!inner(country, segment, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       discoveryQuery = discoveryQuery.in('customers.country', filterParams.countries);
       paymentQuery = paymentQuery.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      discoveryQuery = discoveryQuery.in('customers.segment', filterParams.segments);
+      paymentQuery = paymentQuery.in('customers.segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       discoveryQuery = discoveryQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
@@ -465,19 +495,23 @@ export const calculatePayToLiveTime = async (filterParams?: FilterParams): Promi
   try {
     let paymentQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
+      .select('customer_id, status_changed_at, name, customers!inner(country, segment, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
     let goLiveQuery = supabase
       .from('lifecycle_stages')
-      .select('customer_id, status_changed_at, name, customers!inner(country, created_at)')
+      .select('customer_id, status_changed_at, name, customers!inner(country, segment, created_at)')
       .eq('status', 'done')
       .not('status_changed_at', 'is', null);
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       paymentQuery = paymentQuery.in('customers.country', filterParams.countries);
       goLiveQuery = goLiveQuery.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      paymentQuery = paymentQuery.in('customers.segment', filterParams.segments);
+      goLiveQuery = goLiveQuery.in('customers.segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       paymentQuery = paymentQuery.gte('customers.created_at', filterParams.dateFrom.toISOString());
@@ -659,7 +693,7 @@ export const getCustomersAtRisk = async (filterParams?: FilterParams): Promise<n
         customer_id,
         renewal_date,
         created_at,
-        customers!inner(id, status, country)
+        customers!inner(id, status, country, segment)
       `)
       .gte('renewal_date', today.toISOString())
       .lte('renewal_date', thirtyDaysFromNow.toISOString())
@@ -667,6 +701,9 @@ export const getCustomersAtRisk = async (filterParams?: FilterParams): Promise<n
 
     if (filterParams?.countries && filterParams.countries.length > 0) {
       query = query.in('customers.country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      query = query.in('customers.segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -718,6 +755,11 @@ export const calculateChurnRate = async (periodDays: number = 30, filterParams?:
       liveStartQuery = liveStartQuery.in('country', filterParams.countries);
       churnQuery = churnQuery.in('country', filterParams.countries);
       totalQuery = totalQuery.in('country', filterParams.countries);
+    }
+    if (filterParams?.segments && filterParams.segments.length > 0) {
+      liveStartQuery = liveStartQuery.in('segment', filterParams.segments);
+      churnQuery = churnQuery.in('segment', filterParams.segments);
+      totalQuery = totalQuery.in('segment', filterParams.segments);
     }
     if (filterParams?.dateFrom) {
       liveStartQuery = liveStartQuery.gte('created_at', filterParams.dateFrom.toISOString());

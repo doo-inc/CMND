@@ -61,6 +61,7 @@ const Index = () => {
   
   // Filter state
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
@@ -72,6 +73,7 @@ const Index = () => {
       // Build filter params
       const filterParams = {
         countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+        segments: selectedSegments.length > 0 ? selectedSegments : undefined,
         dateFrom: dateRange.from,
         dateTo: dateRange.to,
       };
@@ -232,13 +234,16 @@ const Index = () => {
 
   useEffect(() => {
     refreshMetrics();
-  }, [customers, selectedCountries, dateRange]);
+  }, [customers, selectedCountries, selectedSegments, dateRange]);
 
   const getFilteredCustomersCount = async (filterParams: any) => {
     let query = supabase.from('customers').select('*', { count: 'exact', head: true });
     
     if (filterParams.countries) {
       query = query.in('country', filterParams.countries);
+    }
+    if (filterParams.segments) {
+      query = query.in('segment', filterParams.segments);
     }
     if (filterParams.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
@@ -260,6 +265,9 @@ const Index = () => {
     if (filterParams.countries) {
       query = query.in('customers.country', filterParams.countries);
     }
+    if (filterParams.segments) {
+      query = query.in('customers.segment', filterParams.segments);
+    }
     if (filterParams.dateFrom) {
       query = query.gte('created_at', filterParams.dateFrom.toISOString());
     }
@@ -273,6 +281,7 @@ const Index = () => {
 
   const handleClearFilters = () => {
     setSelectedCountries([]);
+    setSelectedSegments([]);
     setDateRange({ from: undefined, to: undefined });
   };
 
@@ -423,8 +432,10 @@ const Index = () => {
           <section className="mb-8">
             <DashboardFilters
               selectedCountries={selectedCountries}
+              selectedSegments={selectedSegments}
               dateRange={dateRange}
               onCountryChange={setSelectedCountries}
+              onSegmentChange={setSelectedSegments}
               onDateRangeChange={setDateRange}
               onClearFilters={handleClearFilters}
             />
