@@ -188,10 +188,9 @@ export function CustomerForm({
   };
 
   const segmentOptions = [
-    "Enterprise",
-    "Mid-Market", 
-    "Small Business",
-    "Startup"
+    "Startup",
+    "SME",
+    "Large Enterprise"
   ];
 
   const countryComboboxOptions = countryOptions.map(country => ({
