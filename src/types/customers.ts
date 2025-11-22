@@ -35,6 +35,11 @@ export interface Customer {
   voice_tier?: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null;
   voice_hours?: number | null;
   voice_price_per_hour?: number | null;
+  project_manager?: string | null;
+  checklist_platform_integration?: boolean | null;
+  checklist_ai_integration?: boolean | null;
+  checklist_agent_creation?: boolean | null;
+  implementation_notes?: string | null;
   created_at: string;
   updated_at: string;
 }

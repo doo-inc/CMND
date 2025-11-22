@@ -259,6 +259,9 @@ export type Database = {
       customers: {
         Row: {
           annual_rate: number | null
+          checklist_agent_creation: boolean | null
+          checklist_ai_integration: boolean | null
+          checklist_platform_integration: boolean | null
           churn_date: string | null
           churn_method: string | null
           company_registration_number: string | null
@@ -273,12 +276,14 @@ export type Database = {
           estimated_deal_value: number | null
           go_live_date: string | null
           id: string
+          implementation_notes: string | null
           industry: string | null
           legal_address: string | null
           logo: string | null
           name: string
           owner_id: string | null
           payment_terms_days: number | null
+          project_manager: string | null
           representative_name: string | null
           representative_title: string | null
           segment: string | null
@@ -296,6 +301,9 @@ export type Database = {
         }
         Insert: {
           annual_rate?: number | null
+          checklist_agent_creation?: boolean | null
+          checklist_ai_integration?: boolean | null
+          checklist_platform_integration?: boolean | null
           churn_date?: string | null
           churn_method?: string | null
           company_registration_number?: string | null
@@ -310,12 +318,14 @@ export type Database = {
           estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
+          implementation_notes?: string | null
           industry?: string | null
           legal_address?: string | null
           logo?: string | null
           name: string
           owner_id?: string | null
           payment_terms_days?: number | null
+          project_manager?: string | null
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null
@@ -333,6 +343,9 @@ export type Database = {
         }
         Update: {
           annual_rate?: number | null
+          checklist_agent_creation?: boolean | null
+          checklist_ai_integration?: boolean | null
+          checklist_platform_integration?: boolean | null
           churn_date?: string | null
           churn_method?: string | null
           company_registration_number?: string | null
@@ -347,12 +360,14 @@ export type Database = {
           estimated_deal_value?: number | null
           go_live_date?: string | null
           id?: string
+          implementation_notes?: string | null
           industry?: string | null
           legal_address?: string | null
           logo?: string | null
           name?: string
           owner_id?: string | null
           payment_terms_days?: number | null
+          project_manager?: string | null
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null

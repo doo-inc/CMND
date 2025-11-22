@@ -27,6 +27,7 @@ import {
   LazyNotFound,
   LazyAcceptInvite,
   LazyAnalyticsDetail,
+  LazyProjectManager,
 } from "@/components/routing/LazyRoutes";
 
 // Create a client with optimized settings
@@ -80,6 +81,7 @@ const App = () => {
                   <Route path="/partnerships/:id/edit" element={<ProtectedRoute><LazyAddEditPartnership /></ProtectedRoute>} />
                   <Route path="/subscription-tracker" element={<ProtectedRoute><LazySubscriptionTracker /></ProtectedRoute>} />
                   <Route path="/pipeline" element={<ProtectedRoute><LazyPipelineMap /></ProtectedRoute>} />
+                  <Route path="/project-manager" element={<ProtectedRoute><LazyProjectManager /></ProtectedRoute>} />
                   <Route path="/tasks" element={<ProtectedRoute><LazyTasksBoard /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><LazyNotifications /></ProtectedRoute>} />
                   <Route path="/team" element={<ProtectedRoute><LazyTeamManagement /></ProtectedRoute>} />

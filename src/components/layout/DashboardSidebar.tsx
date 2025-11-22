@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText } from "lucide-react";
+import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, ClipboardCheck } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 const mainNavItems = [
@@ -34,6 +34,11 @@ const mainNavItems = [
     title: "Pipeline Map",
     icon: GitBranch,
     path: "/pipeline"
+  },
+  {
+    title: "Project Manager",
+    icon: ClipboardCheck,
+    path: "/project-manager"
   },
   {
     title: "Tasks",
