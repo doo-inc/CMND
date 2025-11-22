@@ -28,20 +28,48 @@ export default function ProjectManager() {
     try {
       setLoading(true);
 
-      // Find customers with any Implementation lifecycle stage not fully completed
-      const { data: lifecycleData, error: lifecycleError } = await supabase
+      // Fetch all lifecycle stages
+      const { data: allStages, error: stagesError } = await supabase
         .from("lifecycle_stages")
-        .select("customer_id, category, status")
-        .eq("category", "Implementation")
-        .not("status", "in", "(done,completed)");
+        .select("customer_id, category, status");
 
-      if (lifecycleError) throw lifecycleError;
+      if (stagesError) throw stagesError;
 
-      const customerIds = Array.from(
-        new Set((lifecycleData || []).map((row) => row.customer_id))
-      );
+      // Group stages by customer
+      const customerStages = new Map<string, { category: string; status: string }[]>();
+      (allStages || []).forEach((stage) => {
+        if (!customerStages.has(stage.customer_id)) {
+          customerStages.set(stage.customer_id, []);
+        }
+        customerStages.get(stage.customer_id)!.push({
+          category: stage.category,
+          status: stage.status,
+        });
+      });
 
-      if (customerIds.length === 0) {
+      // Filter customers: completed Pre-Sales & Sales, incomplete Implementation
+      const eligibleCustomerIds: string[] = [];
+      
+      customerStages.forEach((stages, customerId) => {
+        const preSalesStages = stages.filter((s) => s.category === "Pre-Sales");
+        const salesStages = stages.filter((s) => s.category === "Sales");
+        const implementationStages = stages.filter((s) => s.category === "Implementation");
+
+        const allPreSalesComplete = preSalesStages.length > 0 && 
+          preSalesStages.every((s) => s.status === "done" || s.status === "completed");
+        
+        const allSalesComplete = salesStages.length > 0 && 
+          salesStages.every((s) => s.status === "done" || s.status === "completed");
+        
+        const hasIncompleteImplementation = implementationStages.length > 0 && 
+          implementationStages.some((s) => s.status !== "done" && s.status !== "completed");
+
+        if (allPreSalesComplete && allSalesComplete && hasIncompleteImplementation) {
+          eligibleCustomerIds.push(customerId);
+        }
+      });
+
+      if (eligibleCustomerIds.length === 0) {
         setCustomers([]);
         setSelectedCustomer(null);
         return;
@@ -50,7 +78,7 @@ export default function ProjectManager() {
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .in("id", customerIds)
+        .in("id", eligibleCustomerIds)
         .order("name");
 
       if (error) throw error;
