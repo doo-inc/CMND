@@ -27,10 +27,30 @@ export default function ProjectManager() {
   const fetchImplementationCustomers = async () => {
     try {
       setLoading(true);
+
+      // Find customers with any Implementation lifecycle stage not fully completed
+      const { data: lifecycleData, error: lifecycleError } = await supabase
+        .from("lifecycle_stages")
+        .select("customer_id, category, status")
+        .eq("category", "Implementation")
+        .not("status", "in", ["done", "completed"]);
+
+      if (lifecycleError) throw lifecycleError;
+
+      const customerIds = Array.from(
+        new Set((lifecycleData || []).map((row) => row.customer_id))
+      );
+
+      if (customerIds.length === 0) {
+        setCustomers([]);
+        setSelectedCustomer(null);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .eq("stage", "Implementation")
+        .in("id", customerIds)
         .order("name");
 
       if (error) throw error;
