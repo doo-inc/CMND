@@ -35,12 +35,12 @@ export default function ProjectManager() {
       // Fetch all lifecycle stages
       const { data: allStages, error: stagesError } = await supabase
         .from("lifecycle_stages")
-        .select("customer_id, category, status");
+        .select("customer_id, category, status, name");
 
       if (stagesError) throw stagesError;
 
       // Group stages by customer
-      const customerStages = new Map<string, { category: string; status: string }[]>();
+      const customerStages = new Map<string, { category: string; status: string; name: string }[]>();
       (allStages || []).forEach((stage) => {
         if (!customerStages.has(stage.customer_id)) {
           customerStages.set(stage.customer_id, []);
@@ -48,23 +48,34 @@ export default function ProjectManager() {
         customerStages.get(stage.customer_id)!.push({
           category: stage.category,
           status: stage.status,
+          name: stage.name,
         });
       });
 
-      // Filter customers: completed Pre-Sales & Sales
+      // Filter customers: completed Pre-Sales & Sales, but NOT completed all Implementation
       const eligibleCustomerIds: string[] = [];
       
       customerStages.forEach((stages, customerId) => {
         const preSalesStages = stages.filter((s) => s.category === "Pre-Sales");
         const salesStages = stages.filter((s) => s.category === "Sales");
+        const implementationStages = stages.filter((s) => s.category === "Implementation");
+        const goLiveStage = stages.find((s) => s.name === "Go Live");
 
         const allPreSalesComplete = preSalesStages.length > 0 && 
           preSalesStages.every((s) => s.status === "done" || s.status === "completed");
         
         const allSalesComplete = salesStages.length > 0 && 
           salesStages.every((s) => s.status === "done" || s.status === "completed");
+        
+        // Check if Go Live is completed - if yes, exclude from Project Manager
+        const goLiveCompleted = goLiveStage && 
+          (goLiveStage.status === "done" || goLiveStage.status === "completed");
+        
+        // Has at least one incomplete Implementation stage
+        const hasIncompleteImplementation = implementationStages.length > 0 && 
+          implementationStages.some((s) => s.status !== "done" && s.status !== "completed");
 
-        if (allPreSalesComplete && allSalesComplete) {
+        if (allPreSalesComplete && allSalesComplete && hasIncompleteImplementation && !goLiveCompleted) {
           eligibleCustomerIds.push(customerId);
         }
       });
