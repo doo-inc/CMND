@@ -33,7 +33,7 @@ export default function ProjectManager() {
         .from("lifecycle_stages")
         .select("customer_id, category, status")
         .eq("category", "Implementation")
-        .not("status", "in", ["done", "completed"]);
+        .not("status", "in", "(done,completed)");
 
       if (lifecycleError) throw lifecycleError;
 
