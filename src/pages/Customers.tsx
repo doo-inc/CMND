@@ -65,20 +65,12 @@ const Customers = () => {
       .filter(stage => isCompletedLike(stage.status))
       .map(stage => stage.name);
 
-    // Compute pipeline stage from lifecycle stages (completed or in progress)
-    let pipelineStage = resolvePipelineStageFromLifecycleStages(lifecycleStages, { includeInProgress: true });
+    // Use the pipeline stage from the database (maintained by trigger)
+    // The trigger keeps customer.stage synchronized with lifecycle_stages automatically
+    const pipelineStage = dbCustomer.stage || 'Lead';
 
-    // If a Go Live date exists and is in the past, force Live
-    if (dbCustomer.go_live_date) {
-      const goLive = new Date(dbCustomer.go_live_date);
-      const now = new Date();
-      if (!isNaN(goLive.getTime()) && goLive <= now) {
-        pipelineStage = "Live";
-      }
-    }
-
-    // Determine operational status using centralized helper
-    const operationalStatus = getOperationalStatusFromArray(lifecycleStages);
+    // Use the operational status from the database (maintained by trigger)
+    const operationalStatus = dbCustomer.status || 'not-started';
 
     // Compute latest completed stage by defined stage order (not by timestamp)
     const furthestCompletedStage = completedStages.length
