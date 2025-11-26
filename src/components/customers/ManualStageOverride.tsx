@@ -69,6 +69,7 @@ export const ManualStageOverride = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Update both manual_stage and stage fields
       const { error } = await supabase
         .from("customers")
         .update({
@@ -76,19 +77,11 @@ export const ManualStageOverride = ({
           manual_stage_note: note.trim(),
           manual_stage_set_at: new Date().toISOString(),
           manual_stage_set_by: user?.id,
+          stage: selectedStage, // Also update the actual stage field
         })
         .eq("id", customerId);
 
       if (error) throw error;
-
-      // Trigger the pipeline calculation
-      const { error: triggerError } = await supabase
-        .from("lifecycle_stages")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("customer_id", customerId)
-        .limit(1);
-
-      if (triggerError) console.error("Failed to trigger update:", triggerError);
 
       toast.success("Manual stage override set successfully");
       setOpen(false);
@@ -104,6 +97,7 @@ export const ManualStageOverride = ({
   const handleClearOverride = async () => {
     setLoading(true);
     try {
+      // Clear manual override fields - stage will be recalculated by trigger
       const { error } = await supabase
         .from("customers")
         .update({
@@ -116,7 +110,7 @@ export const ManualStageOverride = ({
 
       if (error) throw error;
 
-      // Trigger the pipeline calculation
+      // Trigger the pipeline recalculation by updating a lifecycle stage
       const { error: triggerError } = await supabase
         .from("lifecycle_stages")
         .update({ updated_at: new Date().toISOString() })
@@ -125,7 +119,7 @@ export const ManualStageOverride = ({
 
       if (triggerError) console.error("Failed to trigger update:", triggerError);
 
-      toast.success("Manual override cleared");
+      toast.success("Manual override cleared - stage recalculated");
       setOpen(false);
       onUpdate();
     } catch (error) {
