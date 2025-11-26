@@ -101,9 +101,16 @@ export const usePipelineData = () => {
       // Transform customers to CustomerData format with pipeline stage determination
       const transformedCustomers: CustomerData[] = (customers || []).map(customer => {
         const completedStages = stagesByCustomer[customer.id] || [];
-        const pipelineStage = getFurthestPipelineStage(completedStages);
+        const dbStage = (customer.stage as string | null) || null;
+        const derivedStage = getFurthestPipelineStage(completedStages);
+        const pipelineStage =
+          dbStage && PIPELINE_STAGE_ORDER.includes(dbStage)
+            ? dbStage
+            : derivedStage;
         
-        console.log(`Customer ${customer.name}: stages=${completedStages.join(', ')} -> ${pipelineStage}`);
+        console.log(
+          `Customer ${customer.name}: dbStage=${dbStage ?? "N/A"}, derivedStages=${completedStages.join(", ")} -> using ${pipelineStage}`
+        );
         
         return {
           id: customer.id,
