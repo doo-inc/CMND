@@ -31,12 +31,14 @@ const Customers = () => {
   const [filter, setFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
+  const [segmentFilter, setSegmentFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
   const [sortBy, setSortBy] = useState<"name" | "contractSize">("name");
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
   const [uniqueStages, setUniqueStages] = useState<string[]>([]);
+  const [uniqueSegments, setUniqueSegments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -127,6 +129,16 @@ const Customers = () => {
     setUniqueStages(sortedStages.map(stage => stage.name));
   };
 
+  const extractUniqueSegments = (customersData: CustomerData[]) => {
+    const segments = customersData
+      .map(customer => customer.segment)
+      .filter(segment => segment && segment !== "Unknown Segment")
+      .filter((segment, index, arr) => arr.indexOf(segment) === index)
+      .sort();
+    
+    setUniqueSegments(segments);
+  };
+
   const fetchCustomers = async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
@@ -176,11 +188,13 @@ const Customers = () => {
         setCustomers(formattedCustomers);
         extractUniqueCountries(formattedCustomers);
         extractUniqueStages(allLifecycleStages || []);
+        extractUniqueSegments(formattedCustomers);
       } else {
         console.log("No customers found in database");
         setCustomers([]);
         setUniqueCountries([]);
         setUniqueStages([]);
+        setUniqueSegments([]);
       }
     } catch (error) {
       console.error("Error fetching customers:", error);
@@ -188,6 +202,7 @@ const Customers = () => {
       setCustomers([]);
       setUniqueCountries([]);
       setUniqueStages([]);
+      setUniqueSegments([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -324,6 +339,10 @@ const Customers = () => {
     if (stageFilter !== "all" && customer.furthestCompletedStage !== stageFilter) {
       return false;
     }
+
+    if (segmentFilter !== "all" && customer.segment !== segmentFilter) {
+      return false;
+    }
     
     if (
       searchTerm &&
@@ -428,8 +447,22 @@ const Customers = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={segmentFilter} onValueChange={setSegmentFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by segment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Segments</SelectItem>
+              {uniqueSegments.map(segment => (
+                <SelectItem key={segment} value={segment}>
+                  {segment}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
-          <Button 
+          <Button
             variant="outline" 
             onClick={() => handleSort("contractSize")}
             className="flex items-center gap-2"
