@@ -10,13 +10,66 @@ const computePipelineStage = (stages: any[]): string => {
     .filter((s: any) => isCompletedLike(s.status) || isInProgressLike(s.status))
     .map((s: any) => {
       const canonical = canonicalizeStageName(s.name);
-      console.log(`      Stage mapping: "${s.name}" (${s.status}) -> canonical: "${canonical}"`);
+      console.log(
+        `      Stage mapping: "${s.name}" (${s.status}) -> canonical: "${canonical}"`
+      );
       return canonical;
     });
-  
-  const pipelineStage = getFurthestPipelineStageFromNames(reached);
-  console.log(`      Reached stages: [${reached.join(', ')}] -> Pipeline: ${pipelineStage}`);
-  return pipelineStage;
+
+  const basePipelineStage = getFurthestPipelineStageFromNames(reached);
+
+  // Determine completion status for implementation + go-live
+  const hasOnboardingCompleted = stages.some(
+    (s: any) =>
+      canonicalizeStageName(s.name) === "Onboarding" && isCompletedLike(s.status)
+  );
+  const hasTechnicalSetupCompleted = stages.some(
+    (s: any) =>
+      canonicalizeStageName(s.name) === "Technical Setup" && isCompletedLike(s.status)
+  );
+  const hasTrainingCompleted = stages.some(
+    (s: any) =>
+      canonicalizeStageName(s.name) === "Training" && isCompletedLike(s.status)
+  );
+  const hasGoLiveCompleted = stages.some(
+    (s: any) =>
+      canonicalizeStageName(s.name) === "Go Live" && isCompletedLike(s.status)
+  );
+
+  const allImplementationCompleted =
+    hasOnboardingCompleted && hasTechnicalSetupCompleted && hasTrainingCompleted;
+  const liveEligible = allImplementationCompleted && hasGoLiveCompleted;
+
+  let finalPipelineStage = basePipelineStage;
+
+  // Enforce: Live only when ALL implementation stages + Go Live are completed
+  if (basePipelineStage === "Live" && !liveEligible) {
+    const implementationReached = stages.some((s: any) => {
+      const canonical = canonicalizeStageName(s.name);
+      const isImplStage =
+        canonical === "Onboarding" ||
+        canonical === "Technical Setup" ||
+        canonical === "Training";
+      return (
+        isImplStage &&
+        (isCompletedLike(s.status) || isInProgressLike(s.status))
+      );
+    });
+
+    finalPipelineStage = implementationReached ? "Implementation" : "Contract";
+
+    console.log(
+      `      Live gated -> using ${finalPipelineStage} instead (implCompleted=${allImplementationCompleted}, goLiveCompleted=${hasGoLiveCompleted})`
+    );
+  }
+
+  console.log(
+    `      Reached stages: [${reached.join(
+      ", "
+    )}] -> Base pipeline: ${basePipelineStage} -> Final: ${finalPipelineStage}`
+  );
+
+  return finalPipelineStage;
 };
 
 const computeOperationalStatus = (stages: any[]): "not-started" | "in-progress" | "done" | "blocked" => {
