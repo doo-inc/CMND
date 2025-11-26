@@ -11,7 +11,6 @@ import { CustomerTimeline } from "@/components/customers/CustomerTimeline";
 import { CustomerFeedback } from "@/components/customers/CustomerFeedback";
 import { CustomerDocuments } from "@/components/customers/CustomerDocuments";
 import { ChurnConfirmationDialog } from "@/components/customers/ChurnConfirmationDialog";
-import { ManualStageOverride } from "@/components/customers/ManualStageOverride";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -288,18 +287,6 @@ const CustomerDetails = () => {
             </div>
           </div>
           <div className="flex space-x-2">
-            {customer.manual_stage && (
-              <Badge variant="outline" className="border-orange-500 text-orange-600">
-                Manual Override: {customer.manual_stage}
-              </Badge>
-            )}
-            <ManualStageOverride
-              customerId={customer.id}
-              currentStage={customer.stage || "Lead"}
-              manualStage={customer.manual_stage}
-              manualStageNote={customer.manual_stage_note}
-              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['customer-details', id] })}
-            />
             {customer.status === 'churned' ? (
               <Button 
                 variant="outline" 

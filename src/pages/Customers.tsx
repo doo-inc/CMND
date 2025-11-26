@@ -67,12 +67,13 @@ const Customers = () => {
       .filter(stage => isCompletedLike(stage.status))
       .map(stage => stage.name);
 
-    // Use the pipeline stage from the database (maintained by trigger)
-    // The trigger keeps customer.stage synchronized with lifecycle_stages automatically
-    const pipelineStage = dbCustomer.stage || 'Lead';
+    // Derive pipeline stage from lifecycle stages (include in-progress)
+    const pipelineStage = resolvePipelineStageFromLifecycleStages(lifecycleStages, {
+      includeInProgress: true,
+    });
 
-    // Use the operational status from the database (maintained by trigger)
-    const operationalStatus = dbCustomer.status || 'not-started';
+    // Use the operational status from the database (maintained by trigger / sync)
+    const operationalStatus = dbCustomer.status || "not-started";
 
     // Compute latest completed stage by defined stage order (not by timestamp)
     const furthestCompletedStage = completedStages.length

@@ -12,27 +12,10 @@ export interface PipelineStageData {
   customers: CustomerData[];
 }
 
-// Use centralized pipeline rules and status helpers
-import { PIPELINE_STAGE_ORDER, LIFECYCLE_TO_PIPELINE_MAPPING } from "@/utils/pipelineRules";
-import { isCompletedLike, isInProgressLike } from "@/utils/stageStatus";
+// Use centralized pipeline rules
+import { PIPELINE_STAGE_ORDER, resolvePipelineStageFromLifecycleStages } from "@/utils/pipelineRules";
 
 const PIPELINE_STAGES = PIPELINE_STAGE_ORDER;
-
-// Determine the furthest pipeline stage from a list of lifecycle stage names
-const getFurthestPipelineStage = (reachedStageNames: string[]): string => {
-  const mapped = reachedStageNames
-    .map(name => LIFECYCLE_TO_PIPELINE_MAPPING[canonicalizeStageName(name)] || LIFECYCLE_TO_PIPELINE_MAPPING[name])
-    .filter(Boolean) as string[];
-
-  if (mapped.length === 0) return "Lead";
-
-  let furthestIdx = -1;
-  for (const stage of mapped) {
-    const idx = PIPELINE_STAGE_ORDER.indexOf(stage);
-    if (idx > furthestIdx) furthestIdx = idx;
-  }
-  return furthestIdx >= 0 ? PIPELINE_STAGE_ORDER[furthestIdx] : "Lead";
-};
 
 export const usePipelineData = () => {
   const [pipelineData, setPipelineData] = useState<PipelineStageData[]>([]);
@@ -73,44 +56,15 @@ export const usePipelineData = () => {
 
       console.log('Lifecycle stages fetched:', lifecycleStages);
 
-      // Group lifecycle stages by customer ID (count completed OR in-progress as reached)
-      const stagesByCustomer: Record<string, string[]> = {};
-      lifecycleStages?.forEach(stage => {
-        if (isCompletedLike(stage.status) || isInProgressLike(stage.status)) {
-          if (!stagesByCustomer[stage.customer_id]) {
-            stagesByCustomer[stage.customer_id] = [];
-          }
-          // Store canonical name for consistent mapping
-          const canonicalName = canonicalizeStageName(stage.name);
-          stagesByCustomer[stage.customer_id].push(canonicalName);
-        }
-      });
-      
-      // Debug Gulf Air specifically in usePipelineData
-      const gulfAirCustomer = customers?.find(c => c.name?.toLowerCase().includes('gulf air'));
-      if (gulfAirCustomer) {
-        console.log('🔍 GULF AIR DEBUG IN usePipelineData:');
-        console.log('  Customer ID:', gulfAirCustomer.id);
-        console.log('  All lifecycle stages for Gulf Air:', 
-          lifecycleStages?.filter(s => s.customer_id === gulfAirCustomer.id)
-            .map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) }))
-        );
-        console.log('  Filtered stages (completed/in-progress):', stagesByCustomer[gulfAirCustomer.id]);
-      }
-
       // Transform customers to CustomerData format with pipeline stage determination
       const transformedCustomers: CustomerData[] = (customers || []).map(customer => {
-        const completedStages = stagesByCustomer[customer.id] || [];
-        const dbStage = (customer.stage as string | null) || null;
-        const derivedStage = getFurthestPipelineStage(completedStages);
-        const pipelineStage =
-          dbStage && PIPELINE_STAGE_ORDER.includes(dbStage)
-            ? dbStage
-            : derivedStage;
-        
-        console.log(
-          `Customer ${customer.name}: dbStage=${dbStage ?? "N/A"}, derivedStages=${completedStages.join(", ")} -> using ${pipelineStage}`
+        const customerStages = (lifecycleStages || []).filter(
+          (stage) => stage.customer_id === customer.id
         );
+
+        const pipelineStage = resolvePipelineStageFromLifecycleStages(customerStages as any[], {
+          includeInProgress: true,
+        });
         
         return {
           id: customer.id,
