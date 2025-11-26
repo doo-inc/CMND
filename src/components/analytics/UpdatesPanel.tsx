@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Loader2, TrendingUp, Users, Target, AlertCircle, HandHeart } from "lucide-react";
+import { Download, Loader2, TrendingUp, Users, FileText, AlertCircle, HandHeart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateWeeklyReport, generateMonthlyReport } from "@/utils/reportGeneration";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { format } from "date-fns";
 
 interface ActivityItem {
   id: string;
-  type: 'lifecycle' | 'customer' | 'lead' | 'churn' | 'partnership';
+  type: 'lifecycle' | 'customer' | 'contract' | 'churn' | 'partnership';
   customerName: string;
   details: string;
   date: string;
@@ -20,7 +20,7 @@ interface ActivityItem {
 interface DetailedData {
   lifecycleChanges: ActivityItem[];
   newCustomers: ActivityItem[];
-  newLeads: ActivityItem[];
+  newContracts: ActivityItem[];
   churns: ActivityItem[];
   newPartnerships: ActivityItem[];
 }
@@ -77,7 +77,30 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
       date: format(new Date(stage.status_changed_at), 'MMM dd')
     }));
 
-    // Fetch new customers (contracts created)
+    // Fetch newly added customers (all customers added in period)
+    let customersQuery = supabase
+      .from('customers')
+      .select('id, name, created_at, country, stage')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (countries && countries.length > 0) {
+      customersQuery = customersQuery.in('country', countries);
+    }
+
+    const { data: customersData } = await customersQuery;
+
+    const newCustomers: ActivityItem[] = customersData?.map((customer: any) => ({
+      id: customer.id,
+      type: 'customer' as const,
+      customerName: customer.name,
+      details: customer.stage || 'New',
+      date: format(new Date(customer.created_at), 'MMM dd')
+    })) || [];
+
+    // Fetch new contracts
     let contractsQuery = supabase
       .from('contracts')
       .select('id, name, created_at, customers!inner(name, country)')
@@ -92,35 +115,12 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
 
     const { data: contractsData } = await contractsQuery;
 
-    const newCustomers: ActivityItem[] = contractsData?.map((contract: any) => ({
+    const newContracts: ActivityItem[] = contractsData?.map((contract: any) => ({
       id: contract.id,
-      type: 'customer' as const,
+      type: 'contract' as const,
       customerName: contract.customers?.name || 'Unknown',
       details: contract.name,
       date: format(new Date(contract.created_at), 'MMM dd')
-    })) || [];
-
-    // Fetch new leads (customers added)
-    let leadsQuery = supabase
-      .from('customers')
-      .select('id, name, created_at, country')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (countries && countries.length > 0) {
-      leadsQuery = leadsQuery.in('country', countries);
-    }
-
-    const { data: leadsData } = await leadsQuery;
-
-    const newLeads: ActivityItem[] = leadsData?.map((lead: any) => ({
-      id: lead.id,
-      type: 'lead' as const,
-      customerName: lead.name,
-      details: 'New lead',
-      date: format(new Date(lead.created_at), 'MMM dd')
     })) || [];
 
     // Fetch churns
@@ -170,7 +170,7 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
       date: format(new Date(partnership.created_at), 'MMM dd')
     })) || [];
 
-    return { lifecycleChanges, newCustomers, newLeads, churns, newPartnerships };
+    return { lifecycleChanges, newCustomers, newContracts, churns, newPartnerships };
   };
 
   useEffect(() => {
@@ -277,27 +277,27 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
                   />
 
                   <ActivitySection
-                    title="New Customers"
+                    title="Newly Added Customers"
                     items={currentData.newCustomers}
                     icon={<Users className="h-4 w-4" />}
                   />
 
                   <ActivitySection
-                    title="New Leads"
-                    items={currentData.newLeads}
-                    icon={<Target className="h-4 w-4" />}
-                  />
-
-                  <ActivitySection
-                    title="Churns"
-                    items={currentData.churns}
-                    icon={<AlertCircle className="h-4 w-4" />}
+                    title="New Contracts"
+                    items={currentData.newContracts}
+                    icon={<FileText className="h-4 w-4" />}
                   />
 
                   <ActivitySection
                     title="New Partnerships"
                     items={currentData.newPartnerships}
                     icon={<HandHeart className="h-4 w-4" />}
+                  />
+
+                  <ActivitySection
+                    title="Churns"
+                    items={currentData.churns}
+                    icon={<AlertCircle className="h-4 w-4" />}
                   />
                 </div>
               </ScrollArea>

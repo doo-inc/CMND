@@ -2,12 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { PARTNERSHIP_TYPE_LABELS } from "@/types/partnerships";
 
 interface ReportData {
-  newCustomers: any[];
-  newLeads: any[];
   lifecycleChanges: any[];
-  churns: any[];
+  newCustomers: any[];
   newContracts: any[];
   newPartnerships: any[];
+  churns: any[];
   periodStart: Date;
   periodEnd: Date;
 }
@@ -28,27 +27,15 @@ const fetchWeeklyData = async (): Promise<ReportData> => {
   const periodStart = new Date();
   periodStart.setDate(periodStart.getDate() - 7);
 
-  const [customersData, leadsData, lifecycleData, churnsData, contractsData, partnershipsData] = await Promise.all([
-    supabase
-      .from('customers')
-      .select('id, name, created_at')
-      .gte('created_at', periodStart.toISOString())
-      .neq('status', 'churned')
-      .neq('status', 'lead'),
-    supabase
-      .from('customers')
-      .select('id, name, created_at')
-      .eq('status', 'lead')
-      .gte('created_at', periodStart.toISOString()),
+  const [lifecycleData, customersData, contractsData, partnershipsData, churnsData] = await Promise.all([
     supabase
       .from('lifecycle_stages')
       .select('customer_id, name, status_changed_at, customers!inner(name)')
       .gte('status_changed_at', periodStart.toISOString()),
     supabase
       .from('customers')
-      .select('id, name, churn_date')
-      .eq('status', 'churned')
-      .gte('churn_date', periodStart.toISOString()),
+      .select('id, name, created_at, stage')
+      .gte('created_at', periodStart.toISOString()),
     supabase
       .from('contracts')
       .select('id, name, customer_id, value, setup_fee, annual_rate, status, start_date, created_at, customers!inner(name)')
@@ -57,15 +44,19 @@ const fetchWeeklyData = async (): Promise<ReportData> => {
       .from('partnerships')
       .select('id, name, partnership_type, status, expected_value, country, created_at')
       .gte('created_at', periodStart.toISOString()),
+    supabase
+      .from('customers')
+      .select('id, name, churn_date')
+      .eq('status', 'churned')
+      .gte('churn_date', periodStart.toISOString()),
   ]);
 
   return {
-    newCustomers: customersData.data || [],
-    newLeads: leadsData.data || [],
     lifecycleChanges: getLatestLifecycleStages(lifecycleData.data || []),
-    churns: churnsData.data || [],
+    newCustomers: customersData.data || [],
     newContracts: contractsData.data || [],
     newPartnerships: partnershipsData.data || [],
+    churns: churnsData.data || [],
     periodStart,
     periodEnd,
   };
@@ -76,27 +67,15 @@ const fetchMonthlyData = async (): Promise<ReportData> => {
   const periodStart = new Date();
   periodStart.setDate(periodStart.getDate() - 30);
 
-  const [customersData, leadsData, lifecycleData, churnsData, contractsData, partnershipsData] = await Promise.all([
-    supabase
-      .from('customers')
-      .select('id, name, created_at')
-      .gte('created_at', periodStart.toISOString())
-      .neq('status', 'churned')
-      .neq('status', 'lead'),
-    supabase
-      .from('customers')
-      .select('id, name, created_at')
-      .eq('status', 'lead')
-      .gte('created_at', periodStart.toISOString()),
+  const [lifecycleData, customersData, contractsData, partnershipsData, churnsData] = await Promise.all([
     supabase
       .from('lifecycle_stages')
       .select('customer_id, name, status_changed_at, customers!inner(name)')
       .gte('status_changed_at', periodStart.toISOString()),
     supabase
       .from('customers')
-      .select('id, name, churn_date')
-      .eq('status', 'churned')
-      .gte('churn_date', periodStart.toISOString()),
+      .select('id, name, created_at, stage')
+      .gte('created_at', periodStart.toISOString()),
     supabase
       .from('contracts')
       .select('id, name, customer_id, value, setup_fee, annual_rate, status, start_date, created_at, customers!inner(name)')
@@ -105,22 +84,26 @@ const fetchMonthlyData = async (): Promise<ReportData> => {
       .from('partnerships')
       .select('id, name, partnership_type, status, expected_value, country, created_at')
       .gte('created_at', periodStart.toISOString()),
+    supabase
+      .from('customers')
+      .select('id, name, churn_date')
+      .eq('status', 'churned')
+      .gte('churn_date', periodStart.toISOString()),
   ]);
 
   return {
-    newCustomers: customersData.data || [],
-    newLeads: leadsData.data || [],
     lifecycleChanges: getLatestLifecycleStages(lifecycleData.data || []),
-    churns: churnsData.data || [],
+    newCustomers: customersData.data || [],
     newContracts: contractsData.data || [],
     newPartnerships: partnershipsData.data || [],
+    churns: churnsData.data || [],
     periodStart,
     periodEnd,
   };
 };
 
 const generateTextReport = (data: ReportData, type: 'weekly' | 'monthly'): string => {
-  const { newCustomers, newLeads, lifecycleChanges, churns, newContracts, newPartnerships, periodStart, periodEnd } = data;
+  const { lifecycleChanges, newCustomers, newContracts, newPartnerships, churns, periodStart, periodEnd } = data;
 
   let report = `${type.toUpperCase()} UPDATE REPORT\n`;
   report += `Period: ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}\n`;
@@ -129,36 +112,27 @@ const generateTextReport = (data: ReportData, type: 'weekly' | 'monthly'): strin
 
   report += `SUMMARY\n`;
   report += `-------\n`;
-  report += `New Customers: ${newCustomers.length}\n`;
-  report += `New Leads: ${newLeads.length}\n`;
   report += `Lifecycle Changes: ${lifecycleChanges.length}\n`;
+  report += `Newly Added Customers: ${newCustomers.length}\n`;
   report += `New Contracts: ${newContracts.length}\n`;
   report += `New Partnerships: ${newPartnerships.length}\n`;
   report += `Churns: ${churns.length}\n\n`;
-
-  if (newCustomers.length > 0) {
-    report += `NEW CUSTOMERS\n`;
-    report += `-------------\n`;
-    newCustomers.forEach(customer => {
-      report += `• ${customer.name} (${new Date(customer.created_at).toLocaleDateString()})\n`;
-    });
-    report += `\n`;
-  }
-
-  if (newLeads.length > 0) {
-    report += `NEW LEADS\n`;
-    report += `---------\n`;
-    newLeads.forEach(lead => {
-      report += `• ${lead.name} (${new Date(lead.created_at).toLocaleDateString()})\n`;
-    });
-    report += `\n`;
-  }
 
   if (lifecycleChanges.length > 0) {
     report += `LIFECYCLE CHANGES\n`;
     report += `-----------------\n`;
     lifecycleChanges.forEach(change => {
       report += `• ${change.customers.name} → ${change.name}\n`;
+    });
+    report += `\n`;
+  }
+
+  if (newCustomers.length > 0) {
+    report += `NEWLY ADDED CUSTOMERS\n`;
+    report += `---------------------\n`;
+    newCustomers.forEach((customer: any) => {
+      const stage = customer.stage ? ` (${customer.stage})` : '';
+      report += `• ${customer.name}${stage} - ${new Date(customer.created_at).toLocaleDateString()}\n`;
     });
     report += `\n`;
   }
