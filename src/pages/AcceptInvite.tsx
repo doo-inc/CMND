@@ -134,24 +134,12 @@ export const AcceptInvite = () => {
       if (authData.user) {
         console.log('User created successfully:', authData.user.id);
         
-        // Wait a moment for the database trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Try to upsert the profile (insert if not exists, update if exists)
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({ 
-            id: authData.user.id,
-            email: invitationData.email,
-            role: invitationData.role,
-            full_name: fullName 
-          }, { 
-            onConflict: 'id' 
-          });
-
-        if (profileError) {
-          console.error('Error upserting profile:', profileError);
-          // Try a simple update as fallback
+        // Wait for the database trigger to create the profile, then update it
+        // Retry up to 5 times with increasing delay
+        let profileUpdated = false;
+        for (let attempt = 1; attempt <= 5; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 500));
+          
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ 
@@ -160,9 +148,17 @@ export const AcceptInvite = () => {
             })
             .eq('id', authData.user.id);
           
-          if (updateError) {
-            console.error('Error updating profile (fallback):', updateError);
+          if (!updateError) {
+            console.log('Profile updated successfully on attempt', attempt);
+            profileUpdated = true;
+            break;
           }
+          
+          console.log(`Profile update attempt ${attempt} failed:`, updateError.message);
+        }
+        
+        if (!profileUpdated) {
+          console.warn('Could not update profile after 5 attempts, but continuing...');
         }
 
         // Mark invitation as accepted
