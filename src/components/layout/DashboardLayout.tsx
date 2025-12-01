@@ -10,7 +10,8 @@ import {
   FileText,
   User,
   Check,
-  Settings
+  Settings,
+  LogOut
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Notification } from "@/types/notifications";
 import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/contexts/AuthContext";
 import { getInitials } from "@/utils/avatarUtils";
 
 interface DashboardLayoutProps {
@@ -42,7 +44,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { profile } = useProfile();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
+  };
   
   // Toggle theme functionality with localStorage persistence
   const toggleTheme = () => {
@@ -274,7 +282,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem className="cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
+                  <DropdownMenuItem 
+                    className="cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors text-red-500"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

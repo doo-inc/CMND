@@ -14,3 +14,4 @@ ALTER TABLE customers DROP CONSTRAINT IF EXISTS customers_service_type_check;
 -- You can verify by running:
 -- SELECT conname FROM pg_constraint WHERE conrelid = 'customers'::regclass;
 
+

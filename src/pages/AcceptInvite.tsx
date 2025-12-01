@@ -134,17 +134,35 @@ export const AcceptInvite = () => {
       if (authData.user) {
         console.log('User created successfully:', authData.user.id);
         
-        // Update the user's role in their profile
+        // Wait a moment for the database trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Try to upsert the profile (insert if not exists, update if exists)
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ 
+          .upsert({ 
+            id: authData.user.id,
+            email: invitationData.email,
             role: invitationData.role,
             full_name: fullName 
-          })
-          .eq('id', authData.user.id);
+          }, { 
+            onConflict: 'id' 
+          });
 
         if (profileError) {
-          console.error('Error updating profile:', profileError);
+          console.error('Error upserting profile:', profileError);
+          // Try a simple update as fallback
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              role: invitationData.role,
+              full_name: fullName 
+            })
+            .eq('id', authData.user.id);
+          
+          if (updateError) {
+            console.error('Error updating profile (fallback):', updateError);
+          }
         }
 
         // Mark invitation as accepted
