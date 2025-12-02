@@ -127,10 +127,6 @@ export const usePipelineData = () => {
         };
       });
 
-      // console.log('Pipeline data with all customers:', {
-        totalCustomers: transformedCustomers.length,
-        stageDistribution: pipelineStages.map(s => `${s.stageName}: ${s.customerCount}`).join(', ')
-      });
 
       setPipelineData(pipelineStages);
     } catch (err) {

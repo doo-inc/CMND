@@ -260,16 +260,6 @@ export const getActiveContractsValue = async (filterParams?: FilterParams): Prom
       return 0;
     }
 
-    // console.log('getActiveContractsValue: Fetched contracts:', data?.length);
-    // console.log('getActiveContractsValue: Contract details:', (data || []).map((c, index) => ({
-      index: index + 1,
-      setup_fee: c.setup_fee,
-      annual_rate: c.annual_rate,
-      value: c.value,
-      calculated: (c.setup_fee > 0 || c.annual_rate > 0) 
-        ? (c.setup_fee || 0) + (c.annual_rate || 0)
-        : (c.value || 0)
-    })));
 
     const totalRevenue = (data || []).reduce((sum, contract) => {
       // Use setup_fee + annual_rate if available, otherwise fallback to value

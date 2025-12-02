@@ -19,9 +19,6 @@ const computePipelineStage = (stages: any[]): string => {
     .filter((s: any) => isCompletedLike(s.status) || isInProgressLike(s.status))
     .map((s: any) => {
       const canonical = canonicalizeStageName(s.name);
-      // console.log(
-        `      Stage mapping: "${s.name}" (${s.status}) -> canonical: "${canonical}"`
-      );
       return canonical;
     });
 
@@ -63,9 +60,6 @@ const computePipelineStage = (stages: any[]): string => {
     // console.log(`      Live gated -> using ${finalPipelineStage} instead (goLiveCompleted=${hasGoLiveCompleted})`);
   }
 
-  // console.log(
-    `      Reached stages: [${reached.join(", ")}] -> Base: ${basePipelineStage} -> Final: ${finalPipelineStage}`
-  );
 
   return finalPipelineStage;
 };
@@ -126,23 +120,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
 
     // console.log(`📋 Found ${allLifecycleStages.length} lifecycle stages (paginated)`);
     
-    // Debug: Check if Gulf Air exists in both datasets
-    const gulfAirCustomer = customers?.find(c => c.name?.toLowerCase().includes('gulf air'));
-    if (gulfAirCustomer) {
-      // console.log(`🔍 GULF AIR FOUND IN CUSTOMERS:`, {
-        id: gulfAirCustomer.id,
-        name: gulfAirCustomer.name,
-        currentStage: gulfAirCustomer.stage,
-        currentStatus: gulfAirCustomer.status
-      });
-      
-      const gulfAirStages = allLifecycleStages?.filter(s => s.customer_id === gulfAirCustomer.id);
-      // console.log(`🔍 GULF AIR LIFECYCLE STAGES (${gulfAirStages?.length || 0}):`, 
-        gulfAirStages?.map(s => ({ name: s.name, status: s.status }))
-      );
-    } else {
-      // console.log(`⚠️ Gulf Air NOT found in customers list`);
-    }
+    // Debug check removed for performance
 
     // Group stages by customer
     const stagesByCustomer: Record<string, any[]> = {};
