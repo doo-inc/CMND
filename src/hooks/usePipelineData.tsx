@@ -32,7 +32,7 @@ export const usePipelineData = () => {
       setError(null);
       
       // Run pipeline sync to ensure database is up to date
-      console.log('Running pipeline sync before fetching data...');
+      // console.log('Running pipeline sync before fetching data...');
       await syncCustomerPipelineStages();
 
       // Fetch all customers with estimated deal values, excluding churned customers (include NULL status)
@@ -68,7 +68,7 @@ export const usePipelineData = () => {
         offset += pageSize;
       }
 
-      console.log(`Lifecycle stages fetched (paginated): ${lifecycleStages.length}`);
+      // console.log(`Lifecycle stages fetched (paginated): ${lifecycleStages.length}`);
 
       // Transform customers to CustomerData format with pipeline stage determination
       const transformedCustomers: CustomerData[] = (customers || []).map(customer => {
@@ -127,7 +127,7 @@ export const usePipelineData = () => {
         };
       });
 
-      console.log('Pipeline data with all customers:', {
+      // console.log('Pipeline data with all customers:', {
         totalCustomers: transformedCustomers.length,
         stageDistribution: pipelineStages.map(s => `${s.stageName}: ${s.customerCount}`).join(', ')
       });

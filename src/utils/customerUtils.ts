@@ -260,8 +260,8 @@ export const getActiveContractsValue = async (filterParams?: FilterParams): Prom
       return 0;
     }
 
-    console.log('getActiveContractsValue: Fetched contracts:', data?.length);
-    console.log('getActiveContractsValue: Contract details:', (data || []).map((c, index) => ({
+    // console.log('getActiveContractsValue: Fetched contracts:', data?.length);
+    // console.log('getActiveContractsValue: Contract details:', (data || []).map((c, index) => ({
       index: index + 1,
       setup_fee: c.setup_fee,
       annual_rate: c.annual_rate,
@@ -279,7 +279,7 @@ export const getActiveContractsValue = async (filterParams?: FilterParams): Prom
       return sum + contractValue;
     }, 0);
 
-    console.log('getActiveContractsValue: Total calculated:', totalRevenue);
+    // console.log('getActiveContractsValue: Total calculated:', totalRevenue);
     return totalRevenue;
   } catch (error) {
     console.error("Error in getActiveContractsValue (Total Revenue):", error);
@@ -328,7 +328,7 @@ export const getConversionRate = async (filterParams?: FilterParams): Promise<nu
     const totalCount = totalCustomers?.length || 0;
     const liveCount = liveCustomers?.length || 0;
 
-    console.log(`Conversion Rate: ${liveCount} live customers / ${totalCount} total = ${totalCount > 0 ? ((liveCount / totalCount) * 100).toFixed(1) : 0}%`);
+    // console.log(`Conversion Rate: ${liveCount} live customers / ${totalCount} total = ${totalCount > 0 ? ((liveCount / totalCount) * 100).toFixed(1) : 0}%`);
     return totalCount > 0 ? (liveCount / totalCount) * 100 : 0;
   } catch (error) {
     console.error("Error in getConversionRate:", error);
@@ -626,7 +626,7 @@ export const calculateAverageGoLiveTime = async (): Promise<number> => {
     }
 
     if (allStages.length === 0) {
-      console.log("No customers have reached Go Live yet.");
+      // console.log("No customers have reached Go Live yet.");
       return 0;
     }
 
@@ -636,7 +636,7 @@ export const calculateAverageGoLiveTime = async (): Promise<number> => {
     );
 
     if (goLiveStages.length === 0) {
-      console.log("No customers have completed Go Live stage yet.");
+      // console.log("No customers have completed Go Live stage yet.");
       return 0;
     }
 
@@ -715,7 +715,7 @@ export const calculateSalesLifecycle = async (): Promise<number> => {
     }
 
     if (validCustomerCount === 0) {
-      console.log("No customers with 'Contract Signed' stage found.");
+      // console.log("No customers with 'Contract Signed' stage found.");
       return 0;
     }
 
@@ -840,10 +840,10 @@ export const calculateChurnRate = async (periodDays: number = 30, filterParams?:
     
     if (liveCount < 3) {
       churnRate = totalCount > 0 ? (churnedCount / (totalCount + churnedCount)) * 100 : 0;
-      console.log(`Using simple ratio method: ${churnedCount} churned / ${totalCount + churnedCount} total = ${churnRate.toFixed(1)}%`);
+      // console.log(`Using simple ratio method: ${churnedCount} churned / ${totalCount + churnedCount} total = ${churnRate.toFixed(1)}%`);
     } else {
       churnRate = liveCount > 0 ? (churnedCount / liveCount) * 100 : 0;
-      console.log(`Using traditional method: ${churnedCount} churned / ${liveCount} at period start = ${churnRate.toFixed(1)}%`);
+      // console.log(`Using traditional method: ${churnedCount} churned / ${liveCount} at period start = ${churnRate.toFixed(1)}%`);
     }
 
     return `${churnRate.toFixed(1)}%`;
@@ -870,7 +870,7 @@ export const updateCustomerChurnStatus = async (): Promise<void> => {
       throw error;
     }
     
-    console.log("Customer churn status updated successfully");
+    // console.log("Customer churn status updated successfully");
   } catch (error) {
     console.error("Error in updateCustomerChurnStatus:", error);
     throw error;

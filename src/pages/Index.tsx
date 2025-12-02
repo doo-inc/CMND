@@ -6,8 +6,7 @@ import { Plus, Users, HandHeart, Kanban, BarChart3, TrendingUp, Activity, Clock,
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
-import { syncCustomersToDatabase, checkForDuplicateStages } from "@/utils/customerDataSync";
-import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
+import { syncCustomersToDatabase } from "@/utils/customerDataSync";
 import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
 import { toast } from "sonner";
 import { usePerformanceMonitoring } from "@/hooks/usePerformanceMonitoring";
@@ -135,26 +134,12 @@ const Index = () => {
   // Enable real-time analytics updates
   useRealtimeAnalytics(refreshMetrics);
   
-  useEffect(() => {
-    const initialSync = async () => {
-      // Sync customer pipeline stages first
-      await syncCustomerPipelineStages();
-      // Then sync customers from real data if needed
-      await syncCustomersToDatabase();
-      // Check for duplicates after loading
-      await Promise.all(customers.map(customer => checkForDuplicateStages(customer.id)));
-    };
-    
-    initialSync();
-  }, []);
+  // Removed duplicate sync - now only syncs once in fetchCustomers
   
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         setLoading(true);
-        
-        // First sync pipeline stages to ensure data is up to date
-        await syncCustomerPipelineStages();
         
         const { data, error } = await supabase
           .from('customers')
@@ -166,7 +151,6 @@ const Index = () => {
         }
 
         if (data && data.length > 0) {
-          console.log("Customers data fetched from database:", data);
           const formattedCustomers: CustomerData[] = data.map(customer => ({
             id: customer.id,
             name: customer.name,
@@ -183,11 +167,7 @@ const Index = () => {
             }
           }));
           setCustomers(formattedCustomers);
-          
-          // After loading customers, check for duplicates in lifecycle stages
-          await Promise.all(formattedCustomers.map(customer => checkForDuplicateStages(customer.id)));
         } else {
-          console.log("No customers found in database, checking again");
           // If no customers in DB, try to sync them again
           await syncCustomersToDatabase();
           // Try one more fetch

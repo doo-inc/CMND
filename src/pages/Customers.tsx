@@ -85,10 +85,10 @@ const Customers = () => {
     if (dbCustomer.name?.toLowerCase().includes('macqueen') || 
         dbCustomer.name?.toLowerCase().includes('bait al asaad') ||
         dbCustomer.name?.toLowerCase().includes('grip')) {
-      console.log(`🔵 ${dbCustomer.name} formatDatabaseCustomer:`);
-      console.log('   Lifecycle stages count:', lifecycleStages.length);
-      console.log('   DB stage:', dbCustomer.stage);
-      console.log('   Final stage used:', pipelineStage);
+      // console.log(`🔵 ${dbCustomer.name} formatDatabaseCustomer:`);
+      // console.log('   Lifecycle stages count:', lifecycleStages.length);
+      // console.log('   DB stage:', dbCustomer.stage);
+      // console.log('   Final stage used:', pipelineStage);
     }
 
     // Use the operational status from the database (maintained by trigger / sync)
@@ -162,7 +162,7 @@ const Customers = () => {
   // Auto-fix customer stages on load
   const autoFixCustomerStages = async () => {
     try {
-      console.log("🔄 AUTO-FIX STARTING...");
+      // console.log("🔄 AUTO-FIX STARTING...");
       
       // Fetch all customers
       const { data: allCustomers, error: custErr } = await supabase
@@ -200,7 +200,7 @@ const Customers = () => {
         offset += pageSize;
       }
       
-      console.log(`📊 Found ${allCustomers.length} customers, ${allStages.length} lifecycle stages (paginated)`);
+      // console.log(`📊 Found ${allCustomers.length} customers, ${allStages.length} lifecycle stages (paginated)`);
       
       // Group stages by customer
       const stagesByCustomer: Record<string, any[]> = {};
@@ -270,7 +270,7 @@ const Customers = () => {
           
           const { error } = await supabase.from('lifecycle_stages').insert(stagesToInsert);
           if (!error) {
-            console.log(`➕ Added ${missingStages.length} missing stages for ${customer.name}`);
+            // console.log(`➕ Added ${missingStages.length} missing stages for ${customer.name}`);
             createdCount++;
             // Update local cache
             stagesToInsert.forEach(s => {
@@ -291,7 +291,7 @@ const Customers = () => {
           
           const { error } = await supabase.from('lifecycle_stages').insert(stagesToInsert);
           if (!error) {
-            console.log(`✅ Created all stages for ${customer.name} (${completedStages.length} marked done)`);
+            // console.log(`✅ Created all stages for ${customer.name} (${completedStages.length} marked done)`);
             createdCount++;
             stagesByCustomer[customer.id] = stagesToInsert;
           } else {
@@ -311,14 +311,14 @@ const Customers = () => {
               .eq('id', customer.id);
             
             if (!error) {
-              console.log(`🔄 Fixed ${customer.name}: "${customer.stage}" → "${computedStage}"`);
+              // console.log(`🔄 Fixed ${customer.name}: "${customer.stage}" → "${computedStage}"`);
               fixedCount++;
             }
           }
         }
       }
       
-      console.log(`🔄 AUTO-FIX COMPLETE: Created stages for ${createdCount} customers, fixed ${fixedCount} pipeline stages`);
+      // console.log(`🔄 AUTO-FIX COMPLETE: Created stages for ${createdCount} customers, fixed ${fixedCount} pipeline stages`);
       
       if (createdCount > 0 || fixedCount > 0) {
         toast.success(`Auto-fix: ${createdCount} customers got stages, ${fixedCount} stages corrected`);
@@ -340,7 +340,7 @@ const Customers = () => {
       // Auto-fix customer stages in background
       await autoFixCustomerStages();
       
-      console.log("Fetching customers from database...");
+      // console.log("Fetching customers from database...");
       
       // Fetch customers and their lifecycle stages
       const { data: customers, error: customersError } = await supabase
@@ -376,8 +376,8 @@ const Customers = () => {
         offset += pageSize;
       }
 
-      console.log("Customers data fetched:", customers);
-      console.log(`Lifecycle stages fetched (paginated): ${allLifecycleStages.length}`);
+      // console.log("Customers data fetched:", customers);
+      // console.log(`Lifecycle stages fetched (paginated): ${allLifecycleStages.length}`);
 
       if (customers && customers.length > 0) {
         // Group all stages by customer (not just completed ones)
@@ -393,12 +393,12 @@ const Customers = () => {
         const macqueenCustomer = customers.find(c => c.name?.toLowerCase().includes('macqueen'));
         if (macqueenCustomer) {
           const macqueenStages = stagesByCustomer[macqueenCustomer.id] || [];
-          console.log('🟡 MACQUEEN FETCH DEBUG:');
-          console.log('   Customer ID:', macqueenCustomer.id);
-          console.log('   Customer name:', macqueenCustomer.name);
-          console.log('   DB stage:', macqueenCustomer.stage);
-          console.log('   Number of stages:', macqueenStages.length);
-          console.log('   Stage names:', macqueenStages.map((s: any) => `${s.name} (${s.status})`));
+          // console.log('🟡 MACQUEEN FETCH DEBUG:');
+          // console.log('   Customer ID:', macqueenCustomer.id);
+          // console.log('   Customer name:', macqueenCustomer.name);
+          // console.log('   DB stage:', macqueenCustomer.stage);
+          // console.log('   Number of stages:', macqueenStages.length);
+          // console.log('   Stage names:', macqueenStages.map((s: any) => `${s.name} (${s.status})`));
         }
 
         const formattedCustomers = customers.map(customer => 
@@ -408,8 +408,8 @@ const Customers = () => {
         // Debug: Check Macqueen after formatting
         const macqueenFormatted = formattedCustomers.find(c => c.name?.toLowerCase().includes('macqueen'));
         if (macqueenFormatted) {
-          console.log('🟢 MACQUEEN AFTER FORMAT:');
-          console.log('   Computed stage:', macqueenFormatted.stage);
+          // console.log('🟢 MACQUEEN AFTER FORMAT:');
+          // console.log('   Computed stage:', macqueenFormatted.stage);
         }
         
         setCustomers(formattedCustomers);
@@ -417,7 +417,7 @@ const Customers = () => {
         extractUniqueStages(allLifecycleStages || []);
         extractUniqueSegments(formattedCustomers);
       } else {
-        console.log("No customers found in database");
+        // console.log("No customers found in database");
         setCustomers([]);
         setUniqueCountries([]);
         setUniqueStages([]);
@@ -439,7 +439,7 @@ const Customers = () => {
   const handleImportSampleData = async () => {
     try {
       setIsImporting(true);
-      console.log("Importing sample customer data...");
+      // console.log("Importing sample customer data...");
       
       const success = await syncCustomersToDatabase();
       
@@ -480,10 +480,10 @@ const Customers = () => {
   useEffect(() => {
     // Run pipeline sync before fetching data to ensure consistency
     const initializeCustomersPage = async () => {
-      console.log("🔄 Customers page initializing - running pipeline sync");
+      // console.log("🔄 Customers page initializing - running pipeline sync");
       try {
         const syncResult = await syncCustomerPipelineStages();
-        console.log("✅ Pipeline sync completed successfully:", syncResult);
+        // console.log("✅ Pipeline sync completed successfully:", syncResult);
       } catch (error) {
         console.error("❌ Pipeline sync failed:", error);
       }
@@ -513,10 +513,10 @@ const Customers = () => {
   }, []);
 
   const handleRefresh = async () => {
-    console.log('=== Running Pipeline Sync Before Refresh ===');
+    // console.log('=== Running Pipeline Sync Before Refresh ===');
     try {
       const syncResult = await syncCustomerPipelineStages();
-      console.log("✅ Refresh pipeline sync completed:", syncResult);
+      // console.log("✅ Refresh pipeline sync completed:", syncResult);
     } catch (error) {
       console.error("❌ Refresh pipeline sync failed:", error);
     }

@@ -19,7 +19,7 @@ const computePipelineStage = (stages: any[]): string => {
     .filter((s: any) => isCompletedLike(s.status) || isInProgressLike(s.status))
     .map((s: any) => {
       const canonical = canonicalizeStageName(s.name);
-      console.log(
+      // console.log(
         `      Stage mapping: "${s.name}" (${s.status}) -> canonical: "${canonical}"`
       );
       return canonical;
@@ -36,7 +36,7 @@ const computePipelineStage = (stages: any[]): string => {
     );
     const isActive = isCompletedLike(s.status) || isInProgressLike(s.status);
     if (isImplStage && isActive) {
-      console.log(`      ✅ Found active implementation stage: "${s.name}" (${s.status})`);
+      // console.log(`      ✅ Found active implementation stage: "${s.name}" (${s.status})`);
     }
     return isImplStage && isActive;
   });
@@ -53,17 +53,17 @@ const computePipelineStage = (stages: any[]): string => {
 
   // KEY FIX: If we have implementation activity but base stage is Contract or earlier, bump to Implementation
   if (hasImplementationActivity && ["Lead", "Qualified", "Demo", "Proposal", "Contract"].includes(basePipelineStage)) {
-    console.log(`      🔄 Bumping from ${basePipelineStage} to Implementation (has implementation activity)`);
+    // console.log(`      🔄 Bumping from ${basePipelineStage} to Implementation (has implementation activity)`);
     finalPipelineStage = "Implementation";
   }
 
   // Enforce: Live only when Go Live is completed
   if (finalPipelineStage === "Live" && !hasGoLiveCompleted) {
     finalPipelineStage = hasImplementationActivity ? "Implementation" : "Contract";
-    console.log(`      Live gated -> using ${finalPipelineStage} instead (goLiveCompleted=${hasGoLiveCompleted})`);
+    // console.log(`      Live gated -> using ${finalPipelineStage} instead (goLiveCompleted=${hasGoLiveCompleted})`);
   }
 
-  console.log(
+  // console.log(
     `      Reached stages: [${reached.join(", ")}] -> Base: ${basePipelineStage} -> Final: ${finalPipelineStage}`
   );
 
@@ -76,7 +76,7 @@ const computeOperationalStatus = (stages: any[]): "not-started" | "in-progress" 
 
 export const syncCustomerPipelineStages = async (): Promise<boolean> => {
   try {
-    console.log("=== PIPELINE SYNC STARTED ===");
+    // console.log("=== PIPELINE SYNC STARTED ===");
     const startTime = Date.now();
     
     // Check authentication
@@ -98,7 +98,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       return false;
     }
 
-    console.log(`📊 Found ${customers?.length || 0} non-churned customers to sync`);
+    // console.log(`📊 Found ${customers?.length || 0} non-churned customers to sync`);
 
     // Fetch ALL lifecycle stages with pagination to avoid 1000 row limit
     let allLifecycleStages: any[] = [];
@@ -124,12 +124,12 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       offset += pageSize;
     }
 
-    console.log(`📋 Found ${allLifecycleStages.length} lifecycle stages (paginated)`);
+    // console.log(`📋 Found ${allLifecycleStages.length} lifecycle stages (paginated)`);
     
     // Debug: Check if Gulf Air exists in both datasets
     const gulfAirCustomer = customers?.find(c => c.name?.toLowerCase().includes('gulf air'));
     if (gulfAirCustomer) {
-      console.log(`🔍 GULF AIR FOUND IN CUSTOMERS:`, {
+      // console.log(`🔍 GULF AIR FOUND IN CUSTOMERS:`, {
         id: gulfAirCustomer.id,
         name: gulfAirCustomer.name,
         currentStage: gulfAirCustomer.stage,
@@ -137,11 +137,11 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       });
       
       const gulfAirStages = allLifecycleStages?.filter(s => s.customer_id === gulfAirCustomer.id);
-      console.log(`🔍 GULF AIR LIFECYCLE STAGES (${gulfAirStages?.length || 0}):`, 
+      // console.log(`🔍 GULF AIR LIFECYCLE STAGES (${gulfAirStages?.length || 0}):`, 
         gulfAirStages?.map(s => ({ name: s.name, status: s.status }))
       );
     } else {
-      console.log(`⚠️ Gulf Air NOT found in customers list`);
+      // console.log(`⚠️ Gulf Air NOT found in customers list`);
     }
 
     // Group stages by customer
@@ -153,7 +153,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       stagesByCustomer[stage.customer_id].push(stage);
     });
 
-    console.log(`🔄 Grouped stages for ${Object.keys(stagesByCustomer).length} customers`);
+    // console.log(`🔄 Grouped stages for ${Object.keys(stagesByCustomer).length} customers`);
 
     let updatedCount = 0;
     const syncResults: Array<{
@@ -181,27 +181,27 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
       
       // Special detailed logging for Gulf Air and Macqueen
       if (customer.name?.toLowerCase().includes('gulf air') || customer.name?.toLowerCase().includes('macqueen')) {
-        console.log(`🔴🔴🔴 ${customer.name.toUpperCase()} SYNC DETAILS:`);
-        console.log(`   Customer ID: ${customer.id}`);
-        console.log(`   Stages found for this customer ID: ${customerStages.length}`);
-        console.log(`   All stages:`, customerStages.map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) })));
-        console.log(`   Completed stages: [${completedStages.join(', ')}]`);
-        console.log(`   In progress stages: [${inProgressStages.join(', ')}]`);
-        console.log(`   Computed pipeline stage: ${newPipelineStage}`);
-        console.log(`   Computed status: ${newOperationalStatus}`);
-        console.log(`   Current DB: stage="${customer.stage}", status="${customer.status}"`);
+        // console.log(`🔴🔴🔴 ${customer.name.toUpperCase()} SYNC DETAILS:`);
+        // console.log(`   Customer ID: ${customer.id}`);
+        // console.log(`   Stages found for this customer ID: ${customerStages.length}`);
+        // console.log(`   All stages:`, customerStages.map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) })));
+        // console.log(`   Completed stages: [${completedStages.join(', ')}]`);
+        // console.log(`   In progress stages: [${inProgressStages.join(', ')}]`);
+        // console.log(`   Computed pipeline stage: ${newPipelineStage}`);
+        // console.log(`   Computed status: ${newOperationalStatus}`);
+        // console.log(`   Current DB: stage="${customer.stage}", status="${customer.status}"`);
       }
       
       // IMPORTANT: Don't downgrade customers with no lifecycle stages
       // If a customer has 0 stages, preserve their existing stage (may have been manually set)
       if (customerStages.length === 0) {
-        console.log(`⏭️ SKIPPING ${customer.name}: No lifecycle stages - preserving current stage "${customer.stage}"`);
+        // console.log(`⏭️ SKIPPING ${customer.name}: No lifecycle stages - preserving current stage "${customer.stage}"`);
         continue;
       }
 
       // Only update if stage or status has changed
       if (customer.stage !== newPipelineStage || customer.status !== newOperationalStatus) {
-        console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${newPipelineStage}, Status ${customer.status} -> ${newOperationalStatus}`);
+        // console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${newPipelineStage}, Status ${customer.status} -> ${newOperationalStatus}`);
         
         const { data: updateData, error: updateError } = await supabase
           .from('customers')
@@ -215,7 +215,7 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
         if (updateError) {
           console.error(`❌ Error updating customer ${customer.name}:`, updateError);
         } else {
-          console.log(`✅ Successfully updated ${customer.name}:`, updateData);
+          // console.log(`✅ Successfully updated ${customer.name}:`, updateData);
           updatedCount++;
           syncResults.push({
             customer: customer.name,
@@ -230,13 +230,13 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
     }
 
     const duration = Date.now() - startTime;
-    console.log("=== PIPELINE SYNC COMPLETED ===");
-    console.log(`✅ Updated ${updatedCount} customers in ${duration}ms`);
+    // console.log("=== PIPELINE SYNC COMPLETED ===");
+    // console.log(`✅ Updated ${updatedCount} customers in ${duration}ms`);
     
     if (syncResults.length > 0) {
-      console.log("📊 SYNC SUMMARY:");
+      // console.log("📊 SYNC SUMMARY:");
       syncResults.forEach(result => {
-        console.log(`   • ${result.customer}: ${result.oldStage} -> ${result.newStage} (${result.oldStatus} -> ${result.newStatus})`);
+        // console.log(`   • ${result.customer}: ${result.oldStage} -> ${result.newStage} (${result.oldStatus} -> ${result.newStatus})`);
       });
     }
     
