@@ -77,6 +77,7 @@ interface Customer {
   name: string;
   logo?: string;
   service_type?: string | null;
+  project_owner?: string | null;
 }
 
 // Local storage key for persisting project data
@@ -129,7 +130,7 @@ export default function ProjectManager() {
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, name, logo, service_type')
+        .select('id, name, logo, service_type, project_owner')
         .order('name');
       
       if (error) throw error;
@@ -160,7 +161,7 @@ export default function ProjectManager() {
       customer_name: customer.name,
       customer_logo: customer.logo,
       service_type: customer.service_type,
-      project_manager: '',
+      project_manager: customer.project_owner || '',
       service_description: '',
       checklist_items: [
         { id: crypto.randomUUID(), label: 'Agent Creation', checked: false },

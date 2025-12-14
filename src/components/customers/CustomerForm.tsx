@@ -35,6 +35,7 @@ const customerFormSchema = z.object({
   industry: z.string().optional(),
   estimated_deal_value: z.number().nullable().optional(),
   service_type: z.string().optional().nullable(),
+  project_owner: z.string().optional().nullable(),
   text_plan: z.string().optional().nullable(),
   text_ai_responses: z.number().optional().nullable(),
   voice_tier: z.string().optional().nullable(),
@@ -105,6 +106,7 @@ export function CustomerForm({
       payment_terms_days: initialData?.payment_terms_days || 14,
       currency: initialData?.currency || "BD",
       service_type: (initialData as any)?.service_type || null,
+      project_owner: (initialData as any)?.project_owner || null,
       text_plan: (initialData as any)?.text_plan || null,
       text_ai_responses: (initialData as any)?.text_ai_responses || null,
       voice_tier: (initialData as any)?.voice_tier || null,
@@ -135,6 +137,7 @@ export function CustomerForm({
         payment_terms_days: initialData.payment_terms_days || 14,
         currency: initialData.currency || "BD",
         service_type: (initialData as any)?.service_type || null,
+        project_owner: (initialData as any)?.project_owner || null,
         text_plan: (initialData as any)?.text_plan || null,
         text_ai_responses: (initialData as any)?.text_ai_responses || null,
         voice_tier: (initialData as any)?.voice_tier || null,
@@ -426,6 +429,23 @@ export function CustomerForm({
                         <SelectItem value="both">Text & Voice AI</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="project_owner"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project Owner</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter project owner name" 
+                        {...field} 
+                        value={field.value || ""} 
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
