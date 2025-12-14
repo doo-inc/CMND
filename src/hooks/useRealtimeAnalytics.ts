@@ -1,9 +1,22 @@
 
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
 
 export const useRealtimeAnalytics = (onUpdate?: () => void) => {
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounce updates to avoid excessive re-renders
+  const debouncedUpdate = useCallback(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      if (onUpdate) {
+        onUpdate();
+      }
+    }, 2000); // Wait 2 seconds before refreshing
+  }, [onUpdate]);
+
   useEffect(() => {
     const channel = supabase
       .channel('analytics-updates')
@@ -14,14 +27,9 @@ export const useRealtimeAnalytics = (onUpdate?: () => void) => {
           schema: 'public',
           table: 'lifecycle_stages'
         },
-        async (payload) => {
-          console.log('Lifecycle stage changed:', payload);
-          // Sync pipeline stages when lifecycle stages change
-          await syncCustomerPipelineStages();
-          // Trigger callback to refresh dashboard
-          if (onUpdate) {
-            onUpdate();
-          }
+        () => {
+          // Debounced update - no heavy sync on every change
+          debouncedUpdate();
         }
       )
       .on(
@@ -31,18 +39,18 @@ export const useRealtimeAnalytics = (onUpdate?: () => void) => {
           schema: 'public',
           table: 'customers'
         },
-        (payload) => {
-          console.log('Customer changed:', payload);
-          // Trigger callback to refresh dashboard
-          if (onUpdate) {
-            onUpdate();
-          }
+        () => {
+          // Debounced update
+          debouncedUpdate();
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
       supabase.removeChannel(channel);
     };
-  }, [onUpdate]);
+  }, [debouncedUpdate]);
 };

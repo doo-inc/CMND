@@ -337,11 +337,6 @@ const Customers = () => {
         setIsLoading(true);
       }
       
-      // Auto-fix customer stages in background
-      await autoFixCustomerStages();
-      
-      // console.log("Fetching customers from database...");
-      
       // Fetch customers and their lifecycle stages
       const { data: customers, error: customersError } = await supabase
         .from('customers')
@@ -478,39 +473,18 @@ const Customers = () => {
   };
 
   useEffect(() => {
-    // Run pipeline sync before fetching data to ensure consistency
-    const initializeCustomersPage = async () => {
-      // console.log("🔄 Customers page initializing - running pipeline sync");
-      try {
-        const syncResult = await syncCustomerPipelineStages();
-        // console.log("✅ Pipeline sync completed successfully:", syncResult);
-      } catch (error) {
-        console.error("❌ Pipeline sync failed:", error);
-      }
-      fetchCustomers();
-    };
-    
-    initializeCustomersPage();
+    // Fetch customers directly without sync on every load (sync only on manual refresh)
+    fetchCustomers();
   }, []);
 
-  // Refresh data when navigating back to this page
+  // Only refresh when explicitly requested via location state
   useEffect(() => {
-    if (location.state?.refresh || location.pathname === '/customers') {
+    if (location.state?.refresh) {
       fetchCustomers(true);
     }
-  }, [location.pathname, location.state]);
+  }, [location.state?.refresh]);
 
-  React.useEffect(() => {
-    const handleFocus = () => {
-      fetchCustomers(true);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
+  // Removed window focus auto-refresh for performance
 
   const handleRefresh = async () => {
     // console.log('=== Running Pipeline Sync Before Refresh ===');
