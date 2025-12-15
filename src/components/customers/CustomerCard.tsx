@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
@@ -19,18 +19,8 @@ interface CustomerCardProps {
   isDetailed?: boolean;
 }
 
-export function CustomerCard({ customer, showEditOptions = false, isDetailed = false }: CustomerCardProps) {
+function CustomerCardComponent({ customer, showEditOptions = false, isDetailed = false }: CustomerCardProps) {
   const navigate = useNavigate();
-  
-  // Debug logging for Macqueen
-  if (customer.name?.toLowerCase().includes('macqueen')) {
-    console.log('🟣 CUSTOMERCARD - Macqueen:', {
-      name: customer.name,
-      stage: customer.stage,
-      status: customer.status,
-      id: customer.id
-    });
-  }
   
   const getStatusClass = (status?: string) => {
     switch (status) {
@@ -129,3 +119,6 @@ export function CustomerCard({ customer, showEditOptions = false, isDetailed = f
     </Card>
   );
 }
+
+// Memoize to prevent re-renders when parent re-renders with same props
+export const CustomerCard = memo(CustomerCardComponent);

@@ -43,6 +43,8 @@ const Customers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 24; // Show 24 customers per page for 3-column grid
 
 // Pipeline rules are centralized in utils/pipelineRules.ts
 
@@ -484,6 +486,11 @@ const Customers = () => {
     }
   }, [location.state?.refresh]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, countryFilter, stageFilter, segmentFilter]);
+
   // Removed window focus auto-refresh for performance
 
   const handleRefresh = async () => {
@@ -692,16 +699,48 @@ const Customers = () => {
           </Button>
         </div>
 
-        <ScrollArea className="h-[calc(100vh-300px)]">
+        {/* Pagination Info */}
+        {!isLoading && filteredCustomers.length > 0 && (
+          <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
+            <span>
+              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredCustomers.length)} - {Math.min(currentPage * itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length} customers
+            </span>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="flex items-center px-3">
+                Page {currentPage} of {Math.ceil(filteredCustomers.length / itemsPerPage)}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredCustomers.length / itemsPerPage), p + 1))}
+                disabled={currentPage >= Math.ceil(filteredCustomers.length / itemsPerPage)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <ScrollArea className="h-[calc(100vh-350px)]">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
             {isLoading ? (
               Array(6).fill(0).map((_, index) => (
                 <div key={index} className="h-48 bg-gray-100 animate-pulse rounded-md"></div>
               ))
             ) : (
-              filteredCustomers.map((customer) => (
-                <CustomerCard key={customer.id} customer={customer} />
-              ))
+              filteredCustomers
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((customer) => (
+                  <CustomerCard key={customer.id} customer={customer} />
+                ))
             )}
             
             {!isLoading && filteredCustomers.length === 0 && customers.length === 0 && (
