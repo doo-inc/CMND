@@ -1,8 +1,21 @@
 
-import React from "react";
+import React, { useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, ClipboardCheck } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+
+// Prefetch pages on hover for faster navigation
+const prefetchMap: Record<string, () => Promise<any>> = {
+  '/': () => import('@/pages/Index'),
+  '/customers': () => import('@/pages/Customers'),
+  '/contracts': () => import('@/pages/Contracts'),
+  '/partnerships': () => import('@/pages/Partnerships'),
+  '/subscription-tracker': () => import('@/pages/SubscriptionTracker'),
+  '/pipeline': () => import('@/pages/PipelineMap'),
+  '/project-manager': () => import('@/pages/ProjectManager'),
+  '/tasks': () => import('@/pages/TasksBoard'),
+  '/notifications': () => import('@/pages/Notifications'),
+};
 
 const mainNavItems = [
   {
@@ -58,6 +71,14 @@ const secondaryNavItems = [
 export function DashboardSidebar() {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  
+  // Prefetch page on mouse enter
+  const handleMouseEnter = useCallback((path: string) => {
+    const prefetch = prefetchMap[path];
+    if (prefetch) {
+      prefetch().catch(() => {}); // Silently prefetch
+    }
+  }, []);
 
   return (
     <Sidebar className="border-0 transition-all duration-300 bg-transparent backdrop-blur-sm">
@@ -81,7 +102,11 @@ export function DashboardSidebar() {
                     data-active={isActive(item.path)}
                     className="group relative overflow-hidden transition-all duration-300 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 rounded-xl data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/15 data-[active=true]:to-primary/10 data-[active=true]:shadow-lg"
                   >
-                    <Link to={item.path} className="flex items-center py-2.5 px-3">
+                    <Link 
+                      to={item.path} 
+                      className="flex items-center py-2.5 px-3"
+                      onMouseEnter={() => handleMouseEnter(item.path)}
+                    >
                       <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
                         <item.icon className="h-5 w-5 text-primary" />
                       </div>
@@ -106,7 +131,11 @@ export function DashboardSidebar() {
                     data-active={isActive(item.path)}
                     className="group relative overflow-hidden transition-all duration-300 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 rounded-xl data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/15 data-[active=true]:to-primary/10 data-[active=true]:shadow-lg"
                   >
-                    <Link to={item.path} className="flex items-center py-2.5 px-3">
+                    <Link 
+                      to={item.path} 
+                      className="flex items-center py-2.5 px-3"
+                      onMouseEnter={() => handleMouseEnter(item.path)}
+                    >
                       <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
                         <item.icon className="h-5 w-5 text-primary" />
                       </div>

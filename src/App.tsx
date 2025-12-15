@@ -50,10 +50,6 @@ const PageLoader = () => (
 );
 
 const App = () => {
-  // Add debug logging
-  console.log('App component rendering');
-  console.log('Current pathname:', window.location.pathname);
-
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

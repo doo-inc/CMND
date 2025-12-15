@@ -2,7 +2,7 @@
 import { lazy } from 'react';
 
 // Lazy load all pages for better performance
-export { default as LazyIndex } from '@/pages/Index';
+export const LazyIndex = lazy(() => import('@/pages/Index'));
 export const LazyAuth = lazy(() => import('@/pages/Auth'));
 export const LazyCustomers = lazy(() => import('@/pages/Customers'));
 export const LazyCustomerDetails = lazy(() => import('@/pages/CustomerDetails'));
