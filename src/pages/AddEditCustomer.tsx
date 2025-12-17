@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
+import { logCustomerCreated, logCustomerUpdated } from "@/utils/activityLogger";
 
 // Helper function to save documents to database
 const saveDocumentsToDatabase = async (customerId: string, documents: any[]) => {
@@ -287,6 +288,9 @@ export default function AddEditCustomer() {
           console.error('Error details:', error.details);
           throw error;
         }
+        
+        // Log the update activity
+        await logCustomerUpdated(id, customerData.name);
       } else {
         // Create new customer
         const { data: newCustomer, error } = await supabase
@@ -327,6 +331,9 @@ export default function AddEditCustomer() {
         } else {
           console.log(`✅ Created ${stagesToInsert.length} lifecycle stages for customer ${customerId}`);
         }
+        
+        // Log the create activity
+        await logCustomerCreated(customerId!, customerData.name);
       }
 
       // Save contracts

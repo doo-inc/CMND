@@ -50,6 +50,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { createNotification, CreateNotificationParams } from "@/utils/notificationHelpers";
 import { Notification } from "@/types/notifications";
+import { logUserCreated } from "@/utils/activityLogger";
 
 interface TeamMember {
   id: string;
@@ -236,6 +237,12 @@ const TeamManagementPage = () => {
       setCreatedCredentials({ email: data.email, password: data.password });
       
       toast.success(`Account created successfully for ${data.email}!`);
+      
+      // Log the activity
+      await logUserCreated(response.data?.user?.id || data.email, data.email, { 
+        full_name: data.full_name, 
+        role: data.role 
+      });
       
       await createTeamNotification({
         type: 'team',
