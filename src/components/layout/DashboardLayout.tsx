@@ -171,7 +171,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     const fetchActivityLogs = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('activity_logs')
           .select('*')
           .order('created_at', { ascending: false })
@@ -182,7 +182,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           return;
         }
 
-        setActivityLogs(data || []);
+        setActivityLogs((data || []) as ActivityLogEntry[]);
       } catch (error) {
         console.error("Error fetching activity logs:", error);
       }

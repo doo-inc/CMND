@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           annual_rate: number | null
@@ -288,6 +327,7 @@ export type Database = {
           owner_id: string | null
           payment_terms_days: number | null
           project_manager: string | null
+          project_owner: string | null
           representative_name: string | null
           representative_title: string | null
           segment: string | null
@@ -334,6 +374,7 @@ export type Database = {
           owner_id?: string | null
           payment_terms_days?: number | null
           project_manager?: string | null
+          project_owner?: string | null
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null
@@ -380,6 +421,7 @@ export type Database = {
           owner_id?: string | null
           payment_terms_days?: number | null
           project_manager?: string | null
+          project_owner?: string | null
           representative_name?: string | null
           representative_title?: string | null
           segment?: string | null
@@ -447,6 +489,87 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_deals: {
+        Row: {
+          amount: number | null
+          client_name: string | null
+          cmnd_deal_id: string | null
+          confidence: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          currency: string | null
+          expected_close_date: string | null
+          id: string
+          missing_fields: string[] | null
+          owner_id: string | null
+          owner_name: string | null
+          raw_text: string | null
+          source_channel: string | null
+          source_id: string
+          source_type: string
+          stage: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          client_name?: string | null
+          cmnd_deal_id?: string | null
+          confidence?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          missing_fields?: string[] | null
+          owner_id?: string | null
+          owner_name?: string | null
+          raw_text?: string | null
+          source_channel?: string | null
+          source_id: string
+          source_type: string
+          stage?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          client_name?: string | null
+          cmnd_deal_id?: string | null
+          confidence?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          missing_fields?: string[] | null
+          owner_id?: string | null
+          owner_name?: string | null
+          raw_text?: string | null
+          source_channel?: string | null
+          source_id?: string
+          source_type?: string
+          stage?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_deals_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_deals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -599,6 +722,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -610,6 +734,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -621,6 +746,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

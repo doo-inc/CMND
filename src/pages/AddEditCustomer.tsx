@@ -134,7 +134,7 @@ export default function AddEditCustomer() {
             contact_phone: data.contact_phone || "",
             // Service plan fields
             service_type: data.service_type || null,
-            project_owner: data.project_owner || null,
+            project_owner: (data as any).project_owner || null,
             text_plan: data.text_plan || null,
             text_ai_responses: data.text_ai_responses ?? null,
             voice_tier: data.voice_tier || null,

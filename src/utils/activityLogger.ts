@@ -57,7 +57,7 @@ export const logActivity = async ({
       userName = profile?.full_name || user.user_metadata?.full_name || null;
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('activity_logs')
       .insert({
         user_id: user?.id || null,
