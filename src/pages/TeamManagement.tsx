@@ -226,20 +226,44 @@ const TeamManagementPage = () => {
       
       console.log('Creating account for:', data.email);
 
-      const response = await supabase.functions.invoke('create-user-account', {
-        body: {
-          email: data.email,
-          password: data.password,
-          full_name: data.full_name,
-          role: data.role,
-        }
-      });
+      // Use direct fetch for better reliability
+      const SUPABASE_URL = "https://vnhwhyufevcixgelsujb.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaHdoeXVmZXZjaXhnZWxzdWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDY5ODMsImV4cCI6MjA1OTEyMjk4M30.HR91tc5clF0FBUbmRkr2aPdZydMerpSH3A-IQUYK8ds";
+      
+      let response;
+      try {
+        const fetchResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-user-account`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            full_name: data.full_name,
+            role: data.role,
+          }),
+        });
+        
+        const responseData = await fetchResponse.json();
+        response = { data: responseData, error: fetchResponse.ok ? null : responseData };
+        
+      } catch (invokeError: any) {
+        console.error('Function invoke error:', invokeError);
+        toast.error(`Network error: ${invokeError.message || 'Could not reach server'}`);
+        return;
+      }
 
       console.log('Create account response:', response);
 
       if (response.error) {
         console.error('Error creating account:', response.error);
-        toast.error(response.error.message || 'Failed to create account');
+        const errorMsg = typeof response.error === 'string' 
+          ? response.error 
+          : response.error.error || response.error.message || JSON.stringify(response.error);
+        toast.error(errorMsg || 'Failed to create account');
         return;
       }
 
