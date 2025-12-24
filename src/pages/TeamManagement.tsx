@@ -748,89 +748,89 @@ const TeamManagementPage = () => {
 
                 {/* Send Invite Tab */}
                 <TabsContent value="invite" className="mt-4">
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="john.doe@example.com" 
-                                type="email" 
-                                {...field} 
-                                className="glass-input"
-                                disabled={isSubmitting}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange} 
-                              defaultValue={field.value}
-                              value={field.value}
-                              disabled={isSubmitting}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="glass-input">
-                                  <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="glass-card">
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="user">User</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      {invitationLink && (
-                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-muted">
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm font-medium">Manual Invitation Link:</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Input 
-                              value={invitationLink} 
-                              readOnly 
-                              className="text-xs font-mono bg-background"
-                            />
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm"
-                              onClick={copyInvitationLink}
-                              className="shrink-0"
-                            >
-                              Copy Link
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Share this link manually since the email failed to send.
-                          </p>
-                        </div>
-                      )}
-                      
-                      <DialogFooter>
-                        <Button type="submit" className="glass-button w-full" disabled={isSubmitting}>
-                          {isSubmitting ? "Sending Invitation..." : "Send Invitation"}
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="john.doe@example.com" 
+                            type="email" 
+                            {...field} 
+                            className="glass-input"
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                          value={field.value}
+                          disabled={isSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="glass-input">
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="glass-card">
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {invitationLink && (
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-muted">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Manual Invitation Link:</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          value={invitationLink} 
+                          readOnly 
+                          className="text-xs font-mono bg-background"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={copyInvitationLink}
+                          className="shrink-0"
+                        >
+                          Copy Link
                         </Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Share this link manually since the email failed to send.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <DialogFooter>
+                        <Button type="submit" className="glass-button w-full" disabled={isSubmitting}>
+                      {isSubmitting ? "Sending Invitation..." : "Send Invitation"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
                 </TabsContent>
               </Tabs>
             </DialogContent>

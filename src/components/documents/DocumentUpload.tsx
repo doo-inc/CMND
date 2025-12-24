@@ -28,6 +28,7 @@ const documentTypes = [
   "Contract",
   "Invoice", 
   "Agreement",
+  "Service Agreement",
   "Proposal",
   "SOW",
   "Other"

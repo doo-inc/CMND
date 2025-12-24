@@ -321,11 +321,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         <TabsTrigger value="notifications" className="text-xs flex items-center gap-1.5">
                           <Bell className="h-3.5 w-3.5" />
                           Notifications
-                          {unreadCount > 0 && (
+                    {unreadCount > 0 && (
                             <Badge variant="destructive" className="h-4 px-1 text-[10px]">
                               {unreadCount}
-                            </Badge>
-                          )}
+                      </Badge>
+                    )}
                         </TabsTrigger>
                         <TabsTrigger value="activity" className="text-xs flex items-center gap-1.5">
                           <Activity className="h-3.5 w-3.5" />
@@ -337,38 +337,38 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <TabsContent value="notifications" className="mt-0">
                       <ScrollArea className="max-h-[320px]">
                         <div className="p-2">
-                          {notifications.length > 0 ? (
-                            notifications.map(notification => (
+                    {notifications.length > 0 ? (
+                      notifications.map(notification => (
                               <div 
-                                key={notification.id}
+                          key={notification.id}
                                 className={`p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent/50 mb-1 ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
-                                onClick={() => markAsRead(notification.id)}
-                              >
-                                <div className="flex items-start space-x-2">
-                                  <div className="mt-0.5">
-                                    {getNotificationIcon(notification.type)}
-                                  </div>
+                          onClick={() => markAsRead(notification.id)}
+                        >
+                          <div className="flex items-start space-x-2">
+                            <div className="mt-0.5">
+                              {getNotificationIcon(notification.type)}
+                            </div>
                                   <div className="flex-1 space-y-0.5 min-w-0">
                                     <p className="text-sm font-medium truncate">{notification.title}</p>
                                     <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
                                     <p className="text-[10px] text-muted-foreground/70">
                                       {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                                    </p>
-                                  </div>
-                                  {!notification.is_read && (
+                              </p>
+                            </div>
+                            {!notification.is_read && (
                                     <div className="h-2 w-2 bg-blue-500 rounded-full mt-1 flex-shrink-0"></div>
-                                  )}
-                                </div>
+                            )}
+                          </div>
                               </div>
-                            ))
-                          ) : (
+                      ))
+                    ) : (
                             <div className="py-8 text-center text-muted-foreground">
                               <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                              <p className="text-sm">No notifications yet</p>
-                            </div>
-                          )}
+                        <p className="text-sm">No notifications yet</p>
+                      </div>
+                    )}
                         </div>
-                      </ScrollArea>
+                  </ScrollArea>
                       <div className="border-t border-border/50 p-2">
                         <Button 
                           variant="ghost" 
@@ -376,7 +376,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           className="w-full text-xs"
                           onClick={viewAllNotifications}
                         >
-                          View All Notifications
+                    View All Notifications
                         </Button>
                       </div>
                     </TabsContent>

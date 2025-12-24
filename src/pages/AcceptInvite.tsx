@@ -141,13 +141,13 @@ export const AcceptInvite = () => {
           await new Promise(resolve => setTimeout(resolve, attempt * 500));
           
           const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              role: invitationData.role,
-              full_name: fullName 
-            })
-            .eq('id', authData.user.id);
-          
+          .from('profiles')
+          .update({ 
+            role: invitationData.role,
+            full_name: fullName 
+          })
+          .eq('id', authData.user.id);
+
           if (!updateError) {
             console.log('Profile updated successfully on attempt', attempt);
             profileUpdated = true;

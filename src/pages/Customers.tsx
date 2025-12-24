@@ -476,7 +476,7 @@ const Customers = () => {
 
   useEffect(() => {
     // Fetch customers directly without sync on every load (sync only on manual refresh)
-    fetchCustomers();
+      fetchCustomers();
   }, []);
 
   // Only refresh when explicitly requested via location state
@@ -739,8 +739,8 @@ const Customers = () => {
               filteredCustomers
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((customer) => (
-                  <CustomerCard key={customer.id} customer={customer} />
-                ))
+                <CustomerCard key={customer.id} customer={customer} />
+              ))
             )}
             
             {!isLoading && filteredCustomers.length === 0 && customers.length === 0 && (

@@ -1,7 +1,7 @@
 
 import React, { useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, ClipboardCheck } from "lucide-react";
+import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, ClipboardCheck, FolderOpen, Sparkles } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 // Prefetch pages on hover for faster navigation
@@ -15,6 +15,8 @@ const prefetchMap: Record<string, () => Promise<any>> = {
   '/project-manager': () => import('@/pages/ProjectManager'),
   '/tasks': () => import('@/pages/TasksBoard'),
   '/notifications': () => import('@/pages/Notifications'),
+  '/documents': () => import('@/pages/LegalDocuments'),
+  '/proposal-genie': () => import('@/pages/ProposalGenie'),
 };
 
 const mainNavItems = [
@@ -32,6 +34,16 @@ const mainNavItems = [
     title: "Contracts",
     icon: FileText,
     path: "/contracts"
+  },
+  {
+    title: "Documents",
+    icon: FolderOpen,
+    path: "/documents"
+  },
+  {
+    title: "Proposal Genie",
+    icon: Sparkles,
+    path: "/proposal-genie"
   },
   {
     title: "Partnerships",

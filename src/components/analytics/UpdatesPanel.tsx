@@ -147,7 +147,7 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
       : customersData;
 
     console.log(`[UpdatesPanel] New customers found: ${filteredCustomers.length} (total: ${allCustomersData?.length || 0})`);
-    
+
     const newCustomers: ActivityItem[] = filteredCustomers.map((customer: any) => ({
       id: customer.id,
       type: 'customer' as const,
@@ -565,8 +565,8 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
     <>
       <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 min-h-[500px] flex flex-col">
         <CardHeader className="border-b border-border/50 pb-4 flex-shrink-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
                 <Calendar className="h-5 w-5 text-primary-foreground" />
               </div>
@@ -585,8 +585,8 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
-          </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
 
         <CardContent className="p-4 flex-1 flex flex-col gap-4">
           <Tabs value={period} onValueChange={(v) => setPeriod(v as 'weekly' | 'monthly')} className="flex-1 flex flex-col">
@@ -599,15 +599,15 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
                 <Calendar className="h-3.5 w-3.5 mr-1.5" />
                 Monthly
               </TabsTrigger>
-            </TabsList>
+          </TabsList>
 
             <TabsContent value={period} className="mt-4 flex-1">
-              {loading ? (
+            {loading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">Loading activity data...</p>
-                </div>
-              ) : currentData ? (
+              </div>
+            ) : currentData ? (
                 <div className="flex flex-col h-full gap-4">
                   {/* Mini Stats Row */}
                   <div className="grid grid-cols-5 gap-2">
@@ -636,84 +636,84 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
                   {/* Activity Sections */}
                   <ScrollArea className="flex-1">
                     <div className="space-y-2 pr-2">
-                      <ActivitySection 
+                  <ActivitySection
                         id="lifecycle"
                         title="Stage Changes" 
-                        items={currentData.lifecycleChanges} 
+                    items={currentData.lifecycleChanges}
                         icon={TrendingUp}
                         color="bg-violet-500"
                         isExpanded={expandedSections.has('lifecycle')}
                         onToggle={() => toggleSection('lifecycle')}
-                      />
-                      <ActivitySection 
+                  />
+                  <ActivitySection
                         id="customers"
                         title="New Customers" 
-                        items={currentData.newCustomers} 
+                    items={currentData.newCustomers}
                         icon={Users}
                         color="bg-emerald-500"
                         isExpanded={expandedSections.has('customers')}
                         onToggle={() => toggleSection('customers')}
-                      />
-                      <ActivitySection 
+                  />
+                  <ActivitySection
                         id="contracts"
-                        title="New Contracts" 
-                        items={currentData.newContracts} 
+                    title="New Contracts"
+                    items={currentData.newContracts}
                         icon={FileText}
                         color="bg-blue-500"
                         isExpanded={expandedSections.has('contracts')}
                         onToggle={() => toggleSection('contracts')}
-                      />
-                      <ActivitySection 
+                  />
+                  <ActivitySection
                         id="partnerships"
                         title="Partnerships" 
-                        items={currentData.newPartnerships} 
+                    items={currentData.newPartnerships}
                         icon={HandHeart}
                         color="bg-amber-500"
                         isExpanded={expandedSections.has('partnerships')}
                         onToggle={() => toggleSection('partnerships')}
-                      />
-                      <ActivitySection 
+                  />
+                  <ActivitySection
                         id="churns"
-                        title="Churns" 
-                        items={currentData.churns} 
+                    title="Churns"
+                    items={currentData.churns}
                         icon={AlertCircle}
                         color="bg-red-500"
                         isExpanded={expandedSections.has('churns')}
                         onToggle={() => toggleSection('churns')}
-                      />
-                    </div>
-                  </ScrollArea>
+                  />
                 </div>
-              ) : (
+              </ScrollArea>
+                </div>
+            ) : (
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  No data available
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                No data available
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
           {/* Download Button */}
-          <Button 
-            onClick={handleGenerateReport} 
+        <Button 
+          onClick={handleGenerateReport} 
             disabled={generating || loading}
             className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
-            size="sm"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          size="sm"
+        >
+          {generating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating Report...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
                 Download {period === 'weekly' ? 'Weekly' : 'Monthly'} Report
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
 
       {/* Full View Dialog */}
       <Dialog open={showFullView} onOpenChange={setShowFullView}>

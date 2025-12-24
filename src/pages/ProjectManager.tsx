@@ -152,7 +152,7 @@ export default function ProjectManager() {
 
     const customer = allCustomers.find(c => c.id === selectedCustomerId);
     if (!customer) return;
-    
+
     console.log('Adding customer to project:', customer);
     console.log('Project owner from customer:', customer.project_owner);
 

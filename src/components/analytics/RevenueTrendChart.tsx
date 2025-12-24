@@ -85,7 +85,7 @@ export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }:
       });
 
       console.log('[RevenueTrendChart] Last 3 months cumulative:', chartData);
-      
+
       setData(chartData);
       setTotalRevenue(cumulativeRevenue);
     } catch (error) {
@@ -99,10 +99,10 @@ export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }:
     fetchRevenueTrend();
   }, [isRefreshing, countries, dateFrom, dateTo]);
 
-  return (
+    return (
     <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 min-h-[500px] flex flex-col">
       <CardHeader className="border-b border-border/50 pb-4 bg-gradient-to-r from-primary/5 via-transparent to-primary/5">
-<div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
               <DollarSign className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -111,7 +111,7 @@ export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }:
               <p className="text-xs text-muted-foreground mt-0.5">Cumulative revenue trend</p>
             </div>
           </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent className="p-4 flex-1 flex flex-col gap-4">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
@@ -123,7 +123,7 @@ export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }:
             <TrendingUp className="h-12 w-12 mb-3 opacity-30 text-muted-foreground" />
             <p className="text-muted-foreground font-medium">No revenue data</p>
             <p className="text-sm text-muted-foreground">Add contracts to see revenue trends</p>
-          </div>
+            </div>
         ) : (
           <>
             {/* Total Revenue */}
@@ -143,38 +143,38 @@ export const RevenueTrendChart = ({ isRefreshing, countries, dateFrom, dateTo }:
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
-                  <XAxis 
-                    dataKey="month" 
-                    className="text-xs"
+            <XAxis 
+              dataKey="month" 
+              className="text-xs"
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => formatCurrency(value, false)}
-                    className="text-xs"
+            />
+            <YAxis 
+              tickFormatter={(value) => formatCurrency(value, false)}
+              className="text-xs"
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
-                  />
-                  <Tooltip
+            />
+            <Tooltip
                     formatter={(value: number) => [formatCurrency(value), 'Cumulative Revenue']}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
+              contentStyle={{
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                  />
+              }}
+            />
                   <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={3}
+              type="monotone" 
+              dataKey="revenue" 
+              stroke="hsl(var(--primary))" 
+              strokeWidth={3}
                     fill="url(#revenueGradient)"
-                  />
+            />
                 </AreaChart>
-              </ResponsiveContainer>
+        </ResponsiveContainer>
             </div>
           </>
         )}

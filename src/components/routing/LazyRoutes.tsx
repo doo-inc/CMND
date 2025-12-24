@@ -22,3 +22,5 @@ export const LazyNotFound = lazy(() => import('@/pages/NotFound'));
 export const LazyAcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 export const LazyAnalyticsDetail = lazy(() => import('@/pages/AnalyticsDetail'));
 export const LazyProjectManager = lazy(() => import('@/pages/ProjectManager'));
+export const LazyLegalDocuments = lazy(() => import('@/pages/LegalDocuments'));
+export const LazyProposalGenie = lazy(() => import('@/pages/ProposalGenie'));
