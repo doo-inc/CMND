@@ -228,6 +228,8 @@ export default function ProjectManager() {
         demo_date: addToTab === 'demo' ? new Date().toISOString().split('T')[0] : null,
       };
 
+      console.log('Inserting project:', newProject);
+      
       const { data, error } = await supabase
         .from('project_manager')
         .insert(newProject)
@@ -235,8 +237,8 @@ export default function ProjectManager() {
         .single();
 
       if (error) {
-        console.error('Error adding project:', error);
-        toast.error('Failed to add customer to projects');
+        console.error('Error adding project:', JSON.stringify(error, null, 2));
+        toast.error(`Failed to add customer: ${error.message || error.code || JSON.stringify(error)}`);
         return;
       }
 
@@ -266,9 +268,9 @@ export default function ProjectManager() {
       
       // Refresh the list
       loadProjects();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding project:', error);
-      toast.error('Failed to add customer to projects');
+      toast.error(`Failed to add customer: ${error?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
