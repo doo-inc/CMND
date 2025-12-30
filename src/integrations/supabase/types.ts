@@ -1017,6 +1017,62 @@ export type Database = {
         }
         Relationships: []
       }
+      project_manager: {
+        Row: {
+          checklist_items: Json | null
+          created_at: string | null
+          customer_id: string
+          customer_logo: string | null
+          customer_name: string
+          demo_date: string | null
+          id: string
+          notes: string | null
+          project_manager: string | null
+          service_description: string | null
+          service_type: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          checklist_items?: Json | null
+          created_at?: string | null
+          customer_id: string
+          customer_logo?: string | null
+          customer_name: string
+          demo_date?: string | null
+          id?: string
+          notes?: string | null
+          project_manager?: string | null
+          service_description?: string | null
+          service_type?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          checklist_items?: Json | null
+          created_at?: string | null
+          customer_id?: string
+          customer_logo?: string | null
+          customer_name?: string
+          demo_date?: string | null
+          id?: string
+          notes?: string | null
+          project_manager?: string | null
+          service_description?: string | null
+          service_type?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_manager_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           company: string

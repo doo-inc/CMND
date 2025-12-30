@@ -73,10 +73,11 @@ serve(async (req) => {
       }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error sending notification email:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -114,7 +115,7 @@ async function getEmailRecipients(notificationType: string): Promise<string[]> {
       return profiles?.map(p => p.email) || ["hello@doo.ooo"];
     }
     
-    const emails = settings?.map(setting => setting.profiles.email) || [];
+    const emails = settings?.map((setting: any) => setting.profiles?.email).filter(Boolean) || [];
     
     // If no users have settings, fallback to admins
     if (emails.length === 0) {

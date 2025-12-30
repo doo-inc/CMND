@@ -104,7 +104,7 @@ export default function ProjectManager() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('project_manager')
+        .from('project_manager' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -119,7 +119,7 @@ export default function ProjectManager() {
         return;
       }
 
-      const formattedProjects: ProjectCustomer[] = (data || []).map(p => ({
+      const formattedProjects: ProjectCustomer[] = ((data || []) as any[]).map((p: any) => ({
         id: p.id,
         customer_id: p.customer_id,
         customer_name: p.customer_name,
@@ -231,7 +231,7 @@ export default function ProjectManager() {
       console.log('Inserting project:', newProject);
       
       const { data, error } = await supabase
-        .from('project_manager')
+        .from('project_manager' as any)
         .insert(newProject)
         .select()
         .single();
@@ -248,19 +248,20 @@ export default function ProjectManager() {
     setActiveTab(addToTab);
       
       // Set the new project as selected
+      const responseData = data as any;
       const formattedProject: ProjectCustomer = {
-        id: data.id,
-        customer_id: data.customer_id,
-        customer_name: data.customer_name,
-        customer_logo: data.customer_logo || undefined,
-        service_type: data.service_type,
-        project_manager: data.project_manager || '',
-        service_description: data.service_description || '',
-        checklist_items: (data.checklist_items as ChecklistItem[]) || [],
-        notes: data.notes || '',
-        status: data.status as 'ongoing' | 'completed' | 'demo',
-        demo_date: data.demo_date || undefined,
-        created_at: data.created_at,
+        id: responseData.id,
+        customer_id: responseData.customer_id,
+        customer_name: responseData.customer_name,
+        customer_logo: responseData.customer_logo || undefined,
+        service_type: responseData.service_type,
+        project_manager: responseData.project_manager || '',
+        service_description: responseData.service_description || '',
+        checklist_items: (responseData.checklist_items as ChecklistItem[]) || [],
+        notes: responseData.notes || '',
+        status: responseData.status as 'ongoing' | 'completed' | 'demo',
+        demo_date: responseData.demo_date || undefined,
+        created_at: responseData.created_at,
       };
       
       setSelectedProject(formattedProject);
@@ -279,7 +280,7 @@ export default function ProjectManager() {
   const removeProject = async (projectId: string) => {
     try {
       const { error } = await supabase
-        .from('project_manager')
+        .from('project_manager' as any)
         .delete()
         .eq('id', projectId);
 
@@ -319,7 +320,7 @@ export default function ProjectManager() {
       if (updates.demo_date !== undefined) dbUpdates.demo_date = updates.demo_date || null;
 
       const { error } = await supabase
-        .from('project_manager')
+        .from('project_manager' as any)
         .update(dbUpdates)
         .eq('id', projectId);
 
