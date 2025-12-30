@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,8 @@ import {
   Calendar,
   ArrowRight,
   Sparkles,
-  Play
+  Play,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,11 +79,8 @@ interface Customer {
   logo?: string;
   service_type?: string | null;
   project_owner?: string | null;
-  [key: string]: any; // Allow additional properties from database
+  [key: string]: any;
 }
-
-// Local storage key for persisting project data
-const STORAGE_KEY = 'project_manager_data';
 
 export default function ProjectManager() {
   const [projects, setProjects] = useState<ProjectCustomer[]>([]);
@@ -101,31 +99,57 @@ export default function ProjectManager() {
   // For adding new checklist items
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
-  // Load projects from localStorage on mount
-  useEffect(() => {
-    loadProjects();
-    fetchAllCustomers();
-  }, []);
-
-  // Save projects to localStorage whenever they change
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    }
-  }, [projects, loading]);
-
-  const loadProjects = () => {
+  // Load projects from database (shared across all users)
+  const loadProjects = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setProjects(JSON.parse(stored));
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('project_manager')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading projects:', error);
+        // If table doesn't exist, show helpful message
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          toast.error('Project Manager table not found. Please run the database migration.');
+        } else {
+          toast.error(`Failed to load projects: ${error.message}`);
+        }
+        return;
+      }
+
+      const formattedProjects: ProjectCustomer[] = (data || []).map(p => ({
+        id: p.id,
+        customer_id: p.customer_id,
+        customer_name: p.customer_name,
+        customer_logo: p.customer_logo || undefined,
+        service_type: p.service_type,
+        project_manager: p.project_manager || '',
+        service_description: p.service_description || '',
+        checklist_items: (p.checklist_items as ChecklistItem[]) || [],
+        notes: p.notes || '',
+        status: p.status as 'ongoing' | 'completed' | 'demo',
+        demo_date: p.demo_date || undefined,
+        created_at: p.created_at,
+      }));
+
+      setProjects(formattedProjects);
+      
+      // Update selected project if it exists
+      if (selectedProject) {
+        const updated = formattedProjects.find(p => p.id === selectedProject.id);
+        if (updated) {
+          setSelectedProject(updated);
+        }
       }
     } catch (error) {
       console.error('Error loading projects:', error);
+      toast.error('Failed to load projects');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProject?.id]);
 
   const fetchAllCustomers = async () => {
     try {
@@ -144,7 +168,38 @@ export default function ProjectManager() {
     }
   };
 
-  const addCustomerToProject = () => {
+  // Initial load from database
+  useEffect(() => {
+    loadProjects();
+    fetchAllCustomers();
+  }, []);
+
+  // Real-time subscription for live updates across users
+  useEffect(() => {
+    const channel = supabase
+      .channel('project-manager-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_manager'
+        },
+        (payload) => {
+          console.log('🔄 Project Manager change detected:', payload.eventType);
+          loadProjects();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Project Manager realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadProjects]);
+
+  const addCustomerToProject = async () => {
     if (!selectedCustomerId) {
       toast.error('Please select a customer');
       return;
@@ -153,16 +208,15 @@ export default function ProjectManager() {
     const customer = allCustomers.find(c => c.id === selectedCustomerId);
     if (!customer) return;
 
-    console.log('Adding customer to project:', customer);
-    console.log('Project owner from customer:', customer.project_owner);
-
-    const newProject: ProjectCustomer = {
-      id: crypto.randomUUID(),
+    try {
+      setSaving(true);
+      
+      const newProject = {
       customer_id: customer.id,
       customer_name: customer.name,
-      customer_logo: customer.logo,
-      service_type: customer.service_type,
-      project_manager: customer.project_owner || '',
+        customer_logo: customer.logo || null,
+        service_type: customer.service_type || null,
+        project_manager: customer.project_owner || '',
       service_description: '',
       checklist_items: [
         { id: crypto.randomUUID(), label: 'Agent Creation', checked: false },
@@ -171,33 +225,110 @@ export default function ProjectManager() {
       ],
       notes: '',
       status: addToTab,
-      demo_date: addToTab === 'demo' ? new Date().toISOString().split('T')[0] : undefined,
-      created_at: new Date().toISOString(),
-    };
+        demo_date: addToTab === 'demo' ? new Date().toISOString().split('T')[0] : null,
+      };
 
-    setProjects([...projects, newProject]);
+      const { data, error } = await supabase
+        .from('project_manager')
+        .insert(newProject)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding project:', error);
+        toast.error('Failed to add customer to projects');
+        return;
+      }
+
     setSelectedCustomerId('');
     setCustomerSearch('');
     setIsAddDialogOpen(false);
     setActiveTab(addToTab);
-    setSelectedProject(newProject);
+      
+      // Set the new project as selected
+      const formattedProject: ProjectCustomer = {
+        id: data.id,
+        customer_id: data.customer_id,
+        customer_name: data.customer_name,
+        customer_logo: data.customer_logo || undefined,
+        service_type: data.service_type,
+        project_manager: data.project_manager || '',
+        service_description: data.service_description || '',
+        checklist_items: (data.checklist_items as ChecklistItem[]) || [],
+        notes: data.notes || '',
+        status: data.status as 'ongoing' | 'completed' | 'demo',
+        demo_date: data.demo_date || undefined,
+        created_at: data.created_at,
+      };
+      
+      setSelectedProject(formattedProject);
     toast.success(`${customer.name} added to ${addToTab === 'demo' ? 'Demos' : 'Ongoing'}`);
+      
+      // Refresh the list
+      loadProjects();
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast.error('Failed to add customer to projects');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const removeProject = (projectId: string) => {
-    setProjects(projects.filter(p => p.id !== projectId));
+  const removeProject = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_manager')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) {
+        console.error('Error removing project:', error);
+        toast.error('Failed to remove project');
+        return;
+      }
+
     if (selectedProject?.id === projectId) {
       setSelectedProject(null);
     }
     toast.success('Customer removed from projects');
+      loadProjects();
+    } catch (error) {
+      console.error('Error removing project:', error);
+      toast.error('Failed to remove project');
+    }
   };
 
-  const updateProject = (projectId: string, updates: Partial<ProjectCustomer>) => {
+  const updateProject = async (projectId: string, updates: Partial<ProjectCustomer>) => {
+    try {
+      // Optimistic update for UI responsiveness
     setProjects(projects.map(p => 
       p.id === projectId ? { ...p, ...updates } : p
     ));
     if (selectedProject?.id === projectId) {
       setSelectedProject({ ...selectedProject, ...updates });
+      }
+
+      const dbUpdates: any = {};
+      if (updates.project_manager !== undefined) dbUpdates.project_manager = updates.project_manager;
+      if (updates.service_description !== undefined) dbUpdates.service_description = updates.service_description;
+      if (updates.checklist_items !== undefined) dbUpdates.checklist_items = updates.checklist_items;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.demo_date !== undefined) dbUpdates.demo_date = updates.demo_date || null;
+
+      const { error } = await supabase
+        .from('project_manager')
+        .update(dbUpdates)
+        .eq('id', projectId);
+
+      if (error) {
+        console.error('Error updating project:', error);
+        // Revert on error
+        loadProjects();
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      loadProjects();
     }
   };
 
@@ -252,7 +383,6 @@ export default function ProjectManager() {
   const completedCount = projects.filter(p => p.status === 'completed').length;
   const demoCount = projects.filter(p => p.status === 'demo').length;
 
-  // All customers are available to add - allow adding same customer multiple times if needed
   const availableCustomers = allCustomers;
 
   if (loading) {
@@ -278,6 +408,10 @@ export default function ProjectManager() {
             {activeTab === 'completed' && 'Completed Projects'}
             {activeTab === 'demo' && 'Scheduled Demos'}
           </CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => loadProjects()} title="Refresh">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1">
@@ -301,7 +435,7 @@ export default function ProjectManager() {
                   <div className="border rounded-md max-h-48 overflow-y-auto">
                     {availableCustomers.length === 0 ? (
                       <div className="p-3 text-sm text-muted-foreground text-center">
-                        No customers found
+                          No customers found
                       </div>
                     ) : availableCustomers.filter(c => 
                       c.name.toLowerCase().includes(customerSearch.toLowerCase())
@@ -343,13 +477,14 @@ export default function ProjectManager() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={addCustomerToProject} className="w-full" disabled={!selectedCustomerId}>
+                  <Button onClick={addCustomerToProject} className="w-full" disabled={!selectedCustomerId || saving}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Customer
+                    {saving ? 'Adding...' : 'Add Customer'}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">

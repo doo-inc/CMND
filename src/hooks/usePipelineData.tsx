@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerData } from "@/types/customers";
 import { canonicalizeStageName, createStageNameMap } from "@/utils/stageNames";
@@ -21,12 +21,9 @@ export const usePipelineData = () => {
   const [pipelineData, setPipelineData] = useState<PipelineStageData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    fetchPipelineData();
-  }, []);
-
-  const fetchPipelineData = async () => {
+  const fetchPipelineData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -135,7 +132,61 @@ export const usePipelineData = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Debounced fetch for real-time updates
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      fetchPipelineData();
+    }, 1000); // Wait 1 second before refreshing
+  }, [fetchPipelineData]);
+
+  useEffect(() => {
+    fetchPipelineData();
+  }, [fetchPipelineData]);
+
+  // Real-time subscription for live updates across users
+  useEffect(() => {
+    const channel = supabase
+      .channel('pipeline-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'customers'
+        },
+        () => {
+          console.log('🔄 Pipeline: Customer change detected');
+          debouncedFetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lifecycle_stages'
+        },
+        () => {
+          console.log('🔄 Pipeline: Lifecycle stage change detected');
+          debouncedFetch();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Pipeline realtime subscription status:', status);
+      });
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [debouncedFetch]);
 
   return { pipelineData, isLoading, error, refetch: fetchPipelineData };
 };

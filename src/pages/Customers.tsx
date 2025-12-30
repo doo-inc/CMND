@@ -479,6 +479,44 @@ const Customers = () => {
       fetchCustomers();
   }, []);
 
+  // Real-time subscription for live updates across users
+  useEffect(() => {
+    const channel = supabase
+      .channel('customers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'customers'
+        },
+        (payload) => {
+          console.log('🔄 Customer change detected:', payload.eventType);
+          // Debounced refresh to avoid rapid updates
+          fetchCustomers(false);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lifecycle_stages'
+        },
+        (payload) => {
+          console.log('🔄 Lifecycle stage change detected:', payload.eventType);
+          fetchCustomers(false);
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Customers realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Only refresh when explicitly requested via location state
   useEffect(() => {
     if (location.state?.refresh) {

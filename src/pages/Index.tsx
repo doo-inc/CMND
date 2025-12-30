@@ -380,6 +380,15 @@ const Index = () => {
               </div>
               
               <div className="flex items-center gap-3 flex-wrap">
+                <DashboardFilters
+                  selectedCountries={selectedCountries}
+                  selectedSegments={selectedSegments}
+                  dateRange={dateRange}
+                  onCountryChange={setSelectedCountries}
+                  onSegmentChange={setSelectedSegments}
+                  onDateRangeChange={setDateRange}
+                  onClearFilters={handleClearFilters}
+                />
                 <Button 
                   onClick={refreshMetrics} 
                   disabled={isRefreshing}
@@ -407,19 +416,6 @@ const Index = () => {
               </div>
             </div>
           </div>
-
-          {/* Filters Section */}
-          <section className="mb-8">
-            <DashboardFilters
-              selectedCountries={selectedCountries}
-              selectedSegments={selectedSegments}
-              dateRange={dateRange}
-              onCountryChange={setSelectedCountries}
-              onSegmentChange={setSelectedSegments}
-              onDateRangeChange={setDateRange}
-              onClearFilters={handleClearFilters}
-            />
-          </section>
 
           {/* KPI Cards Section */}
           <section className="space-y-6">

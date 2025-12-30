@@ -128,6 +128,31 @@ const ContractsPage = () => {
   useEffect(() => {
     fetchContracts();
   }, []);
+
+  // Real-time subscription for live updates across users
+  useEffect(() => {
+    const channel = supabase
+      .channel('contracts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contracts'
+        },
+        (payload) => {
+          console.log('🔄 Contract change detected:', payload.eventType);
+          fetchContracts();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Contracts realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   
   const handleAddContract = async (newContract: Partial<ContractData>) => {
     try {
