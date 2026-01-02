@@ -1,7 +1,7 @@
 
 import React, { useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Bell, Kanban, GitBranch, HandHeart, Clock, FileText, ClipboardCheck, FolderOpen, Sparkles } from "lucide-react";
+import { Home, Users, Bell, Rocket, GitBranch, HandHeart, Clock, FileText, ClipboardCheck, FolderOpen, Sparkles } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 // Prefetch pages on hover for faster navigation
@@ -66,8 +66,8 @@ const mainNavItems = [
     path: "/project-manager"
   },
   {
-    title: "Tasks",
-    icon: Kanban,
+    title: "Missions",
+    icon: Rocket,
     path: "/tasks"
   }
 ];

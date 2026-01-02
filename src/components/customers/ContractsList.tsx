@@ -74,18 +74,31 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
         }
         
         if (data) {
-          const mappedContracts: Contract[] = data.map(contract => ({
-            id: contract.id,
-            name: contract.name,
-            value: contract.value,
-            setup_fee: contract.setup_fee || 0,
-            annual_rate: contract.annual_rate || 0,
-            payment_frequency: (contract.payment_frequency as Contract["payment_frequency"]) || "annual",
-            start_date: contract.start_date,
-            end_date: contract.end_date,
-            status: contract.status as Contract["status"],
-            terms: contract.terms || ""
-          }));
+          const mappedContracts: Contract[] = data.map(contract => {
+            // Format dates to YYYY-MM-DD for HTML date inputs
+            const formatDate = (dateString: string | null): string => {
+              if (!dateString) return '';
+              try {
+                const date = new Date(dateString);
+                return date.toISOString().split('T')[0];
+              } catch {
+                return dateString;
+              }
+            };
+            
+            return {
+              id: contract.id,
+              name: contract.name,
+              value: contract.value,
+              setup_fee: contract.setup_fee || 0,
+              annual_rate: contract.annual_rate || 0,
+              payment_frequency: (contract.payment_frequency as Contract["payment_frequency"]) || "annual",
+              start_date: formatDate(contract.start_date),
+              end_date: formatDate(contract.end_date),
+              status: contract.status as Contract["status"],
+              terms: contract.terms || ""
+            };
+          });
           console.log('ContractsList: Loaded contracts:', mappedContracts.length);
           setContracts(mappedContracts);
         }

@@ -91,7 +91,7 @@ export function PendingContracts({ isRefreshing, countries, dateFrom, dateTo }: 
   };
 
   return (
-    <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 min-h-[500px] flex flex-col">
+    <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 h-full flex flex-col">
       <CardHeader className="border-b border-border/50 pb-4 bg-gradient-to-r from-primary/5 via-transparent to-primary/5">
         <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ export function PendingContracts({ isRefreshing, countries, dateFrom, dateTo }: 
         </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-4 flex-1 flex flex-col gap-4">
+      <CardContent className="p-4 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

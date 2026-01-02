@@ -6,15 +6,12 @@ import { Button } from "@/components/ui/button";
 import { 
   FileText, 
   Filter, 
-  Plus, 
   Search, 
   Calendar,
   FileSignature,
   FileCheck,
   FileWarning,
-  MoreHorizontal,
   Download,
-  Edit,
   RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -26,7 +23,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -456,28 +453,23 @@ const ContractsPage = () => {
                             <TableCell>{contract.value}</TableCell>
                             <TableCell>
                               <div className="flex items-center space-x-1">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="glass-card">
-                                    <DropdownMenuItem>
-                                      <AddEditContract 
-                                        contract={contract}
-                                        isEditing={true}
-                                        onSave={(updatedContract) => handleUpdateContract(contract.id, updatedContract)}
-                                      />
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleDownloadContract(contract)}
-                                      disabled={!contract.documentUrl}
-                                    >
-                                      Download
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <div className="flex items-center space-x-1">
+                                  <AddEditContract 
+                                    contract={contract}
+                                    isEditing={true}
+                                    onSave={(updatedContract) => handleUpdateContract(contract.id!, updatedContract)}
+                                  />
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => handleDownloadContract(contract)}
+                                    disabled={!contract.documentUrl}
+                                    title="Download contract"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </TableCell>
                           </TableRow>

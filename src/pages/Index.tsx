@@ -446,15 +446,15 @@ const Index = () => {
                 Analytics Overview
               </h2>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-              <div className="lg:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="h-[420px]">
                 <UpdatesPanel 
                   countries={selectedCountries.length > 0 ? selectedCountries : undefined}
                   dateFrom={dateRange.from}
                   dateTo={dateRange.to}
                 />
               </div>
-              <div className="lg:col-span-1">
+              <div className="h-[420px]">
                 <RevenueTrendChart 
                   isRefreshing={isRefreshing}
                   countries={selectedCountries.length > 0 ? selectedCountries : undefined}
@@ -462,7 +462,7 @@ const Index = () => {
                   dateTo={dateRange.to}
                 />
               </div>
-              <div className="lg:col-span-1">
+              <div className="h-[420px]">
                 <PendingContracts 
                   isRefreshing={isRefreshing}
                   countries={selectedCountries.length > 0 ? selectedCountries : undefined}

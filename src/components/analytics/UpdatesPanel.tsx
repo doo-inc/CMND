@@ -563,7 +563,7 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
 
   return (
     <>
-      <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 min-h-[500px] flex flex-col">
+      <Card className="border-0 shadow-xl bg-gradient-to-br from-card via-card to-card/90 h-full flex flex-col">
         <CardHeader className="border-b border-border/50 pb-4 flex-shrink-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -588,8 +588,8 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
         </div>
       </CardHeader>
 
-        <CardContent className="p-4 flex-1 flex flex-col gap-4">
-          <Tabs value={period} onValueChange={(v) => setPeriod(v as 'weekly' | 'monthly')} className="flex-1 flex flex-col">
+        <CardContent className="p-4 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as 'weekly' | 'monthly')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="grid w-full grid-cols-2 flex-shrink-0 bg-muted/50">
               <TabsTrigger value="weekly" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Clock className="h-3.5 w-3.5 mr-1.5" />
@@ -601,14 +601,14 @@ export const UpdatesPanel = ({ countries, dateFrom, dateTo }: UpdatesPanelProps)
               </TabsTrigger>
           </TabsList>
 
-            <TabsContent value={period} className="mt-4 flex-1">
+            <TabsContent value={period} className="mt-4 flex-1 min-h-0 overflow-hidden">
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">Loading activity data...</p>
               </div>
             ) : currentData ? (
-                <div className="flex flex-col h-full gap-4">
+                <div className="flex flex-col h-full gap-4 min-h-0">
                   {/* Mini Stats Row */}
                   <div className="grid grid-cols-5 gap-2">
                     <div className="text-center p-2 rounded-lg bg-violet-500/10">

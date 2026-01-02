@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Plus, Upload } from "lucide-react";
+import { CalendarIcon, Edit, Plus, Upload } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,19 +50,43 @@ interface AddEditContractProps {
 
 export function AddEditContract({ contract, isEditing = false, onSave }: AddEditContractProps) {
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<ContractData>>({
+  
+  // Helper to format date for input fields
+  const formatDateForInput = (dateString: string | undefined): string => {
+    if (!dateString || dateString === "-") return "";
+    try {
+      // Handle ISO date strings
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toISOString().split('T')[0];
+    } catch {
+      return dateString;
+    }
+  };
+  
+  const getInitialFormData = (): Partial<ContractData> => ({
     customer: contract?.customer || "",
     contractNumber: contract?.contractNumber || "",
     customerId: contract?.customerId || "",
     status: contract?.status || "draft",
     type: contract?.type || "Service Agreement",
-    startDate: contract?.startDate || "",
-    endDate: contract?.endDate || "",
+    startDate: formatDateForInput(contract?.startDate),
+    endDate: formatDateForInput(contract?.endDate),
     value: contract?.value || "",
     setupFee: contract?.setupFee || "",
     annualRate: contract?.annualRate || "",
     paymentFrequency: contract?.paymentFrequency || "annual",
   });
+  
+  const [formData, setFormData] = useState<Partial<ContractData>>(getInitialFormData());
+
+  // Reset form data when dialog opens or contract changes
+  React.useEffect(() => {
+    if (open) {
+      console.log("AddEditContract - resetting form data for contract:", contract?.customer);
+      setFormData(getInitialFormData());
+    }
+  }, [open, contract]);
 
   // Debug logging to see what contract data we're getting
   console.log("AddEditContract - contract data:", contract);
@@ -100,9 +124,9 @@ export function AddEditContract({ contract, isEditing = false, onSave }: AddEdit
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEditing ? (
-          <div className="flex items-center w-full px-2 py-1 text-sm hover:bg-accent rounded cursor-pointer">
-            Edit Contract
-          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit contract">
+            <Edit className="h-4 w-4" />
+          </Button>
         ) : (
           <Button>
             <Plus className="h-4 w-4 mr-2" />
