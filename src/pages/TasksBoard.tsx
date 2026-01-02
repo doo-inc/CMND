@@ -138,14 +138,7 @@ const TasksBoard = () => {
           assigneeName = profile?.full_name || profile?.email || null;
         }
         
-        if (task.completed_by) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('id', task.completed_by)
-            .single();
-          completedByName = profile?.full_name || profile?.email || null;
-        }
+        // completed_by field not in schema - skip lookup
         
         return {
           ...task,
