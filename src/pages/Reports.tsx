@@ -128,28 +128,28 @@ const ReportsPage = () => {
               <StatCard
                 title="Avg. Time to Go-Live"
                 value="28 days"
-                change={{ value: 12, type: "decrease" }}
+                description="12% faster"
                 icon={<Calendar className="h-6 w-6" />}
               />
               
               <StatCard
                 title="Onboarding Success"
                 value="94%"
-                change={{ value: 3, type: "increase" }}
+                description="3% increase"
                 icon={<ArrowUp className="h-6 w-6" />}
               />
               
               <StatCard
                 title="Churn Rate"
                 value="1.2%"
-                change={{ value: 0.5, type: "decrease" }}
+                description="0.5% decrease"
                 icon={<ArrowDown className="h-6 w-6" />}
               />
               
               <StatCard
                 title="Avg. Contract Value"
                 value="$24,800"
-                change={{ value: 5, type: "increase" }}
+                description="5% increase"
                 icon={<FileText className="h-6 w-6" />}
               />
             </div>
