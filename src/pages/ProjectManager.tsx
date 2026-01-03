@@ -614,7 +614,13 @@ export default function ProjectManager() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-sm truncate">{project.customer_name}</h4>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <Badge 
+                          variant={customersWithContracts.has(project.customer_id) ? "default" : "destructive"} 
+                          className={`text-xs h-5 ${customersWithContracts.has(project.customer_id) ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                        >
+                          {customersWithContracts.has(project.customer_id) ? '✓ Contract' : 'No Contract'}
+                        </Badge>
                         <Badge variant={project.service_type ? 'secondary' : 'outline'} className="text-xs h-5">
                           {project.service_type 
                             ? project.service_type.charAt(0).toUpperCase() + project.service_type.slice(1)
