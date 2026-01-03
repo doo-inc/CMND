@@ -177,11 +177,19 @@ export default function ProjectManager() {
       // Fetch contracts to see which customers have them
       const { data: contracts, error: contractsError } = await supabase
         .from('contracts')
-        .select('customer_id');
+        .select('customer_id, customers(name)');
       
-      if (!contractsError && contracts) {
-        const customerIdsWithContracts = new Set(contracts.map(c => c.customer_id).filter(Boolean));
-        setCustomersWithContracts(customerIdsWithContracts as Set<string>);
+      if (contractsError) {
+        console.error('Error fetching contracts:', contractsError);
+      } else if (contracts) {
+        console.log('Contracts found:', contracts.length, contracts);
+        const customerIdsWithContracts = new Set(
+          contracts
+            .map(c => c.customer_id)
+            .filter((id): id is string => Boolean(id))
+        );
+        console.log('Customer IDs with contracts:', Array.from(customerIdsWithContracts));
+        setCustomersWithContracts(customerIdsWithContracts);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
