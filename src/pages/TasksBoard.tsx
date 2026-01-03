@@ -59,33 +59,8 @@ const COLUMN_COLORS = [
 ];
 
 const TasksBoard = () => {
-  // Load columns from localStorage or use defaults
-  const [columns, setColumns] = useState<Column[]>(() => {
-    const saved = localStorage.getItem('mo-mission-board-columns');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Ensure at least one column exists
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure there's a "done" / completed column
-          const hasCompletedColumn = parsed.some((col: Column) => col.isCompleted || col.id === 'done');
-          if (!hasCompletedColumn) {
-            // Add a done column at the end
-            parsed.push({ 
-              id: "done", 
-              name: "Done", 
-              color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300", 
-              isCompleted: true 
-            });
-          }
-          return parsed;
-        }
-      } catch {
-        // Fall through to defaults
-      }
-    }
-    return DEFAULT_COLUMNS;
-  });
+  const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
+  const [columnsLoaded, setColumnsLoaded] = useState(false);
 
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [isManagingColumns, setIsManagingColumns] = useState(false);
@@ -103,10 +78,87 @@ const TasksBoard = () => {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  // Save columns to localStorage whenever they change
+  // Fetch columns from database
+  const fetchColumns = async () => {
+    const { data, error } = await supabase
+      .from('board_columns')
+      .select('*')
+      .order('position', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching columns:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      const dbColumns: Column[] = data.map((col: any) => ({
+        id: col.id,
+        name: col.name,
+        color: getColorForColumn(col.id, col.is_completed),
+        isCompleted: col.is_completed
+      }));
+      setColumns(dbColumns);
+    }
+    setColumnsLoaded(true);
+  };
+
+  // Helper to get color class for a column
+  const getColorForColumn = (id: string, isCompleted: boolean): string => {
+    if (isCompleted || id === 'done') return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+    if (id === 'in-progress') return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+    if (id === 'review') return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
+    if (id === 'todo' || id === 'backlog') return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+    // Random color for custom columns
+    return COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)].class;
+  };
+
+  // Load columns on mount and subscribe to changes
   useEffect(() => {
-    localStorage.setItem('mo-mission-board-columns', JSON.stringify(columns));
-  }, [columns]);
+    fetchColumns();
+    
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('board_columns_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_columns' }, () => {
+        fetchColumns();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Save column to database
+  const saveColumnToDb = async (column: Column, position: number) => {
+    const { error } = await supabase
+      .from('board_columns')
+      .upsert({
+        id: column.id,
+        name: column.name,
+        is_completed: column.isCompleted || false,
+        position: position,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error saving column:', error);
+      throw error;
+    }
+  };
+
+  // Delete column from database
+  const deleteColumnFromDb = async (columnId: string) => {
+    const { error } = await supabase
+      .from('board_columns')
+      .delete()
+      .eq('id', columnId);
+    
+    if (error) {
+      console.error('Error deleting column:', error);
+      throw error;
+    }
+  };
 
   const { data: tasks = [], isLoading, refetch } = useQuery({
     queryKey: ['tasks'],
@@ -206,7 +258,7 @@ const TasksBoard = () => {
   });
 
   // Column management functions
-  const handleAddColumn = () => {
+  const handleAddColumn = async () => {
     if (!newColumnName.trim()) {
       toast.error("Please enter a column name");
       return;
@@ -227,13 +279,21 @@ const TasksBoard = () => {
       newColumns.push(newColumn);
     }
     
-    setColumns(newColumns);
-    setNewColumnName("");
-    setAddingColumn(false);
-    toast.success("Column added");
+    try {
+      // Save all columns with updated positions
+      for (let i = 0; i < newColumns.length; i++) {
+        await saveColumnToDb(newColumns[i], i);
+      }
+      setColumns(newColumns);
+      setNewColumnName("");
+      setAddingColumn(false);
+      toast.success("Column added");
+    } catch (error) {
+      toast.error("Failed to add column");
+    }
   };
 
-  const handleDeleteColumn = (columnId: string) => {
+  const handleDeleteColumn = async (columnId: string) => {
     const column = columns.find(c => c.id === columnId);
     if (column?.isCompleted) {
       toast.error("Cannot delete the Completed column");
@@ -247,31 +307,67 @@ const TasksBoard = () => {
       return;
     }
     
-    setColumns(prev => prev.filter(col => col.id !== columnId));
-    toast.success("Column deleted");
+    try {
+      await deleteColumnFromDb(columnId);
+      setColumns(prev => prev.filter(col => col.id !== columnId));
+      toast.success("Column deleted");
+    } catch (error) {
+      toast.error("Failed to delete column");
+    }
   };
 
-  const handleResetColumns = () => {
-    setColumns(DEFAULT_COLUMNS);
-    localStorage.removeItem('mo-mission-board-columns');
-    toast.success("Columns reset to defaults");
+  const handleResetColumns = async () => {
+    try {
+      // Delete all existing columns
+      const { error: deleteError } = await supabase
+        .from('board_columns')
+        .delete()
+        .neq('id', 'placeholder'); // Delete all
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert default columns
+      for (let i = 0; i < DEFAULT_COLUMNS.length; i++) {
+        await saveColumnToDb(DEFAULT_COLUMNS[i], i);
+      }
+      
+      setColumns(DEFAULT_COLUMNS);
+      toast.success("Columns reset to defaults");
+    } catch (error) {
+      toast.error("Failed to reset columns");
+    }
   };
 
-  const handleRenameColumn = (columnId: string, newName: string) => {
+  const handleRenameColumn = async (columnId: string, newName: string) => {
     if (!newName.trim()) return;
     
-    setColumns(prev => prev.map(col => 
+    const updatedColumns = columns.map(col => 
       col.id === columnId ? { ...col, name: newName.trim() } : col
-    ));
-    setEditingColumnId(null);
-    toast.success("Column renamed");
+    );
+    
+    try {
+      const column = updatedColumns.find(c => c.id === columnId);
+      if (column) {
+        const position = updatedColumns.findIndex(c => c.id === columnId);
+        await saveColumnToDb(column, position);
+      }
+      setColumns(updatedColumns);
+      setEditingColumnId(null);
+      toast.success("Column renamed");
+    } catch (error) {
+      toast.error("Failed to rename column");
+    }
   };
 
 
-  const handleChangeColumnColor = (columnId: string, color: string) => {
-    setColumns(prev => prev.map(col => 
+  const handleChangeColumnColor = async (columnId: string, color: string) => {
+    const updatedColumns = columns.map(col => 
       col.id === columnId ? { ...col, color } : col
-    ));
+    );
+    
+    // Note: We don't save color to database as it's derived from column type
+    // Color is visual only and consistent across users
+    setColumns(updatedColumns);
   };
 
   const handleCreateTask = async () => {
