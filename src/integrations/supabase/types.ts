@@ -311,6 +311,7 @@ export type Database = {
           country: string | null
           created_at: string
           currency: string | null
+          deal_owner: string | null
           description: string | null
           estimated_deal_value: number | null
           go_live_date: string | null
@@ -358,6 +359,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency?: string | null
+          deal_owner?: string | null
           description?: string | null
           estimated_deal_value?: number | null
           go_live_date?: string | null
@@ -405,6 +407,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency?: string | null
+          deal_owner?: string | null
           description?: string | null
           estimated_deal_value?: number | null
           go_live_date?: string | null
@@ -1284,6 +1287,7 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_invitations: { Args: never; Returns: undefined }
+      delete_user_account: { Args: { user_id: string }; Returns: undefined }
       generate_invitation_token: { Args: never; Returns: string }
       get_current_user_profile: {
         Args: never
