@@ -31,6 +31,7 @@ import { RevenueTrendChart } from "@/components/analytics/RevenueTrendChart";
 import { UpdatesPanel } from "@/components/analytics/UpdatesPanel";
 import { PendingContracts } from "@/components/analytics/PendingContracts";
 import { DashboardFilters } from "@/components/analytics/DashboardFilters";
+import { GoalTracker } from "@/components/dashboard/GoalTracker";
 import { buildFilteredUrl } from "@/utils/filterUtils";
 
 const Index = () => {
@@ -416,6 +417,17 @@ const Index = () => {
               </div>
             </div>
           </div>
+
+          {/* Team Goals Section */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full" />
+              <h2 className="text-2xl font-bold tracking-tight">
+                🎯 2026 Team Mission
+              </h2>
+            </div>
+            <GoalTracker revenueGoal={1000000} clientGoal={15} />
+          </section>
 
           {/* KPI Cards Section */}
           <section className="space-y-6">
