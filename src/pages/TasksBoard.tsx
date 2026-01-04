@@ -81,7 +81,7 @@ const TasksBoard = () => {
   // Fetch columns from database
   const fetchColumns = async () => {
     console.log('Fetching columns from database...');
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('board_columns')
       .select('*')
       .order('position', { ascending: true });
@@ -118,26 +118,9 @@ const TasksBoard = () => {
     return COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)].class;
   };
 
-  // Load columns on mount and subscribe to changes
-  useEffect(() => {
-    fetchColumns();
-    
-    // Subscribe to real-time changes
-    const channel = supabase
-      .channel('board_columns_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_columns' }, () => {
-        fetchColumns();
-      })
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   // Save column to database
   const saveColumnToDb = async (column: Column, position: number) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('board_columns')
       .upsert({
         id: column.id,
@@ -155,7 +138,7 @@ const TasksBoard = () => {
 
   // Delete column from database
   const deleteColumnFromDb = async (columnId: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('board_columns')
       .delete()
       .eq('id', columnId);
@@ -166,6 +149,7 @@ const TasksBoard = () => {
     }
   };
 
+  // Tasks query - must be before useEffect that uses refetch
   const { data: tasks = [], isLoading, refetch } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
@@ -182,29 +166,34 @@ const TasksBoard = () => {
         return [];
       }
       
-      // Fetch assignee names and completed_by names from profiles
-      const tasksWithAssignees = await Promise.all(data.map(async (task) => {
-        let assigneeName = null;
-        let completedByName = null;
+      // Batch fetch all assignee profiles in ONE query (fixes N+1)
+      const assigneeIds = [...new Set(data.filter(t => t.assigned_to).map(t => t.assigned_to))];
+      let profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+      
+      if (assigneeIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', assigneeIds);
         
-        if (task.assigned_to) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('id', task.assigned_to)
-            .single();
-          assigneeName = profile?.full_name || profile?.email || null;
+        if (profiles) {
+          profilesMap = profiles.reduce((acc, p) => {
+            acc[p.id] = { full_name: p.full_name, email: p.email };
+            return acc;
+          }, {} as Record<string, { full_name: string | null; email: string }>);
         }
-        
-        // completed_by field not in schema - skip lookup
-        
+      }
+      
+      // Map tasks with cached profile data (no additional queries)
+      const tasksWithAssignees = data.map((task) => {
+        const profile = task.assigned_to ? profilesMap[task.assigned_to] : null;
         return {
           ...task,
           customer_name: task.customers?.name || null,
-          assigned_to_name: assigneeName,
-          completed_by_name: completedByName
+          assigned_to_name: profile?.full_name || profile?.email || null,
+          completed_by_name: null
         };
-      }));
+      });
       
       return tasksWithAssignees as Task[];
     }
@@ -262,6 +251,33 @@ const TasksBoard = () => {
       return [];
     }
   });
+
+  // Load columns on mount and subscribe to changes
+  useEffect(() => {
+    fetchColumns();
+    
+    // Subscribe to real-time changes for columns
+    const columnsChannel = supabase
+      .channel('board_columns_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_columns' }, () => {
+        fetchColumns();
+      })
+      .subscribe();
+    
+    // Subscribe to real-time changes for tasks
+    const tasksChannel = supabase
+      .channel('tasks_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        console.log('Tasks changed - refetching...');
+        refetch();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(columnsChannel);
+      supabase.removeChannel(tasksChannel);
+    };
+  }, [refetch]);
 
   // Column management functions
   const handleAddColumn = async () => {
@@ -325,7 +341,7 @@ const TasksBoard = () => {
   const handleResetColumns = async () => {
     try {
       // Delete all existing columns
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from('board_columns')
         .delete()
         .neq('id', 'placeholder'); // Delete all

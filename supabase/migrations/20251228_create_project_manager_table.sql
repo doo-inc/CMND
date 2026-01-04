@@ -1,4 +1,4 @@
--- Create project_manager table to store project data for all users
+ -- Create project_manager table to store project data for all users
 CREATE TABLE IF NOT EXISTS project_manager (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
