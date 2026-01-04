@@ -1055,6 +1055,7 @@ export type Database = {
           customer_logo: string | null
           customer_name: string
           demo_date: string | null
+          demo_delivered: boolean | null
           id: string
           notes: string | null
           project_manager: string | null
@@ -1070,6 +1071,7 @@ export type Database = {
           customer_logo?: string | null
           customer_name: string
           demo_date?: string | null
+          demo_delivered?: boolean | null
           id?: string
           notes?: string | null
           project_manager?: string | null
@@ -1085,6 +1087,7 @@ export type Database = {
           customer_logo?: string | null
           customer_name?: string
           demo_date?: string | null
+          demo_delivered?: boolean | null
           id?: string
           notes?: string | null
           project_manager?: string | null
