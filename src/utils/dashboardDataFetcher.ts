@@ -72,18 +72,44 @@ export async function fetchDashboardMetrics(filterParams?: FilterParams): Promis
   const contracts = contractsResult.data || [];
   const stages = stagesResult.data || [];
 
+  // Helper: case-insensitive stage check
+  const isLiveStage = (stage?: string | null) => 
+    stage?.toLowerCase() === 'live';
+  const isLostStage = (stage?: string | null) => 
+    stage?.toLowerCase() === 'lost';
+
   // Calculate all metrics from cached data
-  const nonChurnedCustomers = customers.filter(c => c.status !== 'churned');
-  const totalCustomers = nonChurnedCustomers.length;
+  // Exclude churned AND lost customers from total
+  const activeCustomers = customers.filter(c => 
+    c.status !== 'churned' && !isLostStage(c.stage)
+  );
+  const totalCustomers = activeCustomers.length;
 
-  // Live customers = stage is 'Live' OR status is 'done'
-  const liveCustomerCount = nonChurnedCustomers.filter(c => 
-    c.stage === 'Live' || c.status === 'done'
-  ).length;
+  // Contracts metrics - include active, pending, or null status; exclude churned customers
+  const validContracts = contracts.filter(c => {
+    const contractStatus = c.status?.toLowerCase();
+    const customerStatus = c.customers?.status;
+    return (contractStatus === 'active' || contractStatus === 'pending' || c.status === null) &&
+           customerStatus !== 'churned';
+  });
+  const totalContracts = validContracts.length;
 
-  // Pipeline customers (not churned, not done)
+  // Active contracts only (status = 'active')
+  const activeContracts = contracts.filter(c => {
+    const contractStatus = c.status?.toLowerCase();
+    const customerStatus = c.customers?.status;
+    return contractStatus === 'active' && customerStatus !== 'churned';
+  });
+
+  // Live customers = customers with ACTIVE contracts only
+  const liveCustomerIds = new Set(activeContracts.map(c => c.customer_id).filter(Boolean));
+  const liveCustomerCount = liveCustomerIds.size;
+
+  // Pipeline customers: NOT churned, NOT in live customers set, NOT Lost
   const pipelineCustomers = customers.filter(c => 
-    c.status !== 'churned' && c.status !== 'done'
+    c.status !== 'churned' && 
+    !liveCustomerIds.has(c.id) &&
+    !isLostStage(c.stage)
   );
   const pipelineValue = pipelineCustomers.reduce((sum, c) => 
     sum + (c.estimated_deal_value || c.contract_size || 0), 0
@@ -91,15 +117,8 @@ export async function fetchDashboardMetrics(filterParams?: FilterParams): Promis
   const pipelineCount = pipelineCustomers.length;
   const averageDealSize = pipelineCount > 0 ? Math.round(pipelineValue / pipelineCount) : 0;
 
-  // Conversion rate
+  // Conversion rate: live customers / total customers
   const conversionRate = totalCustomers > 0 ? (liveCustomerCount / totalCustomers) * 100 : 0;
-
-  // Contracts metrics
-  const validContracts = contracts.filter(c => 
-    (c.status === 'active' || c.status === 'pending' || c.status === null) &&
-    c.customers?.status !== 'churned'
-  );
-  const totalContracts = validContracts.length;
 
   // Total Revenue (setup_fee + annual_rate or value)
   const totalRevenue = validContracts.reduce((sum, c) => {
@@ -128,14 +147,15 @@ export async function fetchDashboardMetrics(filterParams?: FilterParams): Promis
   const uniqueAtRiskCustomers = new Set(atRiskContracts.map(c => c.customer_id));
   const customersAtRisk = uniqueAtRiskCustomers.size;
 
-  // Churn rate
+  // Churn rate - churned in period / (active + churned in period)
   const churnedInPeriod = customers.filter(c => 
     c.status === 'churned' && 
     c.churn_date && 
     new Date(c.churn_date) >= sixMonthsAgo
   ).length;
-  const churnRate = totalCustomers > 0 
-    ? `${((churnedInPeriod / (totalCustomers + churnedInPeriod)) * 100).toFixed(1)}%`
+  const baseForChurn = totalCustomers + churnedInPeriod;
+  const churnRate = baseForChurn > 0 
+    ? `${((churnedInPeriod / baseForChurn) * 100).toFixed(1)}%`
     : "0.0%";
 
   // Pitch to Pay & Pay to Live timing

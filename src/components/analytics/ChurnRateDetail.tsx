@@ -9,7 +9,8 @@ import { format } from "date-fns";
 interface ChurnedCustomer {
   id: string;
   name: string;
-  churn_date: string;
+  churn_date: string | null;
+  updated_at?: string;
 }
 
 interface ChurnRateDetailProps {
@@ -19,7 +20,8 @@ interface ChurnRateDetailProps {
 }
 
 export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetailProps) => {
-  const [customers, setCustomers] = useState<ChurnedCustomer[]>([]);
+  const [allChurnedCustomers, setAllChurnedCustomers] = useState<ChurnedCustomer[]>([]);
+  const [recentChurnedCustomers, setRecentChurnedCustomers] = useState<ChurnedCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [churnRate, setChurnRate] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
@@ -32,40 +34,46 @@ export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetail
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
         let allCustomersQuery = supabase.from('customers').select('*, country, created_at');
-        let churnedQuery = supabase
+        
+        // Query for ALL churned customers (not just last 30 days)
+        let allChurnedQuery = supabase
           .from('customers')
-          .select('id, name, churn_date, country, created_at')
-          .eq('status', 'churned')
-          .not('churn_date', 'is', null)
-          .gte('churn_date', thirtyDaysAgo.toISOString());
+          .select('id, name, churn_date, updated_at, country, created_at')
+          .eq('status', 'churned');
         
         if (countries && countries.length > 0) {
           allCustomersQuery = allCustomersQuery.in('country', countries);
-          churnedQuery = churnedQuery.in('country', countries);
+          allChurnedQuery = allChurnedQuery.in('country', countries);
         }
         
         if (dateFrom) {
           allCustomersQuery = allCustomersQuery.gte('created_at', dateFrom.toISOString());
-          churnedQuery = churnedQuery.gte('created_at', dateFrom.toISOString());
+          allChurnedQuery = allChurnedQuery.gte('created_at', dateFrom.toISOString());
         }
         
         if (dateTo) {
           allCustomersQuery = allCustomersQuery.lte('created_at', dateTo.toISOString());
-          churnedQuery = churnedQuery.lte('created_at', dateTo.toISOString());
+          allChurnedQuery = allChurnedQuery.lte('created_at', dateTo.toISOString());
         }
 
         const { data: allCustomers, error: allError } = await allCustomersQuery;
         if (allError) throw allError;
 
-        const { data: churnedCustomers, error: churnError } = await churnedQuery.order('churn_date', { ascending: false });
+        const { data: churnedCustomers, error: churnError } = await allChurnedQuery.order('churn_date', { ascending: false, nullsFirst: false });
 
         if (churnError) throw churnError;
 
-        const total = allCustomers?.length || 0;
-        const churned = churnedCustomers?.length || 0;
-        const rate = total > 0 ? (churned / total) * 100 : 0;
+        // Calculate 30-day churn rate
+        const recentChurned = (churnedCustomers || []).filter(c => 
+          c.churn_date && new Date(c.churn_date) >= thirtyDaysAgo
+        );
 
-        setCustomers(churnedCustomers || []);
+        const total = allCustomers?.length || 0;
+        const recentChurnedCount = recentChurned.length;
+        const rate = total > 0 ? (recentChurnedCount / total) * 100 : 0;
+
+        setAllChurnedCustomers(churnedCustomers || []);
+        setRecentChurnedCustomers(recentChurned);
         setChurnRate(rate);
         setTotalCustomers(total);
       } catch (error) {
@@ -89,7 +97,17 @@ export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetail
     );
   }
 
-  if (customers.length === 0) {
+  const formatChurnDate = (customer: ChurnedCustomer) => {
+    if (customer.churn_date) {
+      return format(new Date(customer.churn_date), 'MMM dd, yyyy');
+    }
+    if (customer.updated_at) {
+      return `~${format(new Date(customer.updated_at), 'MMM dd, yyyy')}`;
+    }
+    return 'Unknown date';
+  };
+
+  if (allChurnedCustomers.length === 0) {
     return (
       <div className="space-y-6">
         <Card>
@@ -100,7 +118,7 @@ export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetail
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">No customers churned in the last 30 days</p>
+            <p className="text-muted-foreground">No customers churned</p>
           </CardContent>
         </Card>
         <Card>
@@ -122,13 +140,18 @@ export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetail
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{customers.length} churned / {totalCustomers} total customers</p>
+          <p className="text-muted-foreground">
+            {recentChurnedCustomers.length} churned in last 30 days / {totalCustomers} total customers
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Total churned customers: {allChurnedCustomers.length}
+          </p>
         </CardContent>
       </Card>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground">Churned Customers (Last 30 Days)</h3>
-        {customers.map(customer => (
+        <h3 className="text-sm font-medium text-muted-foreground">All Churned Customers ({allChurnedCustomers.length})</h3>
+        {allChurnedCustomers.map(customer => (
           <Card 
             key={customer.id}
             className="cursor-pointer hover:bg-accent transition-colors"
@@ -139,7 +162,7 @@ export const ChurnRateDetail = ({ countries, dateFrom, dateTo }: ChurnRateDetail
                 <p className="font-medium flex-1">{customer.name}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-muted-foreground">
-                    {format(new Date(customer.churn_date), 'MMM dd, yyyy')}
+                    {formatChurnDate(customer)}
                   </p>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </div>
