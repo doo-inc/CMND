@@ -53,6 +53,33 @@ export type Database = {
         }
         Relationships: []
       }
+      board_columns: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_completed: boolean | null
+          name: string
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          is_completed?: boolean | null
+          name: string
+          position: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          name?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           annual_rate: number | null
