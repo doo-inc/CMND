@@ -332,7 +332,7 @@ export default function ProjectManager() {
     try {
       setLoadingMessages(true);
       const { data, error } = await supabase
-        .from('project_messages' as any)
+        .from('project_messages')
         .select('*')
         .eq('project_id', projectId)
         .order('created_at', { ascending: true });
@@ -346,7 +346,7 @@ export default function ProjectManager() {
         return;
       }
 
-      setMessages((data || []) as ProjectMessage[]);
+      setMessages((data as unknown as ProjectMessage[]) || []);
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {

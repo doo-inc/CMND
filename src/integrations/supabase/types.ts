@@ -1054,11 +1054,14 @@ export type Database = {
           customer_id: string
           customer_logo: string | null
           customer_name: string
+          deadline: string | null
           demo_date: string | null
           demo_delivered: boolean | null
           id: string
           notes: string | null
+          priority: string | null
           project_manager: string | null
+          secondary_project_manager: string | null
           service_description: string | null
           service_type: string | null
           status: string
@@ -1070,11 +1073,14 @@ export type Database = {
           customer_id: string
           customer_logo?: string | null
           customer_name: string
+          deadline?: string | null
           demo_date?: string | null
           demo_delivered?: boolean | null
           id?: string
           notes?: string | null
+          priority?: string | null
           project_manager?: string | null
+          secondary_project_manager?: string | null
           service_description?: string | null
           service_type?: string | null
           status?: string
@@ -1086,11 +1092,14 @@ export type Database = {
           customer_id?: string
           customer_logo?: string | null
           customer_name?: string
+          deadline?: string | null
           demo_date?: string | null
           demo_delivered?: boolean | null
           id?: string
           notes?: string | null
+          priority?: string | null
           project_manager?: string | null
+          secondary_project_manager?: string | null
           service_description?: string | null
           service_type?: string | null
           status?: string
@@ -1102,6 +1111,44 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          project_id: string
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          project_id: string
+          user_avatar?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          project_id?: string
+          user_avatar?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_manager"
             referencedColumns: ["id"]
           },
         ]
