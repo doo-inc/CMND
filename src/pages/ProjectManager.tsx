@@ -30,7 +30,8 @@ import {
   ChevronDown,
   ChevronRight,
   Send,
-  MessageCircle
+  MessageCircle,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -166,6 +167,10 @@ export default function ProjectManager() {
   // For filtering by assignee
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
   
+  // For search functionality
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+  
   // Users list for assignee dropdown
   const [users, setUsers] = useState<{ id: string; full_name: string }[]>([]);
   
@@ -181,6 +186,9 @@ export default function ProjectManager() {
   
   // Track if secondary project manager field is visible
   const [showSecondaryManager, setShowSecondaryManager] = useState(false);
+  
+  // Debounce timer for search
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Reset secondary manager visibility when project changes
   useEffect(() => {
@@ -440,6 +448,22 @@ export default function ProjectManager() {
       supabase.removeChannel(channel);
     };
   }, [selectedProject?.id]);
+
+  // Debounce search query
+  useEffect(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 200);
+
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Real-time subscription for live updates across users
   // Handles changes surgically without full page refresh
@@ -884,7 +908,12 @@ export default function ProjectManager() {
   const filteredProjects = projects.filter(p => {
     const matchesStatus = p.status === activeTab;
     const matchesAssignee = selectedAssignee === 'all' || p.project_manager === selectedAssignee;
-    return matchesStatus && matchesAssignee;
+    
+    // Search filtering (case-insensitive)
+    const matchesSearch = debouncedSearchQuery.trim() === '' || 
+      p.customer_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase().trim());
+    
+    return matchesStatus && matchesAssignee && matchesSearch;
   });
   
   // Group projects by priority
@@ -1026,8 +1055,14 @@ export default function ProjectManager() {
             {filteredProjects.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <ClipboardCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No {activeTab} projects yet</p>
-                <p className="text-xs mt-1">Click "Add" to get started</p>
+                {debouncedSearchQuery.trim() ? (
+                  <p className="text-sm">No projects found</p>
+                ) : (
+                  <>
+                    <p className="text-sm">No {activeTab} projects yet</p>
+                    <p className="text-xs mt-1">Click "Add" to get started</p>
+                  </>
+                )}
               </div>
             ) : (
               <>
@@ -1727,39 +1762,65 @@ export default function ProjectManager() {
           setActiveTab(v as 'ongoing' | 'completed' | 'demo');
           setSelectedProject(null);
         }}>
-          <div className="flex items-center justify-between mb-6 gap-4">
-            <TabsList>
-              <TabsTrigger value="ongoing" className="gap-2">
-                <ClipboardCheck className="h-4 w-4" />
-                Ongoing
-                <Badge variant="secondary" className="ml-1">{ongoingCount}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="demo" className="gap-2">
-                <Play className="h-4 w-4" />
-                Demos
-                <Badge variant="secondary" className="ml-1">{demoCount}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="completed" className="gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Completed
-                <Badge variant="secondary" className="ml-1">{completedCount}</Badge>
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-4 flex-wrap w-full sm:w-auto">
+              <TabsList>
+                <TabsTrigger value="ongoing" className="gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Ongoing
+                  <Badge variant="secondary" className="ml-1">{ongoingCount}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="demo" className="gap-2">
+                  <Play className="h-4 w-4" />
+                  Demos
+                  <Badge variant="secondary" className="ml-1">{demoCount}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Completed
+                  <Badge variant="secondary" className="ml-1">{completedCount}</Badge>
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
-            {/* Assignee Filter */}
-            <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by assignee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Assignees</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.full_name}>
-                    {user.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Filters Row */}
+            <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+              {/* Search Input */}
+              <div className="relative flex-1 sm:flex-initial sm:w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10 h-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 hover:bg-transparent"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+              
+              {/* Assignee Filter */}
+              <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                <SelectTrigger className="w-full sm:w-[180px] h-10">
+                  <SelectValue placeholder="Filter by assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assignees</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.full_name}>
+                      {user.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <TabsContent value="ongoing" className="mt-0">

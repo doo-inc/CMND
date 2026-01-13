@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const HUBSPOT_API_KEY = Deno.env.get("HUBSPOT_API_KEY") || "";
 const HUBSPOT_API_URL = "https://api.hubapi.com";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 // CORS headers
 const corsHeaders = {
@@ -18,6 +21,56 @@ serve(async (req) => {
   }
 
   try {
+    // ============ AUTHENTICATION & AUTHORIZATION ============
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("HubSpot sync: No authorization header provided");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify the user's JWT token
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("HubSpot sync: Invalid token or user not found", authError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user has admin role
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("HubSpot sync: Could not fetch user profile", profileError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: Could not verify user role" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (profile.role !== "admin") {
+      console.error(`HubSpot sync: Access denied for user ${user.id} with role ${profile.role}`);
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden: Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`HubSpot sync: Authorized admin user ${user.id}`);
+    // ============ END AUTHENTICATION ============
+
     // Check for API key
     if (!HUBSPOT_API_KEY) {
       throw new Error("HUBSPOT_API_KEY environment variable not set");
