@@ -33,13 +33,59 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client with service role key
+    // ============ AUTHENTICATION ============
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
+
+    // Verify the calling user's JWT token
+    const { data: { user: callingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !callingUser) {
+      console.error("create-user-account: Invalid token or user not found", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if calling user has admin role
+    const { data: callerProfile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", callingUser.id)
+      .single();
+
+    if (profileError || !callerProfile) {
+      console.error("create-user-account: Could not fetch caller profile", profileError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Could not verify user role" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (callerProfile.role !== "admin") {
+      console.error(`create-user-account: Access denied for user ${callingUser.id} with role ${callerProfile.role}`);
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`create-user-account: Authorized admin user ${callingUser.id}`);
+    // ============ END AUTHENTICATION ============
 
     const { email, password, full_name, role }: CreateUserRequest = await req.json();
 
@@ -91,7 +137,7 @@ serve(async (req) => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Update profile with role (trigger creates basic profile, we just update the role)
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileUpdateError } = await supabaseAdmin
       .from("profiles")
       .update({
         full_name,
@@ -99,8 +145,8 @@ serve(async (req) => {
       })
       .eq('id', userData.user.id);
 
-    if (profileError) {
-      console.error("Error updating profile:", profileError);
+    if (profileUpdateError) {
+      console.error("Error updating profile:", profileUpdateError);
       // Try upsert as fallback
       const { error: upsertError } = await supabaseAdmin
         .from("profiles")
@@ -122,7 +168,8 @@ serve(async (req) => {
         action: "user_created",
         entity_type: "user",
         entity_id: userData.user.id,
-        details: { email, full_name, role: role || 'user' },
+        user_id: callingUser.id,
+        details: { email, full_name, role: role || 'user', created_by: callingUser.id },
       });
     } catch (logError) {
       console.error("Error logging activity:", logError);
@@ -151,4 +198,3 @@ serve(async (req) => {
     );
   }
 });
-

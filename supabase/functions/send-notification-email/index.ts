@@ -1,6 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -28,13 +28,54 @@ serve(async (req) => {
   }
 
   try {
+    // ============ AUTHENTICATION ============
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Verify the user's JWT token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("send-notification-email: Invalid token or user not found", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`send-notification-email: Authenticated user ${user.id}`);
+    // ============ END AUTHENTICATION ============
+
     console.log("Processing email notification request");
     
     const { notification }: EmailRequest = await req.json();
     console.log("Notification data:", notification);
 
     // Get users who want email notifications for this type
-    const emailRecipients = await getEmailRecipients(notification.type);
+    const emailRecipients = await getEmailRecipients(notification.type, supabaseAdmin);
     console.log("Email recipients:", emailRecipients);
 
     if (emailRecipients.length === 0) {
@@ -86,15 +127,8 @@ serve(async (req) => {
   }
 });
 
-async function getEmailRecipients(notificationType: string): Promise<string[]> {
+async function getEmailRecipients(notificationType: string, supabase: ReturnType<typeof createClient>): Promise<string[]> {
   try {
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
     // Get users who have email notifications enabled for this type
     const { data: settings, error } = await supabase
       .from('user_notification_settings')
@@ -112,10 +146,10 @@ async function getEmailRecipients(notificationType: string): Promise<string[]> {
         .from('profiles')
         .select('email')
         .eq('role', 'admin');
-      return profiles?.map(p => p.email) || ["hello@doo.ooo"];
+      return profiles?.map((p: { email: string }) => p.email) || ["hello@doo.ooo"];
     }
     
-    const emails = settings?.map((setting: any) => setting.profiles?.email).filter(Boolean) || [];
+    const emails = settings?.map((setting: { profiles?: { email: string } }) => setting.profiles?.email).filter(Boolean) || [];
     
     // If no users have settings, fallback to admins
     if (emails.length === 0) {
@@ -123,10 +157,10 @@ async function getEmailRecipients(notificationType: string): Promise<string[]> {
         .from('profiles')
         .select('email')
         .eq('role', 'admin');
-      return profiles?.map(p => p.email) || ["hello@doo.ooo"];
+      return profiles?.map((p: { email: string }) => p.email) || ["hello@doo.ooo"];
     }
     
-    return emails;
+    return emails as string[];
   } catch (error) {
     console.error("Error in getEmailRecipients:", error);
     return ["hello@doo.ooo"]; // Fallback email

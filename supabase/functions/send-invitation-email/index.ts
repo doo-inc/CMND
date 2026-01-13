@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 console.log("send-invitation-email: Starting...");
 
@@ -28,6 +29,70 @@ serve(async (req) => {
   }
 
   try {
+    // ============ AUTHENTICATION ============
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Verify the user's JWT token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("send-invitation-email: Invalid token or user not found", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user has admin role (only admins can send invitations)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("send-invitation-email: Could not fetch user profile", profileError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Could not verify user role" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (profile.role !== "admin") {
+      console.error(`send-invitation-email: Access denied for user ${user.id} with role ${profile.role}`);
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`send-invitation-email: Authorized admin user ${user.id}`);
+    // ============ END AUTHENTICATION ============
+
     const body = await req.json();
     const { invitation }: EmailRequest = body;
     
@@ -110,14 +175,15 @@ serve(async (req) => {
         }
       );
 
-    } catch (emailError: any) {
+    } catch (emailError: unknown) {
       console.error("Email sending error:", emailError);
+      const errorMessage = emailError instanceof Error ? emailError.message : "Unknown error";
       return new Response(
         JSON.stringify({ 
           success: true,
           warning: "Email failed",
           message: "Invitation created but email failed to send. Share link manually.",
-          details: emailError.message
+          details: errorMessage
         }),
         { 
           status: 200, 
@@ -126,12 +192,12 @@ serve(async (req) => {
       );
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Function error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        stack: error.stack
+        error: errorMessage
       }),
       { 
         status: 500, 

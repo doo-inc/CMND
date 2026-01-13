@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -23,13 +22,42 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase environment variables");
     }
+
+    // ============ AUTHENTICATION ============
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Verify the user's JWT token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (authError || !user) {
+      console.error("create-notification: Invalid token or user not found", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`create-notification: Authenticated user ${user.id}`);
+    // ============ END AUTHENTICATION ============
     
     const { notification } = await req.json();
     
@@ -38,7 +66,7 @@ serve(async (req) => {
     }
     
     // Insert notification
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('notifications')
       .insert({
         type: notification.type,
@@ -46,7 +74,8 @@ serve(async (req) => {
         message: notification.message,
         is_read: false,
         related_id: notification.related_id,
-        related_type: notification.related_type
+        related_type: notification.related_type,
+        user_id: user.id, // Associate notification with authenticated user
       })
       .select();
       
