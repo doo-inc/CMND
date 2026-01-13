@@ -1151,112 +1151,115 @@ export default function ProjectManager() {
   );
 
   const renderProjectCard = (project: ProjectCustomer) => (
-                <Card
-                  key={project.id}
-                  className={`cursor-pointer transition-all hover:shadow-md group ${
-                    selectedProject?.id === project.id
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                  onClick={() => setSelectedProject(project)}
-                >
-                  <CardContent className="p-3 flex items-center gap-3">
-        <Avatar 
-          className="h-10 w-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/customers/${project.customer_id}`);
-          }}
-        >
-                      <AvatarImage src={project.customer_logo || undefined} alt={project.customer_name} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
-                        {project.customer_name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-          <h4 
-            className="font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors"
+    <Card
+      key={project.id}
+      className={`cursor-pointer transition-all hover:shadow-md group ${
+        selectedProject?.id === project.id
+          ? "border-primary bg-primary/5 shadow-md"
+          : "border-border hover:border-primary/50"
+      }`}
+      onClick={() => setSelectedProject(project)}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-start gap-3">
+          <Avatar 
+            className="h-9 w-9 shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/customers/${project.customer_id}`);
             }}
           >
-            {project.customer_name}
-          </h4>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <Badge 
-                          variant={customersWithContracts.has(project.customer_id) ? "default" : "destructive"} 
-                          className={`text-xs h-5 ${customersWithContracts.has(project.customer_id) ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                        >
-                          {customersWithContracts.has(project.customer_id) ? '✓ Contract' : 'No Contract'}
-                        </Badge>
-                        <Badge variant={project.service_type ? 'secondary' : 'outline'} className="text-xs h-5">
-                          {project.service_type 
-                            ? project.service_type.charAt(0).toUpperCase() + project.service_type.slice(1)
-                            : 'N/A'}
-                        </Badge>
-            {project.status === 'demo' && project.demo_delivered && (
-              <Badge variant="default" className="text-xs h-5 bg-green-600">
-                Delivered
+            <AvatarImage src={project.customer_logo || undefined} alt={project.customer_name} />
+            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-xs font-semibold">
+              {project.customer_name.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0">
+            {/* Row 1: Name + Progress */}
+            <div className="flex items-center justify-between gap-2">
+              <h4 
+                className="font-semibold text-sm cursor-pointer hover:text-primary transition-colors truncate"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/customers/${project.customer_id}`);
+                }}
+              >
+                {project.customer_name}
+              </h4>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {activeTab !== 'completed' && (
+                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                    {project.checklist_items.filter(i => i.checked).length}/{project.checklist_items.length}
+                  </Badge>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove from Projects?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove {project.customer_name} from the project manager.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => removeProject(project.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+            
+            {/* Row 2: Key badges */}
+            <div className="flex items-center gap-1.5 mt-1">
+              <Badge 
+                variant={customersWithContracts.has(project.customer_id) ? "default" : "destructive"} 
+                className={`text-[10px] h-4 px-1.5 ${customersWithContracts.has(project.customer_id) ? 'bg-green-600' : ''}`}
+              >
+                {customersWithContracts.has(project.customer_id) ? '✓' : '✗'}
               </Badge>
-            )}
-                        {project.project_manager && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {project.project_manager}
-                {project.secondary_project_manager && ` + ${project.secondary_project_manager}`}
-                          </span>
-                        )}
-                      </div>
-                      {activeTab === 'demo' && project.demo_date && (
-                        <p className="text-xs text-blue-500 flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(project.demo_date).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-          {/* Deadline countdown badge */}
-          {project.deadline && activeTab !== 'completed' && (
-            <Badge className={`text-xs ${getDeadlineInfo(project.deadline)?.color}`}>
-              <Clock className="h-3 w-3 mr-1" />
-              {getDeadlineInfo(project.deadline)?.label}
-            </Badge>
-          )}
-                      {activeTab !== 'completed' && (
-                        <Badge variant="outline" className="text-xs">
-                          {project.checklist_items.filter(i => i.checked).length}/{project.checklist_items.length}
-                        </Badge>
-                      )}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove from Projects?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove {project.customer_name} from the project manager. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => removeProject(project.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                {project.service_type || 'N/A'}
+              </Badge>
+              {project.status === 'demo' && project.demo_delivered && (
+                <Badge className="text-[10px] h-4 px-1.5 bg-green-600">✓</Badge>
+              )}
+            </div>
+            
+            {/* Row 3: Manager + Deadline */}
+            <div className="flex items-center justify-between gap-2 mt-1.5">
+              <span className="text-[10px] text-muted-foreground truncate">
+                {project.project_manager || 'Unassigned'}
+                {project.secondary_project_manager && ` +1`}
+              </span>
+              {project.deadline && activeTab !== 'completed' && (
+                <Badge className={`text-[10px] h-4 px-1.5 shrink-0 ${getDeadlineInfo(project.deadline)?.color}`}>
+                  {getDeadlineInfo(project.deadline)?.label}
+                </Badge>
+              )}
+              {activeTab === 'demo' && project.demo_date && !project.deadline && (
+                <span className="text-[10px] text-blue-500 shrink-0">
+                  {new Date(project.demo_date).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
