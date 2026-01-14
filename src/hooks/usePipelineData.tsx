@@ -23,14 +23,16 @@ export const usePipelineData = () => {
   const [error, setError] = useState<string | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchPipelineData = useCallback(async () => {
+  const fetchPipelineData = useCallback(async (skipSync = false) => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Run pipeline sync to ensure database is up to date
-      // console.log('Running pipeline sync before fetching data...');
-      await syncCustomerPipelineStages();
+
+      // Only run pipeline sync on initial load or manual refresh, not on every real-time update
+      if (!skipSync) {
+        // console.log('Running pipeline sync before fetching data...');
+        await syncCustomerPipelineStages();
+      }
 
       // Fetch only needed columns for pipeline, excluding churned customers
       const { data: customers, error: fetchError } = await supabase
@@ -42,27 +44,30 @@ export const usePipelineData = () => {
         throw fetchError;
       }
 
-      // Fetch ALL lifecycle stages with pagination to avoid 1000 row limit
+      // Fetch lifecycle stages more efficiently - only for non-churned customers
+      const customerIds = (customers || []).map(c => c.id);
+
       let lifecycleStages: any[] = [];
-      let offset = 0;
-      const pageSize = 1000;
-      
-      while (true) {
-        const { data: pageStages, error: stagesError } = await supabase
-          .from('lifecycle_stages')
-          .select('customer_id, name, status')
-          .range(offset, offset + pageSize - 1);
-        
-        if (stagesError) {
-          throw stagesError;
+
+      // Fetch in batches if there are many customers
+      if (customerIds.length > 0) {
+        const batchSize = 100;
+        for (let i = 0; i < customerIds.length; i += batchSize) {
+          const batch = customerIds.slice(i, i + batchSize);
+
+          const { data: batchStages, error: stagesError } = await supabase
+            .from('lifecycle_stages')
+            .select('customer_id, name, status')
+            .in('customer_id', batch);
+
+          if (stagesError) {
+            throw stagesError;
+          }
+
+          if (batchStages) {
+            lifecycleStages = lifecycleStages.concat(batchStages);
+          }
         }
-        
-        if (!pageStages || pageStages.length === 0) break;
-        
-        lifecycleStages = lifecycleStages.concat(pageStages);
-        
-        if (pageStages.length < pageSize) break;
-        offset += pageSize;
       }
 
       // console.log(`Lifecycle stages fetched (paginated): ${lifecycleStages.length}`);
@@ -134,14 +139,14 @@ export const usePipelineData = () => {
     }
   }, []);
 
-  // Debounced fetch for real-time updates
+  // Debounced fetch for real-time updates (skip sync for performance)
   const debouncedFetch = useCallback(() => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
     debounceTimer.current = setTimeout(() => {
-      fetchPipelineData();
-    }, 1000); // Wait 1 second before refreshing
+      fetchPipelineData(true); // Skip sync on real-time updates for better performance
+    }, 2000); // Increased to 2 seconds to reduce update frequency
   }, [fetchPipelineData]);
 
   useEffect(() => {

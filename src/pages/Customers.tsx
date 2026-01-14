@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { Button } from "@/components/ui/button";
@@ -348,38 +348,40 @@ const Customers = () => {
         setIsLoading(true);
       }
       
-      // Fetch customers and their lifecycle stages
+      // Fetch customers and their lifecycle stages (only needed columns for performance)
       const { data: customers, error: customersError } = await supabase
         .from('customers')
-        .select('*');
+        .select('id, name, logo, segment, country, stage, status, contract_size, deal_owner, project_owner, owner_id, industry, description');
 
       if (customersError) {
         console.error("Supabase error:", customersError);
         throw customersError;
       }
 
-      // Fetch ALL lifecycle stages with pagination to avoid 1000 row limit
+      // Fetch lifecycle stages more efficiently - only for existing customers
+      const customerIds = (customers || []).map(c => c.id);
       let allLifecycleStages: any[] = [];
-      let offset = 0;
-      const pageSize = 1000;
-      
-      while (true) {
-        const { data: pageStages, error: stagesError } = await supabase
-          .from('lifecycle_stages')
-          .select('customer_id, name, status, updated_at, created_at')
-          .range(offset, offset + pageSize - 1);
-        
-        if (stagesError) {
-          console.error("Lifecycle stages error:", stagesError);
-          throw stagesError;
+
+      // Fetch in batches for better performance
+      if (customerIds.length > 0) {
+        const batchSize = 100;
+        for (let i = 0; i < customerIds.length; i += batchSize) {
+          const batch = customerIds.slice(i, i + batchSize);
+
+          const { data: batchStages, error: stagesError } = await supabase
+            .from('lifecycle_stages')
+            .select('customer_id, name, status, updated_at, created_at')
+            .in('customer_id', batch);
+
+          if (stagesError) {
+            console.error("Lifecycle stages error:", stagesError);
+            throw stagesError;
+          }
+
+          if (batchStages) {
+            allLifecycleStages = allLifecycleStages.concat(batchStages);
+          }
         }
-        
-        if (!pageStages || pageStages.length === 0) break;
-        
-        allLifecycleStages = allLifecycleStages.concat(pageStages);
-        
-        if (pageStages.length < pageSize) break;
-        offset += pageSize;
       }
 
       // console.log("Customers data fetched:", customers);
@@ -580,14 +582,50 @@ const Customers = () => {
     }
   };
 
-  const getSortedCustomers = () => {
-    let result = [...customers];
-    
+  // Memoize filtered and sorted customers to avoid recalculation on every render
+  const filteredCustomers = useMemo(() => {
+    // First filter
+    let result = customers.filter((customer) => {
+      if (filter !== "all" && customer.status !== filter) {
+        return false;
+      }
+
+      if (countryFilter !== "all" && customer.country !== countryFilter) {
+        return false;
+      }
+
+      if (stageFilter !== "all" && customer.furthestCompletedStage !== stageFilter) {
+        return false;
+      }
+
+      if (segmentFilter !== "all" && customer.segment !== segmentFilter) {
+        return false;
+      }
+
+      if (dealOwnerFilter !== "all" && customer.deal_owner !== dealOwnerFilter) {
+        return false;
+      }
+
+      if (projectOwnerFilter !== "all" && customer.project_owner !== projectOwnerFilter) {
+        return false;
+      }
+
+      if (
+        searchTerm &&
+        !customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Then sort
     if (sortOrder !== "none") {
       result.sort((a, b) => {
         if (sortBy === "contractSize") {
-          return sortOrder === "asc" 
-            ? a.contractSize - b.contractSize 
+          return sortOrder === "asc"
+            ? a.contractSize - b.contractSize
             : b.contractSize - a.contractSize;
         } else {
           return sortOrder === "asc"
@@ -596,44 +634,9 @@ const Customers = () => {
         }
       });
     }
-    
+
     return result;
-  };
-
-  const filteredCustomers = getSortedCustomers().filter((customer) => {
-    if (filter !== "all" && customer.status !== filter) {
-      return false;
-    }
-    
-    if (countryFilter !== "all" && customer.country !== countryFilter) {
-      return false;
-    }
-    
-    if (stageFilter !== "all" && customer.furthestCompletedStage !== stageFilter) {
-      return false;
-    }
-
-    if (segmentFilter !== "all" && customer.segment !== segmentFilter) {
-      return false;
-    }
-
-    if (dealOwnerFilter !== "all" && customer.deal_owner !== dealOwnerFilter) {
-      return false;
-    }
-
-    if (projectOwnerFilter !== "all" && customer.project_owner !== projectOwnerFilter) {
-      return false;
-    }
-    
-    if (
-      searchTerm &&
-      !customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
-    }
-    
-    return true;
-  });
+  }, [customers, filter, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter, searchTerm, sortOrder, sortBy]);
 
   return (
     <DashboardLayout>
