@@ -463,10 +463,15 @@ const TeamManagementPage = () => {
 
   const handleDeleteMember = async (memberId: string) => {
     try {
-      // Call the database function to delete user from auth.users
-      const { error } = await supabase.rpc('delete_user_account', { user_id: memberId });
+      // Call the secured edge function to delete user from auth.users
+      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        body: { userId: memberId }
+      });
 
       if (error) throw error;
+      
+      // Check for error in response body
+      if (data?.error) throw new Error(data.error);
 
       toast.success("Team member removed successfully");
       
