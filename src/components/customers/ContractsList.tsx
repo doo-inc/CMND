@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface Contract {
   id?: string;
@@ -45,6 +56,10 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [isNewContract, setIsNewContract] = useState(false);
+
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<string | null>(null);
 
   // CRITICAL: Only expose contracts via ref - NO callbacks to parent
   useImperativeHandle(ref, () => ({
@@ -349,17 +364,60 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
   };
 
   const handleDeleteContract = (contractId: string | undefined, e?: React.MouseEvent) => {
+    console.log('🗑️ Delete button clicked! contractId:', contractId);
+
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    if (!contractId) return;
-    console.log('ContractsList: Deleting contract LOCALLY ONLY:', contractId);
-    setContracts(prev => {
-      const filteredContracts = prev.filter(c => c.id !== contractId);
-      console.log('ContractsList: Deleted contract from LOCAL state only. Remaining contracts:', filteredContracts.length);
-      return filteredContracts;
-    });
+
+    if (!contractId) {
+      console.log('❌ No contract ID provided');
+      toast.error('Cannot delete: No contract ID');
+      return;
+    }
+
+    console.log('⚠️ Opening delete confirmation dialog...');
+    setContractToDelete(contractId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!contractToDelete) return;
+
+    console.log('✅ User confirmed deletion. Deleting contract from database:', contractToDelete);
+
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('contracts')
+        .delete()
+        .eq('id', contractToDelete);
+
+      if (error) {
+        console.error('❌ Error deleting contract:', error);
+        toast.error('Failed to delete contract: ' + error.message);
+        return;
+      }
+
+      console.log('✅ Database deletion successful!');
+
+      // Update local state only after successful deletion
+      setContracts(prev => {
+        const filteredContracts = prev.filter(c => c.id !== contractToDelete);
+        console.log('📋 Updated local state. Remaining contracts:', filteredContracts.length);
+        return filteredContracts;
+      });
+
+      toast.success('Contract deleted successfully');
+      console.log('✅ Contract deleted successfully from database');
+    } catch (error) {
+      console.error('❌ Unexpected error deleting contract:', error);
+      toast.error('Failed to delete contract. Please try again.');
+    } finally {
+      setDeleteDialogOpen(false);
+      setContractToDelete(null);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -588,6 +646,25 @@ export const ContractsList = forwardRef<ContractsListRef, ContractsListProps>(({
         />,
         document.body
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the contract
+              from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });
