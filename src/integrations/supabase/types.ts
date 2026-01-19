@@ -1057,6 +1057,8 @@ export type Database = {
           deadline: string | null
           demo_date: string | null
           demo_delivered: boolean | null
+          file_name: string | null
+          file_url: string | null
           id: string
           notes: string | null
           priority: string | null
@@ -1076,6 +1078,8 @@ export type Database = {
           deadline?: string | null
           demo_date?: string | null
           demo_delivered?: boolean | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           notes?: string | null
           priority?: string | null
@@ -1095,6 +1099,8 @@ export type Database = {
           deadline?: string | null
           demo_date?: string | null
           demo_delivered?: boolean | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           notes?: string | null
           priority?: string | null
@@ -1152,6 +1158,116 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      project_requests: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          customer_logo: string | null
+          customer_name: string
+          description: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          request_type: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_by_name: string | null
+          status: string
+          submitted_by: string | null
+          submitted_by_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          customer_logo?: string | null
+          customer_name: string
+          description?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          request_type: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          customer_logo?: string | null
+          customer_name?: string
+          description?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          request_type?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          additional_notes: string | null
+          ai_model: string | null
+          channels: string | null
+          company_name: string | null
+          contact_info: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_name: string
+          id: string
+          integrations: string | null
+          updated_at: string | null
+          volume: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          ai_model?: string | null
+          channels?: string | null
+          company_name?: string | null
+          contact_info?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_name: string
+          id?: string
+          integrations?: string | null
+          updated_at?: string | null
+          volume?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          ai_model?: string | null
+          channels?: string | null
+          company_name?: string | null
+          contact_info?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_name?: string
+          id?: string
+          integrations?: string | null
+          updated_at?: string | null
+          volume?: string | null
+        }
+        Relationships: []
       }
       referrals: {
         Row: {
@@ -1365,6 +1481,10 @@ export type Database = {
     Functions: {
       cleanup_expired_invitations: { Args: never; Returns: undefined }
       delete_user_account: { Args: { user_id: string }; Returns: undefined }
+      delete_user_completely: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       generate_invitation_token: { Args: never; Returns: string }
       get_current_user_profile: {
         Args: never

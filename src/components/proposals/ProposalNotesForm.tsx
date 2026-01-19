@@ -12,20 +12,9 @@ import { toast } from "sonner";
 import { FileText, Trash2, Edit2, Save, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useProfile } from "@/hooks/useProfile";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface Proposal {
-  id: string;
-  customer_name: string;
-  company_name?: string | null;
-  contact_info?: string | null;
-  ai_model?: string | null;
-  channels?: string | null; // Changed to string for open-ended text
-  integrations?: string | null; // Changed to string for open-ended text
-  volume?: string | null;
-  additional_notes?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+type Proposal = Tables<"proposals">;
 
 export function ProposalNotesForm() {
   const { profile } = useProfile();
@@ -89,8 +78,8 @@ export function ProposalNotesForm() {
   const handleEdit = (proposal: Proposal) => {
     setCompanyName(proposal.company_name || proposal.customer_name || "");
     setAiModel(proposal.ai_model || "");
-    setChannels(typeof proposal.channels === 'string' ? proposal.channels : (proposal.channels?.join(', ') || ""));
-    setIntegrations(typeof proposal.integrations === 'string' ? proposal.integrations : (proposal.integrations?.join(', ') || ""));
+    setChannels(proposal.channels || "");
+    setIntegrations(proposal.integrations || "");
     setVolume(proposal.volume || "");
     setAdditionalNotes(proposal.additional_notes || "");
     setEditingId(proposal.id);
@@ -308,13 +297,13 @@ export function ProposalNotesForm() {
                       {proposal.channels && (
                         <div>
                           <span className="text-xs font-medium text-muted-foreground">Channels: </span>
-                          <span className="text-muted-foreground">{typeof proposal.channels === 'string' ? proposal.channels : proposal.channels.join(', ')}</span>
+                          <span className="text-muted-foreground">{proposal.channels}</span>
                         </div>
                       )}
                       {proposal.integrations && (
                         <div>
                           <span className="text-xs font-medium text-muted-foreground">Integrations: </span>
-                          <span className="text-muted-foreground">{typeof proposal.integrations === 'string' ? proposal.integrations : proposal.integrations.join(', ')}</span>
+                          <span className="text-muted-foreground">{proposal.integrations}</span>
                         </div>
                       )}
                       {proposal.volume && (

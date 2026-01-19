@@ -433,7 +433,33 @@ serve(async (req) => {
     }
 
     console.log(`generate-customer-documents: Authenticated user ${user.id}`);
-    // ============ END AUTHENTICATION ============
+
+    // ============ AUTHORIZATION - ROLE CHECK ============
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("generate-customer-documents: Could not verify user role", profileError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Could not verify user role" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Only admins and managers should generate legal documents
+    if (profile.role !== 'admin' && profile.role !== 'manager') {
+      console.error(`generate-customer-documents: User ${user.id} has role '${profile.role}' - access denied`);
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Admin or manager access required to generate documents" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`generate-customer-documents: User ${user.id} authorized with role '${profile.role}'`);
+    // ============ END AUTHORIZATION ============
 
     const { customer_id, document_types, format = 'pdf' } = await req.json();
 
