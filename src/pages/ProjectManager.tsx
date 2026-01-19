@@ -32,7 +32,12 @@ import {
   Send,
   MessageCircle,
   Search,
-  CalendarDays
+  CalendarDays,
+  FileText,
+  Upload,
+  Eye,
+  XCircle,
+  Inbox
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -159,13 +164,42 @@ interface ProjectMessage {
   created_at: string;
 }
 
+interface ProjectRequest {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_logo?: string;
+  request_type: 'demo' | 'kickoff';
+  description: string;
+  file_url?: string;
+  file_name?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_by: string;
+  submitted_by_name: string;
+  reviewed_by?: string;
+  reviewed_by_name?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
 export default function ProjectManager() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectCustomer[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectCustomer | null>(null);
-  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed' | 'demo'>('demo');
+  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed' | 'demo' | 'requests'>('demo');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Requests state
+  const [requests, setRequests] = useState<ProjectRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [requestType, setRequestType] = useState<'demo' | 'kickoff'>('demo');
+  const [requestCustomerId, setRequestCustomerId] = useState<string>('');
+  const [requestDescription, setRequestDescription] = useState<string>('');
+  const [requestFile, setRequestFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [requestCustomerSearch, setRequestCustomerSearch] = useState<string>('');
   
   // For adding new customers
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -414,12 +448,238 @@ export default function ProjectManager() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Load project requests
+  const loadRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const { data, error } = await supabase
+        .from('project_requests' as any)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          console.log('project_requests table not found - run migration');
+        } else {
+          console.error('Error loading requests:', error);
+        }
+        return;
+      }
+
+      setRequests((data as unknown as ProjectRequest[]) || []);
+    } catch (error) {
+      console.error('Error loading requests:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  // Submit a new request
+  const submitRequest = async () => {
+    if (!requestCustomerId || !currentUser) {
+      toast.error('Please select a customer');
+      return;
+    }
+
+    const customer = allCustomers.find(c => c.id === requestCustomerId);
+    if (!customer) return;
+
+    try {
+      setSaving(true);
+      let fileUrl = null;
+      let fileName = null;
+
+      // Upload file if provided
+      if (requestFile) {
+        setUploadingFile(true);
+        const fileExt = requestFile.name.split('.').pop();
+        const filePath = `requests/${Date.now()}_${requestFile.name}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('project-files')
+          .upload(filePath, requestFile);
+
+        if (uploadError) {
+          console.error('Error uploading file:', uploadError);
+          toast.error('Failed to upload file');
+          setUploadingFile(false);
+          setSaving(false);
+          return;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('project-files')
+          .getPublicUrl(filePath);
+
+        fileUrl = publicUrl;
+        fileName = requestFile.name;
+        setUploadingFile(false);
+      }
+
+      const requestData = {
+        customer_id: customer.id,
+        customer_name: customer.name,
+        customer_logo: customer.logo || null,
+        request_type: requestType,
+        description: requestDescription,
+        file_url: fileUrl,
+        file_name: fileName,
+        status: 'pending',
+        submitted_by: currentUser.id,
+        submitted_by_name: currentUser.name,
+      };
+
+      const { error } = await supabase
+        .from('project_requests' as any)
+        .insert(requestData);
+
+      if (error) {
+        console.error('Error submitting request:', error);
+        toast.error('Failed to submit request');
+        return;
+      }
+
+      toast.success(`${requestType === 'demo' ? 'Demo' : 'Kickoff'} request submitted`);
+      setIsRequestDialogOpen(false);
+      setRequestCustomerId('');
+      setRequestDescription('');
+      setRequestFile(null);
+      setRequestCustomerSearch('');
+      loadRequests();
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      toast.error('Failed to submit request');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Approve request and move to project manager
+  const approveRequest = async (request: ProjectRequest) => {
+    if (!currentUser) return;
+
+    try {
+      setSaving(true);
+
+      // Create project in project_manager
+      const newProject = {
+        customer_id: request.customer_id,
+        customer_name: request.customer_name,
+        customer_logo: request.customer_logo || null,
+        service_type: null,
+        project_manager: '',
+        service_description: request.description || '',
+        checklist_items: [
+          { id: crypto.randomUUID(), label: 'Phase 1', checked: false, subtasks: [], expanded: true },
+          { id: crypto.randomUUID(), label: 'Phase 2', checked: false, subtasks: [], expanded: true },
+          { id: crypto.randomUUID(), label: 'Phase 3', checked: false, subtasks: [], expanded: true },
+        ],
+        notes: '',
+        status: request.request_type === 'demo' ? 'demo' : 'ongoing',
+        priority: 'moderate' as Priority,
+        file_url: request.file_url || null,
+        file_name: request.file_name || null,
+        demo_date: request.request_type === 'demo' ? new Date().toISOString().split('T')[0] : null,
+      };
+
+      const { error: projectError } = await supabase
+        .from('project_manager' as any)
+        .insert(newProject);
+
+      if (projectError) {
+        console.error('Error creating project:', projectError);
+        toast.error('Failed to create project');
+        return;
+      }
+
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('project_requests' as any)
+        .update({
+          status: 'approved',
+          reviewed_by: currentUser.id,
+          reviewed_by_name: currentUser.name,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', request.id);
+
+      if (updateError) {
+        console.error('Error updating request:', updateError);
+      }
+
+      toast.success(`Request approved! ${request.customer_name} added to ${request.request_type === 'demo' ? 'Demos' : 'Ongoing'}`);
+      loadRequests();
+      loadProjects();
+      
+      // Switch to the appropriate tab
+      setActiveTab(request.request_type === 'demo' ? 'demo' : 'ongoing');
+    } catch (error) {
+      console.error('Error approving request:', error);
+      toast.error('Failed to approve request');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reject request
+  const rejectRequest = async (request: ProjectRequest) => {
+    if (!currentUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_requests' as any)
+        .update({
+          status: 'rejected',
+          reviewed_by: currentUser.id,
+          reviewed_by_name: currentUser.name,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', request.id);
+
+      if (error) {
+        console.error('Error rejecting request:', error);
+        toast.error('Failed to reject request');
+        return;
+      }
+
+      toast.success('Request rejected');
+      loadRequests();
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      toast.error('Failed to reject request');
+    }
+  };
+
+  // Delete request
+  const deleteRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_requests' as any)
+        .delete()
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error deleting request:', error);
+        toast.error('Failed to delete request');
+        return;
+      }
+
+      toast.success('Request deleted');
+      loadRequests();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      toast.error('Failed to delete request');
+    }
+  };
+
   // Initial load from database
   useEffect(() => {
     loadProjects();
     fetchAllCustomers();
     fetchUsers();
     fetchCurrentUser();
+    loadRequests();
   }, []);
 
   // Load messages when selected project changes
@@ -604,6 +864,31 @@ export default function ProjectManager() {
       supabase.removeChannel(channel);
     };
   }, [saving]);
+
+  // Real-time subscription for project requests
+  useEffect(() => {
+    const channel = supabase
+      .channel('project-requests-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_requests'
+        },
+        () => {
+          loadRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Count pending requests for badge
+  const pendingRequestsCount = requests.filter(r => r.status === 'pending').length;
 
   const addCustomerToProject = async () => {
     if (!selectedCustomerId) {
@@ -1963,12 +2248,21 @@ export default function ProjectManager() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v as 'ongoing' | 'completed' | 'demo');
+          setActiveTab(v as 'ongoing' | 'completed' | 'demo' | 'requests');
           setSelectedProject(null);
         }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-4 flex-wrap w-full sm:w-auto">
               <TabsList>
+                <TabsTrigger value="requests" className="gap-2 relative">
+                  <Inbox className="h-4 w-4" />
+                  Requests
+                  {pendingRequestsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                      {pendingRequestsCount}
+                    </span>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="demo" className="gap-2">
                   <Play className="h-4 w-4" />
                   Demos
@@ -2026,6 +2320,356 @@ export default function ProjectManager() {
               </Select>
             </div>
           </div>
+
+          <TabsContent value="requests" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Request List */}
+              <Card className="lg:col-span-1 border-2 border-border/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Pending Requests</CardTitle>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => loadRequests()} title="Refresh">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="gap-1">
+                            <Plus className="h-4 w-4" />
+                            New Request
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Submit Project Request</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            {/* Request Type */}
+                            <div className="space-y-2">
+                              <Label>Request Type</Label>
+                              <Select
+                                value={requestType}
+                                onValueChange={(v) => setRequestType(v as 'demo' | 'kickoff')}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="demo">
+                                    <div className="flex items-center gap-2">
+                                      <Play className="h-4 w-4 text-blue-500" />
+                                      <span>Demo Request</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="kickoff">
+                                    <div className="flex items-center gap-2">
+                                      <ArrowRight className="h-4 w-4 text-green-500" />
+                                      <span>Project Kickoff</span>
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Customer Selection */}
+                            <div className="space-y-2">
+                              <Label>Select Customer</Label>
+                              <Input
+                                placeholder="Search customer..."
+                                value={requestCustomerSearch}
+                                onChange={(e) => setRequestCustomerSearch(e.target.value)}
+                                className="mb-2"
+                              />
+                              <div className="border rounded-md max-h-40 overflow-y-auto">
+                                {allCustomers
+                                  .filter(c => c.name.toLowerCase().includes(requestCustomerSearch.toLowerCase()))
+                                  .slice(0, 10)
+                                  .map(customer => (
+                                    <div
+                                      key={customer.id}
+                                      className={`p-2 cursor-pointer hover:bg-muted transition-colors border-b last:border-b-0 text-sm ${
+                                        requestCustomerId === customer.id ? 'bg-primary/10 border-primary' : ''
+                                      }`}
+                                      onClick={() => setRequestCustomerId(customer.id)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <AvatarImage src={customer.logo} />
+                                          <AvatarFallback className="text-[10px]">
+                                            {customer.name.substring(0, 2).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium">{customer.name}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                {allCustomers.filter(c => c.name.toLowerCase().includes(requestCustomerSearch.toLowerCase())).length === 0 && (
+                                  <div className="p-3 text-sm text-muted-foreground text-center">
+                                    No customers found
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Description */}
+                            <div className="space-y-2">
+                              <Label>Description</Label>
+                              <Textarea
+                                placeholder="Describe the request, goals, or any special requirements..."
+                                value={requestDescription}
+                                onChange={(e) => setRequestDescription(e.target.value)}
+                                rows={3}
+                              />
+                            </div>
+
+                            {/* File Upload */}
+                            <div className="space-y-2">
+                              <Label>Attach Proposal (Optional)</Label>
+                              <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                                {requestFile ? (
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="h-5 w-5 text-primary" />
+                                      <span className="text-sm font-medium truncate max-w-[200px]">
+                                        {requestFile.name}
+                                      </span>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setRequestFile(null)}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <label className="flex flex-col items-center justify-center cursor-pointer">
+                                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                                    <span className="text-sm text-muted-foreground">
+                                      Click to upload or drag and drop
+                                    </span>
+                                    <span className="text-xs text-muted-foreground mt-1">
+                                      PDF, DOC, DOCX, PPT, PPTX
+                                    </span>
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) setRequestFile(file);
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+
+                            <Button 
+                              onClick={submitRequest} 
+                              className="w-full" 
+                              disabled={!requestCustomerId || saving || uploadingFile}
+                            >
+                              {uploadingFile ? 'Uploading...' : saving ? 'Submitting...' : 'Submit Request'}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[550px]">
+                    <div className="space-y-2 p-4">
+                      {loadingRequests ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-20 w-full" />
+                          <Skeleton className="h-20 w-full" />
+                          <Skeleton className="h-20 w-full" />
+                        </div>
+                      ) : requests.filter(r => r.status === 'pending').length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Inbox className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p className="text-sm">No pending requests</p>
+                          <p className="text-xs mt-1">Click "New Request" to submit one</p>
+                        </div>
+                      ) : (
+                        requests
+                          .filter(r => r.status === 'pending')
+                          .map((request) => (
+                            <Card
+                              key={request.id}
+                              className="border-border hover:shadow-md transition-all"
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start gap-3">
+                                  <Avatar className="h-10 w-10 shrink-0">
+                                    <AvatarImage src={request.customer_logo} />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-xs font-semibold">
+                                      {request.customer_name.substring(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <h4 className="font-semibold text-sm truncate">
+                                        {request.customer_name}
+                                      </h4>
+                                      <Badge 
+                                        variant={request.request_type === 'demo' ? 'secondary' : 'default'}
+                                        className="shrink-0"
+                                      >
+                                        {request.request_type === 'demo' ? 'Demo' : 'Kickoff'}
+                                      </Badge>
+                                    </div>
+                                    {request.description && (
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                        {request.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <span className="text-[10px] text-muted-foreground">
+                                        by {request.submitted_by_name}
+                                      </span>
+                                      {request.file_url && (
+                                        <a
+                                          href={request.file_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+                                        >
+                                          <FileText className="h-3 w-3" />
+                                          {request.file_name || 'View file'}
+                                        </a>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                        onClick={() => approveRequest(request)}
+                                        disabled={saving}
+                                      >
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs text-destructive hover:text-destructive"
+                                        onClick={() => rejectRequest(request)}
+                                        disabled={saving}
+                                      >
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Request History */}
+              <Card className="lg:col-span-2 border-2 border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Request History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[520px]">
+                    <div className="space-y-3">
+                      {requests.filter(r => r.status !== 'pending').length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p className="text-sm">No processed requests yet</p>
+                        </div>
+                      ) : (
+                        requests
+                          .filter(r => r.status !== 'pending')
+                          .map((request) => (
+                            <Card
+                              key={request.id}
+                              className={`border ${
+                                request.status === 'approved' 
+                                  ? 'border-green-500/30 bg-green-500/5' 
+                                  : 'border-red-500/30 bg-red-500/5'
+                              }`}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-start gap-3">
+                                    <Avatar className="h-8 w-8 shrink-0">
+                                      <AvatarImage src={request.customer_logo} />
+                                      <AvatarFallback className="text-xs">
+                                        {request.customer_name.substring(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-sm">{request.customer_name}</span>
+                                        <Badge 
+                                          variant={request.request_type === 'demo' ? 'secondary' : 'outline'}
+                                          className="text-[10px]"
+                                        >
+                                          {request.request_type === 'demo' ? 'Demo' : 'Kickoff'}
+                                        </Badge>
+                                        <Badge 
+                                          variant={request.status === 'approved' ? 'default' : 'destructive'}
+                                          className="text-[10px]"
+                                        >
+                                          {request.status === 'approved' ? '✓ Approved' : '✗ Rejected'}
+                                        </Badge>
+                                      </div>
+                                      {request.description && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {request.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                                        <span>Submitted by {request.submitted_by_name}</span>
+                                        {request.reviewed_by_name && (
+                                          <span>
+                                            • {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.reviewed_by_name}
+                                          </span>
+                                        )}
+                                        {request.file_url && (
+                                          <a
+                                            href={request.file_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-primary hover:underline"
+                                          >
+                                            <FileText className="h-3 w-3" />
+                                            {request.file_name || 'View file'}
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => deleteRequest(request.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="demo" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
