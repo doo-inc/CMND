@@ -70,6 +70,12 @@ import {
 
 type Priority = 'high' | 'moderate' | 'low';
 
+interface TestingLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
 interface ProjectCustomer {
   id: string;
   customer_id: string;
@@ -86,6 +92,7 @@ interface ProjectCustomer {
   deadline?: string;
   demo_date?: string;
   demo_delivered?: boolean; // Track if demo was delivered
+  testing_links?: TestingLink[]; // AI Agent testing links
   created_at: string;
 }
 
@@ -219,6 +226,11 @@ export default function ProjectManager() {
   const [editingSubtask, setEditingSubtask] = useState<{ phaseId: string; subtaskId: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   
+  // For testing links
+  const [newTestingLink, setNewTestingLink] = useState({ label: '', url: '' });
+  const [editingTestingLink, setEditingTestingLink] = useState<string | null>(null);
+  const [editingTestingLinkValue, setEditingTestingLinkValue] = useState({ label: '', url: '' });
+  
   // For filtering by assignee
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
   
@@ -286,6 +298,7 @@ export default function ProjectManager() {
         deadline: p.deadline || undefined,
         demo_date: p.demo_date || undefined,
         demo_delivered: p.demo_delivered || false,
+        testing_links: (p.testing_links as TestingLink[]) || [],
         created_at: p.created_at,
       }));
 
@@ -824,6 +837,7 @@ export default function ProjectManager() {
             deadline: updatedRecord.deadline || undefined,
             demo_date: updatedRecord.demo_date || undefined,
             demo_delivered: updatedRecord.demo_delivered || false,
+            testing_links: (updatedRecord.testing_links as TestingLink[]) || [],
             created_at: updatedRecord.created_at,
           };
           
@@ -919,6 +933,7 @@ export default function ProjectManager() {
       status: activeTab === 'completed' ? 'demo' : activeTab,
         priority: 'moderate' as Priority,
         demo_date: activeTab === 'demo' ? new Date().toISOString().split('T')[0] : null,
+        testing_links: [],
       };
 
       console.log('Inserting project:', newProject);
@@ -958,6 +973,7 @@ export default function ProjectManager() {
         deadline: responseData.deadline || undefined,
         demo_date: responseData.demo_date || undefined,
         demo_delivered: responseData.demo_delivered || false,
+        testing_links: (responseData.testing_links as TestingLink[]) || [],
         created_at: responseData.created_at,
       };
       
@@ -1024,6 +1040,7 @@ export default function ProjectManager() {
         if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline || null;
       if (updates.demo_date !== undefined) dbUpdates.demo_date = updates.demo_date || null;
         if (updates.demo_delivered !== undefined) dbUpdates.demo_delivered = updates.demo_delivered;
+      if (updates.testing_links !== undefined) dbUpdates.testing_links = updates.testing_links || [];
 
       const { error } = await supabase
         .from('project_manager' as any)
@@ -1226,6 +1243,54 @@ export default function ProjectManager() {
     setEditingPhase(null);
     setEditingSubtask(null);
     setEditValue('');
+    setEditingTestingLink(null);
+    setEditingTestingLinkValue({ label: '', url: '' });
+  };
+
+  // Testing Links functions
+  const addTestingLink = () => {
+    if (!selectedProject || !newTestingLink.label.trim() || !newTestingLink.url.trim()) return;
+
+    const newLink: TestingLink = {
+      id: crypto.randomUUID(),
+      label: newTestingLink.label.trim(),
+      url: newTestingLink.url.trim(),
+    };
+
+    const updatedLinks = [...(selectedProject.testing_links || []), newLink];
+    updateProject(selectedProject.id, { testing_links: updatedLinks });
+    setNewTestingLink({ label: '', url: '' });
+    toast.success('Testing link added');
+  };
+
+  const removeTestingLink = (linkId: string) => {
+    if (!selectedProject) return;
+
+    const updatedLinks = (selectedProject.testing_links || []).filter(link => link.id !== linkId);
+    updateProject(selectedProject.id, { testing_links: updatedLinks });
+    toast.success('Testing link removed');
+  };
+
+  const startEditingTestingLink = (link: TestingLink) => {
+    setEditingTestingLink(link.id);
+    setEditingTestingLinkValue({ label: link.label, url: link.url });
+  };
+
+  const saveTestingLinkEdit = (linkId: string) => {
+    if (!selectedProject || !editingTestingLinkValue.label.trim() || !editingTestingLinkValue.url.trim()) {
+      setEditingTestingLink(null);
+      return;
+    }
+
+    const updatedLinks = (selectedProject.testing_links || []).map(link =>
+      link.id === linkId
+        ? { ...link, label: editingTestingLinkValue.label.trim(), url: editingTestingLinkValue.url.trim() }
+        : link
+    );
+    updateProject(selectedProject.id, { testing_links: updatedLinks });
+    setEditingTestingLink(null);
+    setEditingTestingLinkValue({ label: '', url: '' });
+    toast.success('Testing link updated');
   };
 
   // Calculate completion for a phase (including subtasks)
@@ -2125,6 +2190,138 @@ export default function ProjectManager() {
               </div>
             </div>
           </div>
+
+          {/* Testing Links - Only for Demos and Ongoing */}
+          {(selectedProject.status === 'demo' || selectedProject.status === 'ongoing') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-semibold">AI Agent Testing Links</Label>
+                <Badge variant="secondary" className="text-xs">
+                  {(selectedProject.testing_links || []).length} link{(selectedProject.testing_links || []).length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+              
+              <div className="rounded-lg border border-border/50 p-3 bg-muted/30 space-y-2">
+                {(selectedProject.testing_links || []).length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground text-sm">
+                    <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No testing links added yet</p>
+                    <p className="text-xs mt-1">Add links to test AI agents for this project</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(selectedProject.testing_links || []).map((link) => (
+                      <div
+                        key={link.id}
+                        className="flex items-center gap-2 p-2 rounded-md bg-background/50 border border-border/30 group"
+                      >
+                        {editingTestingLink === link.id ? (
+                          <>
+                            <Input
+                              value={editingTestingLinkValue.label}
+                              onChange={(e) => setEditingTestingLinkValue(prev => ({ ...prev, label: e.target.value }))}
+                              placeholder="Link label..."
+                              className="h-8 text-sm flex-1"
+                              autoFocus
+                            />
+                            <Input
+                              value={editingTestingLinkValue.url}
+                              onChange={(e) => setEditingTestingLinkValue(prev => ({ ...prev, url: e.target.value }))}
+                              placeholder="https://..."
+                              className="h-8 text-sm flex-1"
+                              type="url"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => saveTestingLinkEdit(link.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={cancelEditing}
+                            >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={link.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-sm text-primary hover:underline truncate"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {link.label}
+                                </a>
+                                <Badge variant="outline" className="text-[10px] h-4">
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Test
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{link.url}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => startEditingTestingLink(link)}
+                            >
+                              <Sparkles className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                              onClick={() => removeTestingLink(link.id)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Add new testing link */}
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50 mt-2">
+                  <Input
+                    placeholder="Link label (e.g., WhatsApp Agent)"
+                    value={newTestingLink.label}
+                    onChange={(e) => setNewTestingLink(prev => ({ ...prev, label: e.target.value }))}
+                    className="h-8 text-sm bg-background flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && newTestingLink.url.trim() && addTestingLink()}
+                  />
+                  <Input
+                    placeholder="https://..."
+                    value={newTestingLink.url}
+                    onChange={(e) => setNewTestingLink(prev => ({ ...prev, url: e.target.value }))}
+                    className="h-8 text-sm bg-background flex-1"
+                    type="url"
+                    onKeyDown={(e) => e.key === 'Enter' && newTestingLink.label.trim() && addTestingLink()}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addTestingLink}
+                    disabled={!newTestingLink.label.trim() || !newTestingLink.url.trim()}
+                    className="h-8"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Implementation Notes */}
           <div className="space-y-2">
