@@ -321,15 +321,6 @@ const PartnershipDetails = () => {
             </Card>
 
             <PartnershipRevenueChart contracts={linkedContracts} />
-
-            <LinkContractDialog
-              open={isLinkDialogOpen}
-              onOpenChange={setIsLinkDialogOpen}
-              partnershipId={id!}
-              partnershipName={partnership.name}
-              availableContracts={availableContracts}
-              onContractLinked={handleContractLinked}
-            />
           </TabsContent>
 
           <TabsContent value="contacts">
@@ -460,6 +451,18 @@ const PartnershipDetails = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Link Contract Dialog - Outside tabs so it's always available */}
+        {partnership && (
+          <LinkContractDialog
+            open={isLinkDialogOpen}
+            onOpenChange={setIsLinkDialogOpen}
+            partnershipId={id!}
+            partnershipName={partnership.name}
+            availableContracts={availableContracts}
+            onContractLinked={handleContractLinked}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
