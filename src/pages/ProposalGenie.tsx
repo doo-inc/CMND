@@ -260,7 +260,7 @@ const ProposalGenie = () => {
   const fetchSavedDrafts = async () => {
     setLoadingDrafts(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('calculator_drafts')
         .select('*')
         .order('updated_at', { ascending: false });
@@ -334,7 +334,7 @@ const ProposalGenie = () => {
         monthly_equivalent: calculations.monthlyEquivalent
       };
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('calculator_drafts')
         .insert(draftData);
 
@@ -375,7 +375,7 @@ const ProposalGenie = () => {
 
   const deleteDraft = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('calculator_drafts')
         .delete()
         .eq('id', id);

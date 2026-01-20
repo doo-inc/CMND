@@ -80,6 +80,87 @@ export type Database = {
         }
         Relationships: []
       }
+      calculator_drafts: {
+        Row: {
+          avatar_config: Json | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          customer_name: string
+          discount_applies_to: string | null
+          discount_percent: number | null
+          discount_permission: string | null
+          discount_reason: string | null
+          draft_name: string | null
+          force_minimums: boolean | null
+          fx_rate: number | null
+          grand_total_converted: number | null
+          grand_total_usd: number | null
+          id: string
+          monthly_equivalent: number | null
+          setup_base: number | null
+          setup_lines: Json | null
+          text_config: Json | null
+          updated_at: string | null
+          vat_applies_to: string | null
+          vat_enabled: boolean | null
+          vat_rate: number | null
+          voice_config: Json | null
+        }
+        Insert: {
+          avatar_config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          customer_name: string
+          discount_applies_to?: string | null
+          discount_percent?: number | null
+          discount_permission?: string | null
+          discount_reason?: string | null
+          draft_name?: string | null
+          force_minimums?: boolean | null
+          fx_rate?: number | null
+          grand_total_converted?: number | null
+          grand_total_usd?: number | null
+          id?: string
+          monthly_equivalent?: number | null
+          setup_base?: number | null
+          setup_lines?: Json | null
+          text_config?: Json | null
+          updated_at?: string | null
+          vat_applies_to?: string | null
+          vat_enabled?: boolean | null
+          vat_rate?: number | null
+          voice_config?: Json | null
+        }
+        Update: {
+          avatar_config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          customer_name?: string
+          discount_applies_to?: string | null
+          discount_percent?: number | null
+          discount_permission?: string | null
+          discount_reason?: string | null
+          draft_name?: string | null
+          force_minimums?: boolean | null
+          fx_rate?: number | null
+          grand_total_converted?: number | null
+          grand_total_usd?: number | null
+          id?: string
+          monthly_equivalent?: number | null
+          setup_base?: number | null
+          setup_lines?: Json | null
+          text_config?: Json | null
+          updated_at?: string | null
+          vat_applies_to?: string | null
+          vat_enabled?: boolean | null
+          vat_rate?: number | null
+          voice_config?: Json | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           annual_rate: number | null

@@ -148,9 +148,10 @@ export const getTopPartnershipsByRevenue = async (limit: number = 5, filterTypes
     .from('partnerships')
     .select('id, name, partnership_type');
 
-  // Apply filter if types are specified
+  // Apply filter if types are specified - cast to enum array for type safety
   if (filterTypes && filterTypes.length > 0) {
-    partnershipsQuery = partnershipsQuery.in('partnership_type', filterTypes);
+    const validTypes = filterTypes as Array<"consultant" | "education_partner" | "mou_partner" | "platform_partner" | "reseller">;
+    partnershipsQuery = partnershipsQuery.in('partnership_type', validTypes);
   }
 
   const { data: partnerships, error: partnershipsError } = await partnershipsQuery;
