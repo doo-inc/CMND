@@ -17,6 +17,7 @@ import { DealsAtRiskDetail } from "@/components/analytics/DealsAtRiskDetail";
 import { ChurnRateDetail } from "@/components/analytics/ChurnRateDetail";
 import { PitchToPayDetail } from "@/components/analytics/PitchToPayDetail";
 import { CustomersAtRiskDetail } from "@/components/analytics/CustomersAtRiskDetail";
+import { PayToLiveDetail } from "@/components/analytics/PayToLiveDetail";
 
 const AnalyticsDetail = () => {
   const { metric } = useParams<{ metric: string }>();
@@ -47,7 +48,8 @@ const AnalyticsDetail = () => {
       "deals-at-risk": "Deals at Risk Details",
       "churn-rate": "Churn Rate Details",
       "pitch-to-pay": "Pitch to Pay Details",
-      "customers-at-risk": "Customers At Risk Details"
+      "customers-at-risk": "Customers At Risk Details",
+      "pay-to-live": "Pay to Live Details"
     };
     setTitle(titles[metric || ""] || "Analytics Details");
   }, [metric]);
@@ -82,6 +84,8 @@ const AnalyticsDetail = () => {
         return <PitchToPayDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       case "customers-at-risk":
         return <CustomersAtRiskDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
+      case "pay-to-live":
+        return <PayToLiveDetail countries={countries} dateFrom={dateFrom} dateTo={dateTo} />;
       default:
         return (
           <div className="text-center py-8">
