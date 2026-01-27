@@ -37,7 +37,9 @@ import {
   Upload,
   Eye,
   XCircle,
-  Inbox
+  Inbox,
+  Users,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -94,6 +96,7 @@ interface ProjectCustomer {
   demo_delivered?: boolean; // Track if demo was delivered
   testing_links?: TestingLink[]; // AI Agent testing links
   created_at: string;
+  completed_at?: string; // Track when project was completed
 }
 
 // Helper function to calculate days until deadline and get color
@@ -137,11 +140,14 @@ const getContractIndicator = (contractValue: number | undefined) => {
   }
 };
 
+type TaskStage = 'not_started' | 'in_progress' | 'client_review' | 'internal_revision' | 'blocked' | 'done';
+
 interface SubTask {
   id: string;
   label: string;
   checked: boolean;
   deadline?: string;
+  stage?: TaskStage;
 }
 
 interface ChecklistItem {
@@ -151,6 +157,7 @@ interface ChecklistItem {
   subtasks?: SubTask[];
   expanded?: boolean;
   deadline?: string;
+  stage?: TaskStage;
 }
 
 interface Customer {
@@ -194,7 +201,7 @@ export default function ProjectManager() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectCustomer[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectCustomer | null>(null);
-  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed' | 'demo' | 'requests'>('demo');
+  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed' | 'demo' | 'requests' | 'team'>('demo');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -234,6 +241,12 @@ export default function ProjectManager() {
   
   // For filtering by assignee
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
+  
+  // For demo filter (pending/completed)
+  const [demoFilter, setDemoFilter] = useState<'pending' | 'completed'>('pending');
+  
+  // For team overview filter (total/demos/ongoing/completed)
+  const [teamViewFilter, setTeamViewFilter] = useState<'total' | 'demos' | 'ongoing' | 'completed'>('total');
   
   // For search functionality
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -301,6 +314,7 @@ export default function ProjectManager() {
         demo_delivered: p.demo_delivered || false,
         testing_links: (p.testing_links as TestingLink[]) || [],
         created_at: p.created_at,
+        completed_at: p.completed_at || undefined,
       }));
 
       setProjects(formattedProjects);
@@ -1042,6 +1056,7 @@ export default function ProjectManager() {
       if (updates.demo_date !== undefined) dbUpdates.demo_date = updates.demo_date || null;
         if (updates.demo_delivered !== undefined) dbUpdates.demo_delivered = updates.demo_delivered;
       if (updates.testing_links !== undefined) dbUpdates.testing_links = updates.testing_links || [];
+      if (updates.completed_at !== undefined) dbUpdates.completed_at = updates.completed_at || null;
 
       const { error } = await supabase
         .from('project_manager' as any)
@@ -1077,6 +1092,7 @@ export default function ProjectManager() {
       checked: false,
       subtasks: [],
       expanded: true,
+      stage: 'not_started',
     };
 
     const updatedItems = [...selectedProject.checklist_items, newItem];
@@ -1118,6 +1134,7 @@ export default function ProjectManager() {
       id: crypto.randomUUID(),
       label: newSubtask[phaseId].trim(),
       checked: false,
+      stage: 'not_started',
     };
 
     const updatedItems = selectedProject.checklist_items.map(item =>
@@ -1186,6 +1203,47 @@ export default function ProjectManager() {
     if (!deadline) return null;
     const info = getDeadlineInfo(deadline);
     return info;
+  };
+
+  // Stage configuration
+  const stageConfig: { [key in TaskStage]: { label: string; color: string; bg: string } } = {
+    not_started: { label: 'Not Started', color: 'text-gray-500', bg: 'bg-gray-500/10 border-gray-500/30' },
+    in_progress: { label: 'In Progress', color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/30' },
+    client_review: { label: 'Client Review', color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/30' },
+    internal_revision: { label: 'Internal Revision', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/30' },
+    blocked: { label: 'Blocked', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30' },
+    done: { label: 'Done', color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/30' },
+  };
+
+  // Update phase stage
+  const updatePhaseStage = (phaseId: string, stage: TaskStage) => {
+    if (!selectedProject) return;
+
+    const updatedItems = selectedProject.checklist_items.map(item =>
+      item.id === phaseId 
+        ? { ...item, stage, checked: stage === 'done' ? true : item.checked }
+        : item
+    );
+    updateProject(selectedProject.id, { checklist_items: updatedItems });
+  };
+
+  // Update subtask stage
+  const updateSubtaskStage = (phaseId: string, subtaskId: string, stage: TaskStage) => {
+    if (!selectedProject) return;
+
+    const updatedItems = selectedProject.checklist_items.map(item =>
+      item.id === phaseId 
+        ? { 
+            ...item, 
+            subtasks: (item.subtasks || []).map(st =>
+              st.id === subtaskId 
+                ? { ...st, stage, checked: stage === 'done' ? true : st.checked }
+                : st
+            )
+          }
+        : item
+    );
+    updateProject(selectedProject.id, { checklist_items: updatedItems });
   };
 
   // Start editing a phase
@@ -1323,8 +1381,11 @@ export default function ProjectManager() {
   const moveToCompleted = async () => {
     if (!selectedProject) return;
     
-    // Update project status
-    updateProject(selectedProject.id, { status: 'completed' });
+    // Update project status and set completed_at timestamp
+    updateProject(selectedProject.id, { 
+      status: 'completed', 
+      completed_at: new Date().toISOString() 
+    });
     setActiveTab('completed');
     toast.success(`${selectedProject.customer_name} moved to Completed`);
     
@@ -1375,6 +1436,15 @@ export default function ProjectManager() {
 
   const filteredProjects = projects.filter(p => {
     const matchesStatus = p.status === activeTab;
+    
+    // For demo tab, filter by demo_delivered status
+    if (activeTab === 'demo') {
+      const matchesDemoFilter = demoFilter === 'pending' 
+        ? !p.demo_delivered 
+        : p.demo_delivered === true;
+      if (!matchesDemoFilter) return false;
+    }
+    
     const matchesAssignee = selectedAssignee === 'all' || p.project_manager === selectedAssignee;
     
     // Search filtering (case-insensitive)
@@ -1392,6 +1462,8 @@ export default function ProjectManager() {
   const ongoingCount = projects.filter(p => p.status === 'ongoing').length;
   const completedCount = projects.filter(p => p.status === 'completed').length;
   const demoCount = projects.filter(p => p.status === 'demo').length;
+  const pendingDemoCount = projects.filter(p => p.status === 'demo' && !p.demo_delivered).length;
+  const completedDemoCount = projects.filter(p => p.status === 'demo' && p.demo_delivered === true).length;
   
   // Priority config for display
   const priorityConfig = {
@@ -1423,7 +1495,7 @@ export default function ProjectManager() {
           <CardTitle className="text-lg">
             {activeTab === 'ongoing' && 'Ongoing Projects'}
             {activeTab === 'completed' && 'Completed Projects'}
-            {activeTab === 'demo' && 'Scheduled Demos'}
+            {activeTab === 'demo' && (demoFilter === 'pending' ? 'Pending Demos' : 'Completed Demos')}
           </CardTitle>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => loadProjects()} title="Refresh">
@@ -2041,6 +2113,38 @@ export default function ProjectManager() {
                           {phase.label}
                         </span>
                       )}
+                      {/* Phase Stage Selector */}
+                      <Select
+                        value={phase.stage || 'not_started'}
+                        onValueChange={(value) => updatePhaseStage(phase.id, value as TaskStage)}
+                      >
+                        <SelectTrigger 
+                          className={`h-6 w-auto min-w-[100px] text-[10px] px-2 border shrink-0 ${stageConfig[phase.stage || 'not_started'].bg}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                                <SelectItem value="not_started">
+                            <span className={stageConfig.not_started.color}>Not Started</span>
+                          </SelectItem>
+                          <SelectItem value="in_progress">
+                            <span className={stageConfig.in_progress.color}>In Progress</span>
+                          </SelectItem>
+                          <SelectItem value="client_review">
+                            <span className={stageConfig.client_review.color}>Client Review</span>
+                          </SelectItem>
+                          <SelectItem value="internal_revision">
+                            <span className={stageConfig.internal_revision.color}>Internal Revision</span>
+                          </SelectItem>
+                          <SelectItem value="blocked">
+                            <span className={stageConfig.blocked.color}>Blocked</span>
+                          </SelectItem>
+                          <SelectItem value="done">
+                            <span className={stageConfig.done.color}>Done</span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       {/* Phase Deadline */}
                       {phase.deadline ? (
                         <Badge className={`text-[10px] h-5 shrink-0 ${getTaskDeadlineInfo(phase.deadline)?.color}`}>
@@ -2116,6 +2220,38 @@ export default function ProjectManager() {
                                 {subtask.label}
                               </span>
                             )}
+                            {/* Subtask Stage Selector */}
+                            <Select
+                              value={subtask.stage || 'not_started'}
+                              onValueChange={(value) => updateSubtaskStage(phase.id, subtask.id, value as TaskStage)}
+                            >
+                              <SelectTrigger 
+                                className={`h-5 w-auto min-w-[90px] text-[10px] px-1.5 border shrink-0 ${stageConfig[subtask.stage || 'not_started'].bg}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="not_started">
+                                  <span className={`text-xs ${stageConfig.not_started.color}`}>Not Started</span>
+                                </SelectItem>
+                                <SelectItem value="in_progress">
+                                  <span className={`text-xs ${stageConfig.in_progress.color}`}>In Progress</span>
+                                </SelectItem>
+                                <SelectItem value="client_review">
+                                  <span className={`text-xs ${stageConfig.client_review.color}`}>Client Review</span>
+                                </SelectItem>
+                                <SelectItem value="internal_revision">
+                                  <span className={`text-xs ${stageConfig.internal_revision.color}`}>Internal Revision</span>
+                                </SelectItem>
+                                <SelectItem value="blocked">
+                                  <span className={`text-xs ${stageConfig.blocked.color}`}>Blocked</span>
+                                </SelectItem>
+                                <SelectItem value="done">
+                                  <span className={`text-xs ${stageConfig.done.color}`}>Done</span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                             {/* Subtask Deadline */}
                             {subtask.deadline ? (
                               <Badge className={`text-[10px] h-4 shrink-0 ${getTaskDeadlineInfo(subtask.deadline)?.color}`}>
@@ -2434,6 +2570,375 @@ export default function ProjectManager() {
     );
   };
 
+  // Group projects by project manager for team overview
+  const getProjectsByManager = () => {
+    // First, get ALL unique managers from all projects (to show everyone)
+    const allManagers = new Set<string>();
+    projects.forEach(project => {
+      if (project.project_manager) {
+        allManagers.add(project.project_manager);
+      }
+      if (project.secondary_project_manager) {
+        allManagers.add(project.secondary_project_manager);
+      }
+    });
+    
+    // Filter projects based on team view filter
+    let filteredProjects: ProjectCustomer[] = [];
+    
+    if (teamViewFilter === 'total') {
+      // Show active projects only (ongoing + pending demos) - not completed or delivered demos
+      filteredProjects = projects.filter(p => 
+        p.status === 'ongoing' || 
+        (p.status === 'demo' && !p.demo_delivered)
+      );
+    } else if (teamViewFilter === 'demos') {
+      // Show only pending demo projects (not delivered)
+      filteredProjects = projects.filter(p => p.status === 'demo' && !p.demo_delivered);
+    } else if (teamViewFilter === 'ongoing') {
+      // Show only ongoing projects
+      filteredProjects = projects.filter(p => p.status === 'ongoing');
+    } else if (teamViewFilter === 'completed') {
+      // Show only completed projects
+      filteredProjects = projects.filter(p => p.status === 'completed');
+    }
+    
+    // Group filtered projects by project manager
+    const grouped: { [manager: string]: ProjectCustomer[] } = {};
+    
+    // Initialize all managers with empty arrays
+    allManagers.forEach(manager => {
+      grouped[manager] = [];
+    });
+    
+    // Add filtered projects to their managers
+    filteredProjects.forEach(project => {
+      const manager = project.project_manager || 'Unassigned';
+      if (!grouped[manager]) {
+        grouped[manager] = [];
+      }
+      grouped[manager].push(project);
+      
+      // Also add to secondary manager's column if exists
+      if (project.secondary_project_manager && project.secondary_project_manager !== manager) {
+        if (!grouped[project.secondary_project_manager]) {
+          grouped[project.secondary_project_manager] = [];
+        }
+        // Check if not already added
+        if (!grouped[project.secondary_project_manager].find(p => p.id === project.id)) {
+          grouped[project.secondary_project_manager].push(project);
+        }
+      }
+    });
+    
+    // Return all managers (including those with 0 projects for current filter)
+    // Sort by number of projects, then alphabetically
+    const allManagersWithProjects = Object.entries(grouped)
+      .sort((a, b) => {
+        if (b[1].length !== a[1].length) {
+          return b[1].length - a[1].length; // Sort by number of projects
+        }
+        return a[0].localeCompare(b[0]); // Then alphabetically
+      });
+    
+    return allManagersWithProjects;
+  };
+
+  const renderTeamOverview = () => {
+    const projectsByManager = getProjectsByManager();
+    
+    if (projectsByManager.length === 0) {
+      return (
+        <Card className="border-2 border-dashed border-border/50">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Team Members Assigned</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              No projects have been assigned to team members yet.
+              Add projects in the Demos or Ongoing tabs and assign a project manager.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Team Workload Overview</h2>
+            <p className="text-sm text-muted-foreground">
+              View projects assigned to each team member
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* View Filter Toggle */}
+            <div className="inline-flex rounded-lg border border-border bg-muted p-1">
+              <Button
+                variant={teamViewFilter === 'total' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTeamViewFilter('total')}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Active
+              </Button>
+              <Button
+                variant={teamViewFilter === 'demos' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTeamViewFilter('demos')}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Demos
+              </Button>
+              <Button
+                variant={teamViewFilter === 'ongoing' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTeamViewFilter('ongoing')}
+                className="gap-2"
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                Ongoing
+              </Button>
+              <Button
+                variant={teamViewFilter === 'completed' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTeamViewFilter('completed')}
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Completed
+              </Button>
+            </div>
+            <Badge variant="outline" className="text-sm">
+              {projectsByManager.length} team member{projectsByManager.length !== 1 ? 's' : ''} with projects
+            </Badge>
+          </div>
+        </div>
+        
+        <div className="w-full overflow-x-auto">
+          <div className="flex gap-4 pb-4 min-w-max">
+            {projectsByManager.map(([manager, managerProjects]) => {
+              // Calculate stats for this manager
+              const managerCompletedProjects = projects.filter(p => 
+                p.status === 'completed' && 
+                (p.project_manager === manager || p.secondary_project_manager === manager)
+              );
+              const completedCount = managerCompletedProjects.length;
+              
+              // Calculate delivered demos count
+              const deliveredDemosCount = projects.filter(p => 
+                p.status === 'demo' && 
+                p.demo_delivered === true &&
+                (p.project_manager === manager || p.secondary_project_manager === manager)
+              ).length;
+              
+              // Calculate average completion time
+              const completionTimes = managerCompletedProjects
+                .filter(p => p.completed_at)
+                .map(p => {
+                  const start = new Date(p.created_at);
+                  const end = new Date(p.completed_at!);
+                  return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                });
+              const avgCompletionDays = completionTimes.length > 0 
+                ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length)
+                : null;
+              
+              return (
+              <Card key={manager} className="w-[320px] shrink-0 border-2 border-border/50">
+                <CardHeader className="pb-3 bg-muted/30 border-b border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {manager.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-base font-semibold">{manager}</CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {managerProjects.length} {teamViewFilter === 'total' ? 'active' : teamViewFilter === 'demos' ? 'pending demo' : teamViewFilter === 'ongoing' ? 'ongoing' : 'completed'}{managerProjects.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Stats row */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Play className="h-3.5 w-3.5 text-purple-500" />
+                      <span className="text-muted-foreground">{deliveredDemosCount} demos delivered</span>
+                    </div>
+                    <span className="text-muted-foreground">•</span>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-muted-foreground">{completedCount} completed</span>
+                    </div>
+                    {avgCompletionDays !== null && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Clock className="h-3.5 w-3.5 text-blue-500" />
+                          <span className="text-muted-foreground">
+                            ~{avgCompletionDays < 7 
+                              ? `${avgCompletionDays}d avg` 
+                              : `${Math.round(avgCompletionDays / 7)}w avg`
+                            }
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <ScrollArea className="h-[450px]">
+                    <div className="space-y-2 pr-2">
+                      {managerProjects.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                            {teamViewFilter === 'demos' ? (
+                              <Play className="h-5 w-5" />
+                            ) : teamViewFilter === 'ongoing' ? (
+                              <ClipboardCheck className="h-5 w-5" />
+                            ) : teamViewFilter === 'completed' ? (
+                              <CheckCircle2 className="h-5 w-5" />
+                            ) : (
+                              <Users className="h-5 w-5" />
+                            )}
+                          </div>
+                          <p className="text-sm font-medium">No {teamViewFilter === 'demos' ? 'pending demos' : teamViewFilter === 'ongoing' ? 'ongoing projects' : teamViewFilter === 'completed' ? 'completed projects' : 'active projects'}</p>
+                          <p className="text-xs mt-1">Available for new assignments</p>
+                        </div>
+                      ) : managerProjects.map(project => {
+                        const deadlineInfo = getDeadlineInfo(project.deadline);
+                        const completedTasks = project.checklist_items.filter(item => item.checked).length;
+                        const totalTasks = project.checklist_items.length;
+                        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                        
+                        return (
+                          <div
+                            key={project.id}
+                            className="p-3 rounded-lg border border-border/50 bg-background hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setActiveTab(project.status as 'ongoing' | 'completed' | 'demo');
+                              setSelectedProject(project);
+                            }}
+                          >
+                            <div className="flex items-start gap-2 mb-2">
+                              {project.customer_logo ? (
+                                <img
+                                  src={project.customer_logo}
+                                  alt={project.customer_name}
+                                  className="w-8 h-8 rounded object-cover border border-border/50"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs">
+                                  {project.customer_name.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm truncate">{project.customer_name}</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] px-1.5 py-0 ${
+                                      project.status === 'demo' 
+                                        ? 'bg-purple-500/10 text-purple-500 border-purple-500/30' 
+                                        : project.status === 'completed'
+                                        ? 'bg-green-500/10 text-green-500 border-green-500/30'
+                                        : 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                    }`}
+                                  >
+                                    {project.status === 'demo' ? 'Demo' : project.status === 'completed' ? 'Completed' : 'Ongoing'}
+                                  </Badge>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] px-1.5 py-0 ${
+                                      project.priority === 'high' 
+                                        ? 'bg-red-500/10 text-red-500 border-red-500/30' 
+                                        : project.priority === 'moderate'
+                                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                                        : 'bg-green-500/10 text-green-500 border-green-500/30'
+                                    }`}
+                                  >
+                                    {project.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Progress bar */}
+                            {totalTasks > 0 && (
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                                  <span>Progress</span>
+                                  <span>{completedTasks}/{totalTasks} tasks</span>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all ${
+                                      progress === 100 ? 'bg-green-500' : 
+                                      progress >= 50 ? 'bg-blue-500' : 'bg-orange-500'
+                                    }`}
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Deadline */}
+                            {deadlineInfo && (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className={`h-3 w-3 ${deadlineInfo.textColor}`} />
+                              <span className={`text-[10px] font-medium ${deadlineInfo.textColor}`}>
+                                {deadlineInfo.label}
+                              </span>
+                            </div>
+                          )}
+                            
+                            {/* Completion time for completed projects */}
+                            {project.status === 'completed' && project.completed_at && (
+                              <div className="flex items-center gap-1.5 text-green-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                                <span className="text-[10px] font-medium">
+                                  Completed in {(() => {
+                                    const start = new Date(project.created_at);
+                                    const end = new Date(project.completed_at);
+                                    const diffMs = end.getTime() - start.getTime();
+                                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                    if (diffDays === 0) return 'less than a day';
+                                    if (diffDays === 1) return '1 day';
+                                    if (diffDays < 7) return `${diffDays} days`;
+                                    const weeks = Math.floor(diffDays / 7);
+                                    const remainingDays = diffDays % 7;
+                                    if (weeks === 1) return remainingDays > 0 ? `1 week, ${remainingDays}d` : '1 week';
+                                    return remainingDays > 0 ? `${weeks} weeks, ${remainingDays}d` : `${weeks} weeks`;
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Click hint */}
+                            <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+                              <ExternalLink className="h-3 w-3" />
+                              Click to view details
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto">
@@ -2447,7 +2952,7 @@ export default function ProjectManager() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v as 'ongoing' | 'completed' | 'demo' | 'requests');
+          setActiveTab(v as 'ongoing' | 'completed' | 'demo' | 'requests' | 'team');
           setSelectedProject(null);
         }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
@@ -2476,6 +2981,10 @@ export default function ProjectManager() {
                   <CheckCircle2 className="h-4 w-4" />
                   Completed
                   <Badge variant="secondary" className="ml-1">{completedCount}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="team" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Team Overview
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -3016,6 +3525,31 @@ export default function ProjectManager() {
           </TabsContent>
 
           <TabsContent value="demo" className="mt-0">
+            {/* Demo Filter Toggle */}
+            <div className="mb-4 flex items-center gap-3">
+              <div className="inline-flex rounded-lg border border-border bg-muted p-1">
+                <Button
+                  variant={demoFilter === 'pending' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDemoFilter('pending')}
+                  className="gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  Pending
+                  <Badge variant="secondary" className="ml-1">{pendingDemoCount}</Badge>
+                </Button>
+                <Button
+                  variant={demoFilter === 'completed' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDemoFilter('completed')}
+                  className="gap-2"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Completed
+                  <Badge variant="secondary" className="ml-1">{completedDemoCount}</Badge>
+                </Button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {renderProjectList()}
               {renderProjectDetails()}
@@ -3034,6 +3568,10 @@ export default function ProjectManager() {
               {renderProjectList()}
               {renderProjectDetails()}
             </div>
+          </TabsContent>
+
+          <TabsContent value="team" className="mt-0">
+            {renderTeamOverview()}
           </TabsContent>
         </Tabs>
       </div>
