@@ -1316,49 +1316,49 @@ export type Database = {
       }
       proposal_requests: {
         Row: {
-          id: string
-          customer_id: string | null
-          customer_name: string
-          ai_model: string
-          volume_details: string | null
-          custom_integration: string | null
           additional_notes: string | null
-          status: string
-          created_at: string
-          updated_at: string
-          created_by: string | null
+          ai_model: string
           completed_at: string | null
           completed_by: string | null
+          created_at: string
+          created_by: string | null
+          custom_integration: string | null
+          customer_id: string | null
+          customer_name: string
+          id: string
+          status: string
+          updated_at: string
+          volume_details: string | null
         }
         Insert: {
-          id?: string
+          additional_notes?: string | null
+          ai_model: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_integration?: string | null
           customer_id?: string | null
           customer_name: string
-          ai_model: string
-          volume_details?: string | null
-          custom_integration?: string | null
-          additional_notes?: string | null
+          id?: string
           status?: string
-          created_at?: string
           updated_at?: string
-          created_by?: string | null
-          completed_at?: string | null
-          completed_by?: string | null
+          volume_details?: string | null
         }
         Update: {
-          id?: string
-          customer_id?: string | null
-          customer_name?: string
-          ai_model?: string
-          volume_details?: string | null
-          custom_integration?: string | null
           additional_notes?: string | null
-          status?: string
-          created_at?: string
-          updated_at?: string
-          created_by?: string | null
+          ai_model?: string
           completed_at?: string | null
           completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_integration?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          volume_details?: string | null
         }
         Relationships: [
           {
