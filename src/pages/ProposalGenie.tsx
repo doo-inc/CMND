@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { ProposalNotesForm } from "@/components/proposals/ProposalNotesForm";
 import { PendingProposals } from "@/components/proposals/PendingProposals";
+import { ProposalRequests } from "@/components/proposals/ProposalRequests";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
@@ -40,7 +41,8 @@ import {
   Save,
   FolderOpen,
   User,
-  Building2
+  Building2,
+  Send
 } from "lucide-react";
 
 // ==================== RATE CARD DATA ====================
@@ -929,15 +931,19 @@ const ProposalGenie = () => {
                 Proposal Genie
               </h1>
               <p className="text-muted-foreground">
-                Proposal notes, pricing calculator & pending proposals
+                Proposal requests, notes, pricing calculator & pending proposals
               </p>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="notes" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-muted/50 p-1 h-auto">
+        <Tabs defaultValue="requests" className="space-y-6">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4 bg-muted/50 p-1 h-auto">
+            <TabsTrigger value="requests" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 py-3">
+              <Send className="h-4 w-4" />
+              <span className="font-medium">Requests</span>
+            </TabsTrigger>
             <TabsTrigger value="notes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 py-3">
               <StickyNote className="h-4 w-4" />
               <span className="font-medium">Notes</span>
@@ -948,9 +954,14 @@ const ProposalGenie = () => {
             </TabsTrigger>
             <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex items-center gap-2 py-3">
               <Clock className="h-4 w-4" />
-              <span className="font-medium">Pending Proposals</span>
+              <span className="font-medium">Pending</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Requests Tab */}
+          <TabsContent value="requests" className="mt-0">
+            <ProposalRequests />
+          </TabsContent>
 
           {/* Notes Tab */}
           <TabsContent value="notes" className="mt-0">

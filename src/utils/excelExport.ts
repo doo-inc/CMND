@@ -17,6 +17,7 @@ export interface ExportCustomerData {
   goLiveDate: string;
   pipelineStage: string;
   operationalStatus: string;
+  lastContactedAt: string;
   [key: string]: string | number; // For dynamic lifecycle stage columns
 }
 
@@ -95,6 +96,7 @@ export function exportCustomersToExcel(customers: CustomerData[], allLifecycleSt
         goLiveDate: customer.go_live_date ? new Date(customer.go_live_date).toLocaleDateString() : '',
         pipelineStage: customer.stage || 'Lead',
         operationalStatus: getOperationalStatus(stageMap),
+        lastContactedAt: customer.last_contacted_at ? new Date(customer.last_contacted_at).toLocaleDateString() : '',
       };
 
       // Add lifecycle stage columns with proper status from database using canonical names
@@ -121,6 +123,7 @@ export function exportCustomersToExcel(customers: CustomerData[], allLifecycleSt
       'Go Live Date',
       'Pipeline Stage',
       'Operational Status',
+      'Last Contacted',
       ...defaultLifecycleStages.map(stage => stage.name)
     ];
 
@@ -141,6 +144,7 @@ export function exportCustomersToExcel(customers: CustomerData[], allLifecycleSt
         customer.goLiveDate,
         customer.pipelineStage,
         customer.operationalStatus,
+        customer.lastContactedAt,
         ...defaultLifecycleStages.map(stage => {
           const stageKey = stage.name.replace(/\s+/g, '_');
           return customer[stageKey];

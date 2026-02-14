@@ -4,12 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { TrendingUp, ExternalLink } from "lucide-react";
+import { TrendingUp, ExternalLink, Info } from "lucide-react";
 
 interface ARRCustomer {
   id: string;
   name: string;
   annual_revenue: number;
+  contract_count: number;
 }
 
 interface TotalARRDetailProps {
@@ -27,6 +28,9 @@ export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailPr
   useEffect(() => {
     const fetchARRDetails = async () => {
       try {
+        // Match dashboard logic exactly:
+        // Contracts with status active/pending/null, from non-churned customers
+        // ARR = sum of annual_rate
         let query = supabase
           .from('contracts')
           .select(`
@@ -58,18 +62,21 @@ export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailPr
           const customer = contract.customers as any;
           const customerId = customer.id;
           
+          // Exclude churned customers — matches dashboard
           if (customer.status === 'churned') return;
           
           if (!customerARRMap.has(customerId)) {
             customerARRMap.set(customerId, {
               id: customer.id,
               name: customer.name,
-              annual_revenue: 0
+              annual_revenue: 0,
+              contract_count: 0
             });
           }
           
           const existingCustomer = customerARRMap.get(customerId)!;
           existingCustomer.annual_revenue += contract.annual_rate || 0;
+          existingCustomer.contract_count += 1;
         });
 
         const arrCustomers = Array.from(customerARRMap.values()).filter(customer => customer.annual_revenue > 0);
@@ -102,6 +109,15 @@ export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailPr
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Sum of annual_rate from all contracts with status "active", "pending", or unset — excluding churned customers.
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -110,7 +126,7 @@ export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailPr
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{customers.length} customers with ARR</p>
+          <p className="text-muted-foreground">{customers.length} customers with ARR • {customers.reduce((s, c) => s + c.contract_count, 0)} contracts</p>
         </CardContent>
       </Card>
 
@@ -123,7 +139,10 @@ export const TotalARRDetail = ({ countries, dateFrom, dateTo }: TotalARRDetailPr
           >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="font-medium flex-1">{customer.name}</p>
+                <div className="flex-1">
+                  <p className="font-medium">{customer.name}</p>
+                  <p className="text-xs text-muted-foreground">{customer.contract_count} contract{customer.contract_count !== 1 ? 's' : ''}</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-bold">{formatCurrency(customer.annual_revenue)}/year</p>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />

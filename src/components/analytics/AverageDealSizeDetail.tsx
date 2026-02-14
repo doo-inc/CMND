@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { DollarSign, TrendingUp, Building2, Target } from "lucide-react";
+import { DollarSign, TrendingUp, Building2, Target, Info } from "lucide-react";
 
 interface DealSizeData {
   averageDealSize: number;
@@ -37,42 +37,67 @@ export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDe
   useEffect(() => {
     const fetchDealSizeData = async () => {
       try {
-        // Get pipeline customers (not live, not churned) with estimated deal values
-        let query = supabase
+        // Match dashboard logic exactly:
+        // Pipeline = customers NOT churned, NOT lost stage, NOT live (no active contracts)
+        // Average = pipelineValue / pipelineCount
+
+        // Step 1: Get all customers
+        let customersQuery = supabase
           .from('customers')
-          .select('*')
-          .not('status', 'eq', 'done')
-          .not('status', 'eq', 'churned')
-          .gt('estimated_deal_value', 0);
-        
+          .select('id, name, estimated_deal_value, contract_size, stage, status, segment, country, created_at');
+
         if (countries && countries.length > 0) {
-          query = query.in('country', countries);
+          customersQuery = customersQuery.in('country', countries);
         }
-        
         if (dateFrom) {
-          query = query.gte('created_at', dateFrom.toISOString());
+          customersQuery = customersQuery.gte('created_at', dateFrom.toISOString());
         }
-        
         if (dateTo) {
-          query = query.lte('created_at', dateTo.toISOString());
+          customersQuery = customersQuery.lte('created_at', dateTo.toISOString());
         }
-        
-        const { data: customers, error } = await query;
 
-        if (error) throw error;
+        // Step 2: Get active contracts to identify live customer IDs
+        let contractsQuery = supabase
+          .from('contracts')
+          .select('customer_id')
+          .eq('status', 'active');
 
-        const deals = customers || [];
-        const dealValues = deals.map(d => d.estimated_deal_value).sort((a, b) => a - b);
+        const [customersResult, contractsResult] = await Promise.all([
+          customersQuery,
+          contractsQuery
+        ]);
+
+        if (customersResult.error) throw customersResult.error;
+        if (contractsResult.error) throw contractsResult.error;
+
+        const liveCustomerIds = new Set(
+          (contractsResult.data || []).map(c => c.customer_id).filter(Boolean)
+        );
+
+        const isLostStage = (stage?: string | null) => stage?.toLowerCase() === 'lost';
+
+        // Pipeline customers: not churned, not lost, not live — matches dashboard
+        const deals = (customersResult.data || []).filter(c =>
+          c.status !== 'churned' &&
+          !isLostStage(c.stage) &&
+          !liveCustomerIds.has(c.id)
+        );
+
+        // Use estimated_deal_value || contract_size — matches dashboard
+        const dealValues = deals
+          .map(d => d.estimated_deal_value || d.contract_size || 0)
+          .sort((a, b) => a - b);
         
         const total = dealValues.reduce((sum, value) => sum + value, 0);
-        const average = deals.length > 0 ? total / deals.length : 0;
+        const average = deals.length > 0 ? Math.round(total / deals.length) : 0;
         const median = deals.length > 0 ? dealValues[Math.floor(dealValues.length / 2)] : 0;
 
         // Group by segment
         const segmentGroups = deals.reduce((acc, deal) => {
           const segment = deal.segment || 'Unknown';
+          const value = deal.estimated_deal_value || deal.contract_size || 0;
           if (!acc[segment]) acc[segment] = { total: 0, count: 0, average: 0 };
-          acc[segment].total += deal.estimated_deal_value;
+          acc[segment].total += value;
           acc[segment].count++;
           acc[segment].average = acc[segment].total / acc[segment].count;
           return acc;
@@ -81,8 +106,9 @@ export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDe
         // Group by country
         const countryGroups = deals.reduce((acc, deal) => {
           const country = deal.country || 'Unknown';
+          const value = deal.estimated_deal_value || deal.contract_size || 0;
           if (!acc[country]) acc[country] = { total: 0, count: 0, average: 0 };
-          acc[country].total += deal.estimated_deal_value;
+          acc[country].total += value;
           acc[country].count++;
           acc[country].average = acc[country].total / acc[country].count;
           return acc;
@@ -138,13 +164,23 @@ export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDe
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Total pipeline value divided by number of pipeline customers. Pipeline = customers who are not churned, not in "Lost" stage, and not yet live (no active contracts).
+        </div>
+      </div>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-2 border-primary/20">
           <CardContent className="p-6 text-center">
             <DollarSign className="h-8 w-8 mx-auto mb-2 text-primary" />
             <p className="text-2xl font-bold text-primary">{formatCurrency(data.averageDealSize)}</p>
             <p className="text-sm text-muted-foreground">Average Deal Size</p>
+            <p className="text-xs text-muted-foreground mt-1">(matches dashboard)</p>
           </CardContent>
         </Card>
         
@@ -239,9 +275,9 @@ export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDe
         <CardContent>
           <div className="space-y-4">
             {Object.entries(data.byCountry)
-              .filter(([,stats]) => stats.count >= 2) // Only show countries with at least 2 deals
+              .filter(([,stats]) => stats.count >= 2)
               .sort(([,a], [,b]) => b.average - a.average)
-              .slice(0, 10) // Show top 10
+              .slice(0, 10)
               .map(([country, stats]) => (
                 <div key={country} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-1">
@@ -266,7 +302,7 @@ export const AverageDealSizeDetail = ({ countries, dateFrom, dateTo }: AverageDe
       {data.totalDeals === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No pipeline deals with estimated values found</p>
+            <p className="text-muted-foreground">No pipeline deals found</p>
           </CardContent>
         </Card>
       )}

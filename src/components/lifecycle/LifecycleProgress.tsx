@@ -15,7 +15,7 @@ export function LifecycleProgress({ stages }: LifecycleProgressProps) {
     }
 
     const totalStages = stages.filter(s => s.status !== 'not-applicable').length;
-    const completedStages = stages.filter(s => s.status === 'done').length;
+    const completedStages = stages.filter(s => s.status === 'done' || s.status === 'not-applicable').length;
     
     const percentage = totalStages > 0 
       ? Math.round((completedStages / totalStages) * 100) 

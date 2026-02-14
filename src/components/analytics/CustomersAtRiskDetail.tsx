@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { AlertTriangle, Calendar } from "lucide-react";
+import { AlertTriangle, Calendar, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface CustomerAtRisk {
@@ -128,6 +128,15 @@ export const CustomersAtRiskDetail = ({ countries, dateFrom, dateTo }: Customers
 
   return (
     <div className="space-y-4">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Unique customers with contracts renewing within the next 30 days (customer status "done" or "active").
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

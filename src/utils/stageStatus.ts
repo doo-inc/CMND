@@ -8,7 +8,7 @@ export const normalizeStatus = (s?: string) => (s ?? "").toString().trim().toLow
 
 export const isCompletedLike = (s?: string): boolean => {
   const n = normalizeStatus(s);
-  return n === "done" || n === "completed" || n === "complete" || n === "finished";
+  return n === "done" || n === "completed" || n === "complete" || n === "finished" || n === "not-applicable";
 };
 
 export const isInProgressLike = (s?: string): boolean => {

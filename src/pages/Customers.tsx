@@ -38,6 +38,9 @@ const Customers = () => {
   const [segmentFilter, setSegmentFilter] = useState("all");
   const [dealOwnerFilter, setDealOwnerFilter] = useState("all");
   const [projectOwnerFilter, setProjectOwnerFilter] = useState("all");
+  const [contactedFilter, setContactedFilter] = useState("all");
+  const [contactedFrom, setContactedFrom] = useState("");
+  const [contactedTo, setContactedTo] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
   const [sortBy, setSortBy] = useState<"name" | "contractSize">("name");
@@ -59,7 +62,7 @@ const Customers = () => {
   const normalizeStatus = (s?: string) => (s ?? "").toString().trim().toLowerCase().replace(/[_\s]+/g, "-");
   const isCompletedLike = (s?: string) => {
     const n = normalizeStatus(s);
-    return n === "done" || n === "completed" || n === "complete" || n === "finished";
+    return n === "done" || n === "completed" || n === "complete" || n === "finished" || n === "not-applicable";
   };
   const isInProgressLike = (s?: string) => {
     const n = normalizeStatus(s);
@@ -71,7 +74,7 @@ const Customers = () => {
 
 // getOperationalStatus removed; using getOperationalStatusFromArray from utils/stageStatus
 
-  const formatDatabaseCustomer = (dbCustomer: any, lifecycleStages: any[] = [], contractValue?: number): CustomerData => {
+  const formatDatabaseCustomer = (dbCustomer: any, lifecycleStages: any[] = [], contractValue?: number, lastContactedAt?: string | null): CustomerData => {
     // Strictly completed stages (for filters and "furthestCompletedStage")
     const completedStages = lifecycleStages
       .filter(stage => isCompletedLike(stage.status))
@@ -121,6 +124,24 @@ const Customers = () => {
     // Use contract value if available, otherwise use estimated_deal_value or contract_size from profile
     const displayValue = contractValue || dbCustomer.estimated_deal_value || dbCustomer.contract_size || 0;
 
+    // Compute last updated timestamp (most recent of customer updated_at and any stage updated_at)
+    const timestamps = [
+      dbCustomer.updated_at,
+      ...lifecycleStages.map((s: any) => s.updated_at || s.created_at)
+    ].filter(Boolean).map((t: string) => new Date(t).getTime());
+    const lastUpdatedAt = timestamps.length > 0
+      ? new Date(Math.max(...timestamps)).toISOString()
+      : dbCustomer.updated_at || undefined;
+
+    // Map lifecycle stages for card display
+    const cardLifecycleStages = lifecycleStages.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      status: s.status || 'not-started',
+      category: s.category || null,
+      updated_at: s.updated_at || s.created_at
+    }));
+
     return {
       id: dbCustomer.id,
       name: dbCustomer.name,
@@ -139,7 +160,10 @@ const Customers = () => {
         id: dbCustomer.owner_id || "unknown",
         name: "Unassigned",
         role: "Unassigned"
-      }
+      },
+      lifecycleStages: cardLifecycleStages,
+      lastUpdatedAt: lastUpdatedAt,
+      last_contacted_at: lastContactedAt ?? null
     };
   };
 
@@ -354,12 +378,24 @@ const Customers = () => {
       // Fetch customers and their lifecycle stages (only needed columns for performance)
       const { data: customers, error: customersError } = await supabase
         .from('customers')
-        .select('id, name, logo, segment, country, stage, status, contract_size, deal_owner, project_owner, owner_id, industry, description');
+        .select('id, name, logo, segment, country, stage, status, contract_size, deal_owner, project_owner, owner_id, industry, description, updated_at, estimated_deal_value');
 
       if (customersError) {
         console.error("Supabase error:", customersError);
         throw customersError;
       }
+
+      // Try to fetch last_contacted_at separately (column may not exist yet)
+      let contactedMap: Record<string, string | null> = {};
+      const { data: contactedData, error: contactedError } = await supabase
+        .from('customers')
+        .select('id, last_contacted_at');
+      if (!contactedError && contactedData) {
+        contactedData.forEach((c: any) => {
+          contactedMap[c.id] = c.last_contacted_at || null;
+        });
+      }
+      // If contactedError, column likely doesn't exist yet — silently ignore
 
       // Fetch lifecycle stages more efficiently - only for existing customers
       const customerIds = (customers || []).map(c => c.id);
@@ -373,7 +409,7 @@ const Customers = () => {
 
           const { data: batchStages, error: stagesError } = await supabase
             .from('lifecycle_stages')
-            .select('customer_id, name, status, updated_at, created_at')
+            .select('id, customer_id, name, status, category, updated_at, created_at')
             .in('customer_id', batch);
 
           if (stagesError) {
@@ -448,7 +484,8 @@ const Customers = () => {
           formatDatabaseCustomer(
             customer,
             stagesByCustomer[customer.id] || [],
-            contractValuesByCustomer[customer.id]
+            contractValuesByCustomer[customer.id],
+            contactedMap[customer.id]
           )
         );
         
@@ -504,9 +541,10 @@ const Customers = () => {
     }
   };
 
-  const handleExportToExcel = async () => {
+  const handleExportToExcel = async (exportAll = false) => {
     try {
-      if (customers.length === 0) {
+      const dataToExport = exportAll ? customers : filteredCustomers;
+      if (dataToExport.length === 0) {
         toast.error("No customers to export");
         return;
       }
@@ -516,8 +554,9 @@ const Customers = () => {
         .from('lifecycle_stages')
         .select('*');
       
-      exportCustomersToExcel(customers, lifecycleStages || []);
-      toast.success(`Exported ${customers.length} customers to Excel`);
+      exportCustomersToExcel(dataToExport, lifecycleStages || []);
+      const label = exportAll ? "all" : "filtered";
+      toast.success(`Exported ${dataToExport.length} ${label} customers to Excel`);
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export customers to Excel");
@@ -595,7 +634,7 @@ const Customers = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter]);
+  }, [searchTerm, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter, contactedFilter, contactedFrom, contactedTo]);
 
   // Removed window focus auto-refresh for performance
 
@@ -656,6 +695,35 @@ const Customers = () => {
         return false;
       }
 
+      // Last Contacted filter
+      if (contactedFilter !== "all") {
+        const contacted = customer.last_contacted_at;
+        if (contactedFilter === "never") {
+          if (contacted) return false;
+        } else if (contactedFilter === "custom") {
+          if (!contacted) return false;
+          const contactedDate = new Date(contacted).getTime();
+          if (contactedFrom) {
+            const from = new Date(contactedFrom);
+            from.setHours(0, 0, 0, 0);
+            if (contactedDate < from.getTime()) return false;
+          }
+          if (contactedTo) {
+            const to = new Date(contactedTo);
+            to.setHours(23, 59, 59, 999);
+            if (contactedDate > to.getTime()) return false;
+          }
+        } else {
+          // Preset: week, month, 3months
+          if (!contacted) return false;
+          const now = Date.now();
+          const contactedDate = new Date(contacted).getTime();
+          const daysMap: Record<string, number> = { week: 7, month: 30, "3months": 90 };
+          const days = daysMap[contactedFilter];
+          if (days && now - contactedDate > days * 86400000) return false;
+        }
+      }
+
       return true;
     });
 
@@ -675,7 +743,7 @@ const Customers = () => {
     }
 
     return result;
-  }, [customers, filter, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter, searchTerm, sortOrder, sortBy]);
+  }, [customers, filter, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter, contactedFilter, contactedFrom, contactedTo, searchTerm, sortOrder, sortBy]);
 
   return (
     <DashboardLayout>
@@ -692,15 +760,34 @@ const Customers = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleExportToExcel}
-              disabled={isLoading || customers.length === 0}
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Export to Excel
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isLoading || customers.length === 0}
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Export to Excel
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52 p-2" align="end">
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleExportToExcel(false)}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+                  >
+                    Filtered ({filteredCustomers.length})
+                  </button>
+                  <button
+                    onClick={() => handleExportToExcel(true)}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+                  >
+                    All Customers ({customers.length})
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
             {customers.length === 0 && !isLoading && (
               <Button 
                 variant="outline" 
@@ -737,9 +824,9 @@ const Customers = () => {
                 <Filter className="h-4 w-4" />
                 Filters
                 {(filter !== "all" || countryFilter !== "all" || stageFilter !== "all" || 
-                  segmentFilter !== "all" || dealOwnerFilter !== "all" || projectOwnerFilter !== "all") && (
+                  segmentFilter !== "all" || dealOwnerFilter !== "all" || projectOwnerFilter !== "all" || contactedFilter !== "all") && (
                   <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                    {[filter, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter]
+                    {[filter, countryFilter, stageFilter, segmentFilter, dealOwnerFilter, projectOwnerFilter, contactedFilter]
                       .filter(f => f !== "all").length}
                   </Badge>
                 )}
@@ -759,6 +846,9 @@ const Customers = () => {
                       setSegmentFilter("all");
                       setDealOwnerFilter("all");
                       setProjectOwnerFilter("all");
+                      setContactedFilter("all");
+                      setContactedFrom("");
+                      setContactedTo("");
                     }}
                     className="h-8 text-xs"
                   >
@@ -867,6 +957,51 @@ const Customers = () => {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Last Contacted</Label>
+                    <Select value={contactedFilter} onValueChange={(val) => {
+                      setContactedFilter(val);
+                      if (val !== "custom") {
+                        setContactedFrom("");
+                        setContactedTo("");
+                      }
+                    }}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Any Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any Time</SelectItem>
+                        <SelectItem value="week">Last 7 Days</SelectItem>
+                        <SelectItem value="month">Last 30 Days</SelectItem>
+                        <SelectItem value="3months">Last 90 Days</SelectItem>
+                        <SelectItem value="never">Never Contacted</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {contactedFilter === "custom" && (
+                      <div className="flex gap-2 mt-1.5">
+                        <div className="flex-1">
+                          <Label className="text-[10px] text-muted-foreground">From</Label>
+                          <Input
+                            type="date"
+                            className="h-8 text-xs"
+                            value={contactedFrom}
+                            onChange={(e) => setContactedFrom(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[10px] text-muted-foreground">To</Label>
+                          <Input
+                            type="date"
+                            className="h-8 text-xs"
+                            value={contactedTo}
+                            onChange={(e) => setContactedTo(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </PopoverContent>
@@ -941,7 +1076,7 @@ const Customers = () => {
               filteredCustomers
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((customer) => (
-                <CustomerCard key={customer.id} customer={customer} />
+                <CustomerCard key={customer.id} customer={customer} onStageUpdate={fetchCustomers} />
               ))
             )}
             

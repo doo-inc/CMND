@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { Building2, DollarSign, Calendar, ExternalLink } from "lucide-react";
+import { Building2, DollarSign, Calendar, ExternalLink, Info } from "lucide-react";
 
 interface LiveCustomer {
   id: string;
@@ -36,7 +36,9 @@ export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustome
   useEffect(() => {
     const fetchLiveCustomers = async () => {
       try {
-        // Use the same logic as dashboard - get ARR data from contracts
+        // Match dashboard logic exactly:
+        // Active contracts only (status = 'active'), customer not churned
+        // NO end_date filter (dashboard doesn't use it for live customer count)
         let query = supabase
           .from('contracts')
           .select(`
@@ -58,8 +60,7 @@ export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustome
               stage
             )
           `)
-          .eq('status', 'active') // Only active contracts
-          .gt('end_date', new Date().toISOString());
+          .eq('status', 'active'); // Only active contracts — matches dashboard
         
         if (countries && countries.length > 0) {
           query = query.in('customers.country', countries);
@@ -82,7 +83,7 @@ export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustome
           const customer = contract.customers;
           const customerId = customer.id;
           
-          // Only include customers with active contracts (exclude churned)
+          // Exclude churned customers — matches dashboard
           if (customer.status === 'churned') {
             return;
           }
@@ -139,10 +140,19 @@ export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustome
   }
 
   const totalRevenue = customers.reduce((sum, customer) => sum + customer.total_value, 0);
-  const averageRevenue = totalRevenue / customers.length || 0;
+  const averageRevenue = customers.length > 0 ? totalRevenue / customers.length : 0;
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Unique customers who have at least one contract with status "active", excluding churned customers.
+        </div>
+      </div>
+
       {/* Summary Card */}
       <Card>
         <CardHeader>
@@ -156,6 +166,7 @@ export const LiveCustomersDetail = ({ countries, dateFrom, dateTo }: LiveCustome
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">{customers.length}</p>
               <p className="text-sm text-muted-foreground">Live Customers</p>
+              <p className="text-xs text-muted-foreground mt-1">(matches dashboard)</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>

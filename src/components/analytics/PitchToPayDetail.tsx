@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { Clock, User, Calendar, TrendingUp, Building2 } from "lucide-react";
+import { canonicalizeStageName } from "@/utils/stageNames";
+import { Clock, User, Calendar, TrendingUp, Building2, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
@@ -51,27 +52,23 @@ export const PitchToPayDetail = ({ countries, dateFrom, dateTo }: PitchToPayDeta
   useEffect(() => {
     const fetchPitchToPayData = async () => {
       try {
-        // Get all Discovery Call stages that are done
-        const { data: discoveryStages, error: discoveryError } = await supabase
+        // Match dashboard logic exactly:
+        // Uses canonicalizeStageName to match stage names
+        // Finds "Discovery Call" and "Payment Processed" stages with status='done'
+        // Calculates days between them
+
+        // Get all done lifecycle stages
+        const { data: stages, error: stagesError } = await supabase
           .from('lifecycle_stages')
-          .select('customer_id, status_changed_at')
-          .eq('name', 'Discovery Call')
+          .select('customer_id, name, status_changed_at')
           .eq('status', 'done')
           .not('status_changed_at', 'is', null);
 
-        // Get all Payment Processed stages that are done
-        const { data: paymentStages, error: paymentError } = await supabase
-          .from('lifecycle_stages')
-          .select('customer_id, status_changed_at')
-          .eq('name', 'Payment Processed')
-          .eq('status', 'done')
-          .not('status_changed_at', 'is', null);
+        if (stagesError) throw stagesError;
 
-        if (discoveryError || paymentError) {
-          throw discoveryError || paymentError;
-        }
-
-        if (!discoveryStages || !paymentStages) return;
+        // Use canonicalizeStageName — matches dashboard
+        const discoveryStages = (stages || []).filter(s => canonicalizeStageName(s.name) === 'Discovery Call');
+        const paymentStages = (stages || []).filter(s => canonicalizeStageName(s.name) === 'Payment Processed');
 
         // Get customer details
         let customersQuery = supabase
@@ -81,34 +78,31 @@ export const PitchToPayDetail = ({ countries, dateFrom, dateTo }: PitchToPayDeta
         if (countries && countries.length > 0) {
           customersQuery = customersQuery.in('country', countries);
         }
-        
         if (dateFrom) {
           customersQuery = customersQuery.gte('created_at', dateFrom.toISOString());
         }
-        
         if (dateTo) {
           customersQuery = customersQuery.lte('created_at', dateTo.toISOString());
         }
         
         const { data: customers, error: customersError } = await customersQuery;
-
         if (customersError) throw customersError;
 
-        // Match discovery and payment stages with customer data
+        const customerMap = new Map((customers || []).map(c => [c.id, c]));
+
+        // Match discovery and payment stages — matches dashboard logic
         const pitchToPayData: PitchToPayData[] = [];
 
         discoveryStages.forEach(discovery => {
           const payment = paymentStages.find(p => p.customer_id === discovery.customer_id);
-          const customer = customers?.find(c => c.id === discovery.customer_id);
+          const customer = customerMap.get(discovery.customer_id);
           
           if (payment && customer && discovery.status_changed_at && payment.status_changed_at) {
             const discoveryDate = new Date(discovery.status_changed_at);
             const paymentDate = new Date(payment.status_changed_at);
             
-            // Only include if payment came after discovery
             if (paymentDate > discoveryDate) {
-              const diffTime = paymentDate.getTime() - discoveryDate.getTime();
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const diffDays = Math.ceil((paymentDate.getTime() - discoveryDate.getTime()) / (1000 * 60 * 60 * 24));
               
               pitchToPayData.push({
                 customer_id: customer.id,
@@ -191,13 +185,23 @@ export const PitchToPayDetail = ({ countries, dateFrom, dateTo }: PitchToPayDeta
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Average number of days between "Discovery Call" completed and "Payment Processed" completed for each customer.
+        </div>
+      </div>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-2 border-primary/20">
           <CardContent className="p-6 text-center">
             <Clock className="h-8 w-8 mx-auto mb-2 text-primary" />
             <p className="text-2xl font-bold text-primary">{stats.averageDays}</p>
             <p className="text-sm text-muted-foreground">Average Days</p>
+            <p className="text-xs text-muted-foreground mt-1">(matches dashboard)</p>
           </CardContent>
         </Card>
         

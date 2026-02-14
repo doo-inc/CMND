@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { Building2, ExternalLink, Calendar, DollarSign } from "lucide-react";
+import { Building2, ExternalLink, Calendar, DollarSign, Info } from "lucide-react";
 
 interface CustomerDetail {
   id: string;
@@ -31,13 +31,13 @@ interface TotalCustomersDetailProps {
 
 export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCustomersDetailProps) => {
   const [customers, setCustomers] = useState<CustomerDetail[]>([]);
+  const [excludedCustomers, setExcludedCustomers] = useState<CustomerDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
-    live: 0,
-    pipeline: 0,
-    churned: 0,
-    totalValue: 0
+    byStage: {} as Record<string, number>,
+    totalValue: 0,
+    excluded: 0
   });
   const navigate = useNavigate();
 
@@ -64,7 +64,7 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
 
         if (error) throw error;
 
-        const formattedCustomers = (data || []).map(customer => ({
+        const allCustomers = (data || []).map(customer => ({
           id: customer.id,
           name: customer.name,
           logo: customer.logo,
@@ -78,15 +78,28 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
           owner_id: customer.owner_id
         }));
 
-        // Calculate stats
-        const total = formattedCustomers.length;
-        const live = formattedCustomers.filter(c => c.status === 'done' || c.status === null).length;
-        const pipeline = formattedCustomers.filter(c => c.status && !['done', 'churned'].includes(c.status)).length;
-        const churned = formattedCustomers.filter(c => c.status === 'churned').length;
-        const totalValue = formattedCustomers.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+        // Match dashboard logic exactly: exclude churned AND lost stage
+        const isLostStage = (stage?: string | null) => stage?.toLowerCase() === 'lost';
+        
+        const counted = allCustomers.filter(c => 
+          c.status !== 'churned' && !isLostStage(c.stage)
+        );
+        const excluded = allCustomers.filter(c => 
+          c.status === 'churned' || isLostStage(c.stage)
+        );
 
-        setStats({ total, live, pipeline, churned, totalValue });
-        setCustomers(formattedCustomers);
+        // Group counted customers by stage
+        const byStage: Record<string, number> = {};
+        counted.forEach(c => {
+          const stage = c.stage || 'No Stage';
+          byStage[stage] = (byStage[stage] || 0) + 1;
+        });
+
+        const totalValue = counted.reduce((sum, c) => sum + (c.contract_size || 0), 0);
+
+        setStats({ total: counted.length, byStage, totalValue, excluded: excluded.length });
+        setCustomers(counted);
+        setExcludedCustomers(excluded);
       } catch (error) {
         console.error("Error fetching customers:", error);
       } finally {
@@ -97,10 +110,11 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
     fetchCustomers();
   }, [countries, dateFrom, dateTo]);
 
-  const getStatusBadge = (status: string | null) => {
-    if (!status || status === 'done') return <Badge variant="default">Live</Badge>;
+  const getStatusBadge = (status: string | null, stage: string | null) => {
     if (status === 'churned') return <Badge variant="destructive">Churned</Badge>;
-    return <Badge variant="secondary">{status}</Badge>;
+    if (stage?.toLowerCase() === 'lost') return <Badge variant="destructive">Lost</Badge>;
+    if (stage?.toLowerCase() === 'live') return <Badge variant="default">Live</Badge>;
+    return <Badge variant="secondary">{stage || status || 'Unknown'}</Badge>;
   };
 
   const getSegmentColor = (segment: string | null) => {
@@ -126,50 +140,57 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Count of all customers excluding those with status "churned" or stage "Lost".
+        </div>
+      </div>
+
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-2 border-primary/20">
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-primary">{stats.total}</p>
             <p className="text-sm text-muted-foreground">Total Customers</p>
+            <p className="text-xs text-muted-foreground mt-1">(matches dashboard)</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.live}</p>
-            <p className="text-sm text-muted-foreground">Live</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{stats.pipeline}</p>
-            <p className="text-sm text-muted-foreground">In Pipeline</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{stats.churned}</p>
-            <p className="text-sm text-muted-foreground">Churned</p>
-          </CardContent>
-        </Card>
+        {Object.entries(stats.byStage)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 2)
+          .map(([stage, count]) => (
+            <Card key={stage}>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold">{count}</p>
+                <p className="text-sm text-muted-foreground">{stage}</p>
+              </CardContent>
+            </Card>
+          ))}
         
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-lg font-bold">{formatCurrency(stats.totalValue)}</p>
-            <p className="text-sm text-muted-foreground">Total Value</p>
+            <p className="text-sm text-muted-foreground">Total Contract Value</p>
           </CardContent>
         </Card>
       </div>
+
+      {stats.excluded > 0 && (
+        <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+          {stats.excluded} customer{stats.excluded !== 1 ? 's' : ''} excluded (churned or lost)
+        </div>
+      )}
 
       {/* Customers List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            All Customers
+            Counted Customers ({customers.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -187,7 +208,7 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{customer.name}</h3>
-                      {getStatusBadge(customer.status)}
+                      {getStatusBadge(customer.status, customer.stage)}
                       {customer.segment && (
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSegmentColor(customer.segment)}`}>
                           {customer.segment}
@@ -240,6 +261,48 @@ export const TotalCustomersDetail = ({ countries, dateFrom, dateTo }: TotalCusto
           </div>
         </CardContent>
       </Card>
+
+      {/* Excluded Customers */}
+      {excludedCustomers.length > 0 && (
+        <Card className="opacity-60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-muted-foreground">
+              <Building2 className="h-5 w-5" />
+              Excluded Customers ({excludedCustomers.length})
+              <Badge variant="outline" className="ml-2">Not counted</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {excludedCustomers.map((customer) => (
+                <div key={customer.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={customer.logo || undefined} alt={customer.name} />
+                      <AvatarFallback>
+                        {customer.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium text-sm">{customer.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {customer.status === 'churned' ? 'Churned' : `Stage: ${customer.stage}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(`/customers/${customer.id}`)}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {customers.length === 0 && (
         <Card>

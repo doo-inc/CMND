@@ -20,7 +20,7 @@ export function CategorySection({
   customerName, 
   onStageUpdate 
 }: CategorySectionProps) {
-  const completedStages = stages.filter(stage => stage.status === 'done').length;
+  const completedStages = stages.filter(stage => stage.status === 'done' || stage.status === 'not-applicable').length;
   const totalStages = stages.filter(stage => stage.status !== 'not-applicable').length;
   const progressPercentage = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
 

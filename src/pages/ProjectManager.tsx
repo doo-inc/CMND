@@ -42,6 +42,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
+import { createNotification } from "@/utils/notificationHelpers";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
@@ -569,7 +570,17 @@ export default function ProjectManager() {
         return;
       }
 
-      toast.success(`${requestType === 'demo' ? 'Demo' : 'Kickoff'} request submitted`);
+      const typeLabel = requestType === 'demo' ? 'Demo' : 'Kickoff';
+
+      // Send notification to team
+      await createNotification({
+        type: "team",
+        title: `New ${typeLabel} Request`,
+        message: `${currentUser.name} requested a ${typeLabel.toLowerCase()} for ${customer.name}${requestDescription ? ` — ${requestDescription.slice(0, 100)}` : ""}`,
+        related_type: "project_request",
+      });
+
+      toast.success(`${typeLabel} request submitted`);
       setIsRequestDialogOpen(false);
       setRequestCustomerId('');
       setRequestDescription('');
@@ -637,6 +648,27 @@ export default function ProjectManager() {
         console.error('Error updating request:', updateError);
       }
 
+      const typeLabel = request.request_type === 'demo' ? 'Demo' : 'Kickoff';
+
+      // Notify the team (and specifically the submitter)
+      await createNotification({
+        type: "team",
+        title: `${typeLabel} Request Approved`,
+        message: `${currentUser.name} approved the ${typeLabel.toLowerCase()} request for ${request.customer_name}`,
+        related_type: "project_request",
+      });
+
+      // Also notify the original requester specifically
+      if (request.submitted_by && request.submitted_by !== currentUser.id) {
+        await createNotification({
+          type: "team",
+          title: `Your ${typeLabel} Request Was Approved`,
+          message: `${currentUser.name} approved your ${typeLabel.toLowerCase()} request for ${request.customer_name}`,
+          related_type: "project_request",
+          user_id: request.submitted_by,
+        });
+      }
+
       toast.success(`Request approved! ${request.customer_name} added to ${request.request_type === 'demo' ? 'Demos' : 'Ongoing'}`);
       loadRequests();
       loadProjects();
@@ -670,6 +702,19 @@ export default function ProjectManager() {
         console.error('Error rejecting request:', error);
         toast.error('Failed to reject request');
         return;
+      }
+
+      const typeLabel = request.request_type === 'demo' ? 'Demo' : 'Kickoff';
+
+      // Notify the original requester
+      if (request.submitted_by) {
+        await createNotification({
+          type: "team",
+          title: `${typeLabel} Request Rejected`,
+          message: `${currentUser.name} rejected the ${typeLabel.toLowerCase()} request for ${request.customer_name}`,
+          related_type: "project_request",
+          user_id: request.submitted_by,
+        });
       }
 
       toast.success('Request rejected');

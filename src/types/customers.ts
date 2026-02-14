@@ -200,6 +200,15 @@ export interface LifecycleStageWithOwner extends LifecycleStage {
   };
 }
 
+// Compact lifecycle stage data for card display
+export interface CardLifecycleStage {
+  id: string;
+  name: string;
+  status: string;
+  category?: string | null;
+  updated_at: string;
+}
+
 // CustomerData interface for UI components - updated to include new contract fields
 export interface CustomerData {
   id: string;
@@ -233,4 +242,7 @@ export interface CustomerData {
   contact_email?: string;
   contact_phone?: string;
   updated_at?: string;
+  lifecycleStages?: CardLifecycleStage[];
+  lastUpdatedAt?: string;
+  last_contacted_at?: string | null;
 }

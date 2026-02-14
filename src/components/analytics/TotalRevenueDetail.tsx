@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { DollarSign, ExternalLink } from "lucide-react";
+import { DollarSign, ExternalLink, Info } from "lucide-react";
 
 interface ContractDetail {
   id: string;
@@ -12,6 +12,8 @@ interface ContractDetail {
   customer_name: string;
   customer_id: string;
   value: number;
+  setup_fee: number;
+  annual_rate: number;
 }
 
 interface TotalRevenueDetailProps {
@@ -29,6 +31,9 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
   useEffect(() => {
     const fetchContracts = async () => {
       try {
+        // Match dashboard logic exactly:
+        // Contracts with status active/pending/null, from non-churned customers
+        // Revenue = (setup_fee + annual_rate) if either > 0, else value
         let query = supabase
           .from('contracts')
           .select(`
@@ -37,8 +42,9 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
             value,
             setup_fee,
             annual_rate,
+            status,
             created_at,
-            customers!inner(id, name, country)
+            customers!inner(id, name, country, status)
           `)
           .or('status.eq.active,status.eq.pending,status.is.null');
         
@@ -58,7 +64,10 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
 
         if (error) throw error;
 
-        const formattedContracts = (data || []).map(contract => {
+        // Exclude churned customers — matches dashboard
+        const validData = (data || []).filter(c => (c.customers as any)?.status !== 'churned');
+
+        const formattedContracts = validData.map(contract => {
           const contractValue = (contract.setup_fee > 0 || contract.annual_rate > 0) 
             ? (contract.setup_fee || 0) + (contract.annual_rate || 0)
             : (contract.value || 0);
@@ -68,7 +77,9 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
             name: contract.name,
             customer_name: (contract.customers as any).name,
             customer_id: (contract.customers as any).id,
-            value: contractValue
+            value: contractValue,
+            setup_fee: contract.setup_fee || 0,
+            annual_rate: contract.annual_rate || 0
           };
         });
 
@@ -99,6 +110,15 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Sum of (setup_fee + annual_rate) per contract — or the contract value field if neither is set. Only includes active/pending contracts from non-churned customers.
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -123,6 +143,11 @@ export const TotalRevenueDetail = ({ countries, dateFrom, dateTo }: TotalRevenue
                 <div className="flex-1">
                   <p className="font-medium">{contract.customer_name}</p>
                   <p className="text-sm text-muted-foreground">{contract.name}</p>
+                  {(contract.setup_fee > 0 || contract.annual_rate > 0) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Setup: {formatCurrency(contract.setup_fee)} + Annual: {formatCurrency(contract.annual_rate)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-bold">{formatCurrency(contract.value)}</p>

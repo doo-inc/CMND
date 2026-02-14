@@ -91,7 +91,7 @@ export const resolvePipelineStageFromLifecycleStages = (
   
   const isActiveStatus = (status?: string) => {
     const s = (status || "").toLowerCase();
-    const isActive = s === "done" || s === "completed" || s === "complete" || s === "finished" ||
+    const isActive = s === "done" || s === "completed" || s === "complete" || s === "finished" || s === "not-applicable" ||
       (includeInProgress && (s === "in-progress" || s === "in progress" || s === "ongoing"));
     return isActive;
   };
@@ -136,7 +136,8 @@ export const resolvePipelineStageFromLifecycleStages = (
     const hasGoLiveCompleted = stages?.some(
       s => titleCase(s.name) === "Go Live" && 
       (s.status?.toLowerCase() === "done" || s.status?.toLowerCase() === "completed" || 
-       s.status?.toLowerCase() === "complete" || s.status?.toLowerCase() === "finished")
+       s.status?.toLowerCase() === "complete" || s.status?.toLowerCase() === "finished" ||
+       s.status?.toLowerCase() === "not-applicable")
     );
     
     if (!hasGoLiveCompleted) {

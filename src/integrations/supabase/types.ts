@@ -426,6 +426,7 @@ export type Database = {
           id: string
           implementation_notes: string | null
           industry: string | null
+          last_contacted_at: string | null
           legal_address: string | null
           logo: string | null
           manual_stage: string | null
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           implementation_notes?: string | null
           industry?: string | null
+          last_contacted_at?: string | null
           legal_address?: string | null
           logo?: string | null
           manual_stage?: string | null
@@ -522,6 +524,7 @@ export type Database = {
           id?: string
           implementation_notes?: string | null
           industry?: string | null
+          last_contacted_at?: string | null
           legal_address?: string | null
           logo?: string | null
           manual_stage?: string | null
@@ -1304,6 +1307,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_requests: {
+        Row: {
+          id: string
+          customer_id: string | null
+          customer_name: string
+          ai_model: string
+          volume_details: string | null
+          custom_integration: string | null
+          additional_notes: string | null
+          status: string
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+        }
+        Insert: {
+          id?: string
+          customer_id?: string | null
+          customer_name: string
+          ai_model: string
+          volume_details?: string | null
+          custom_integration?: string | null
+          additional_notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+        }
+        Update: {
+          id?: string
+          customer_id?: string | null
+          customer_name?: string
+          ai_model?: string
+          volume_details?: string | null
+          custom_integration?: string | null
+          additional_notes?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_requests_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"

@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { FileText, ExternalLink, Calendar, DollarSign } from "lucide-react";
+import { FileText, ExternalLink, Calendar, DollarSign, Info } from "lucide-react";
 
 interface ContractDetail {
   id: string;
@@ -33,13 +33,15 @@ interface TotalContractsDetailProps {
 
 export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContractsDetailProps) => {
   const [contracts, setContracts] = useState<ContractDetail[]>([]);
+  const [excludedContracts, setExcludedContracts] = useState<ContractDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     pending: 0,
-    expired: 0,
-    totalValue: 0
+    noStatus: 0,
+    totalValue: 0,
+    excluded: 0
   });
   const navigate = useNavigate();
 
@@ -63,7 +65,8 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
             customers!inner (
               name,
               logo,
-              country
+              country,
+              status
             )
           `);
         
@@ -83,12 +86,13 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
 
         if (error) throw error;
 
-        const formattedContracts = (data || []).map(contract => ({
+        const allContracts = (data || []).map(contract => ({
           id: contract.id,
           name: contract.name,
           customer_id: contract.customer_id,
           customer_name: (contract.customers as any)?.name || 'Unknown Customer',
           customer_logo: (contract.customers as any)?.logo || null,
+          customer_status: (contract.customers as any)?.status || null,
           status: contract.status,
           value: contract.value,
           setup_fee: contract.setup_fee || 0,
@@ -99,17 +103,37 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
           created_at: contract.created_at
         }));
 
-        // Calculate stats
-        const total = formattedContracts.length;
-        const active = formattedContracts.filter(c => c.status === 'active').length;
-        const pending = formattedContracts.filter(c => c.status === 'pending').length;
-        const expired = formattedContracts.filter(c => c.status === 'expired').length;
-        const totalValue = formattedContracts.reduce((sum, c) => {
-          return sum + (c.setup_fee + c.annual_rate || c.value);
+        // Match dashboard logic exactly:
+        // Include contracts with status active, pending, or null
+        // Exclude contracts from churned customers
+        const counted = allContracts.filter(c => {
+          const contractStatus = c.status?.toLowerCase();
+          const isValidStatus = contractStatus === 'active' || contractStatus === 'pending' || c.status === null;
+          const isCustomerNotChurned = c.customer_status !== 'churned';
+          return isValidStatus && isCustomerNotChurned;
+        });
+
+        const excluded = allContracts.filter(c => {
+          const contractStatus = c.status?.toLowerCase();
+          const isValidStatus = contractStatus === 'active' || contractStatus === 'pending' || c.status === null;
+          const isCustomerNotChurned = c.customer_status !== 'churned';
+          return !(isValidStatus && isCustomerNotChurned);
+        });
+
+        // Calculate stats from counted contracts only
+        const active = counted.filter(c => c.status?.toLowerCase() === 'active').length;
+        const pending = counted.filter(c => c.status?.toLowerCase() === 'pending').length;
+        const noStatus = counted.filter(c => c.status === null).length;
+        const totalValue = counted.reduce((sum, c) => {
+          const contractValue = (c.setup_fee > 0 || c.annual_rate > 0)
+            ? c.setup_fee + c.annual_rate
+            : (c.value || 0);
+          return sum + contractValue;
         }, 0);
 
-        setStats({ total, active, pending, expired, totalValue });
-        setContracts(formattedContracts);
+        setStats({ total: counted.length, active, pending, noStatus, totalValue, excluded: excluded.length });
+        setContracts(counted);
+        setExcludedContracts(excluded);
       } catch (error) {
         console.error("Error fetching contracts:", error);
       } finally {
@@ -124,11 +148,13 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
     if (status === 'active') return <Badge variant="default">Active</Badge>;
     if (status === 'pending') return <Badge className="bg-yellow-500">Pending</Badge>;
     if (status === 'expired') return <Badge variant="destructive">Expired</Badge>;
-    return <Badge variant="secondary">{status || 'Unknown'}</Badge>;
+    return <Badge variant="secondary">{status || 'No Status'}</Badge>;
   };
 
   const getContractValue = (contract: ContractDetail) => {
-    return contract.setup_fee + contract.annual_rate || contract.value;
+    return (contract.setup_fee > 0 || contract.annual_rate > 0)
+      ? contract.setup_fee + contract.annual_rate
+      : (contract.value || 0);
   };
 
   if (loading) {
@@ -144,12 +170,22 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Count of contracts with status "active", "pending", or unset — excluding contracts from churned customers.
+        </div>
+      </div>
+
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
+        <Card className="border-2 border-primary/20">
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-primary">{stats.total}</p>
             <p className="text-sm text-muted-foreground">Total Contracts</p>
+            <p className="text-xs text-muted-foreground mt-1">(matches dashboard)</p>
           </CardContent>
         </Card>
         
@@ -169,8 +205,8 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
         
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{stats.expired}</p>
-            <p className="text-sm text-muted-foreground">Expired</p>
+            <p className="text-2xl font-bold text-gray-600">{stats.noStatus}</p>
+            <p className="text-sm text-muted-foreground">No Status</p>
           </CardContent>
         </Card>
         
@@ -182,12 +218,18 @@ export const TotalContractsDetail = ({ countries, dateFrom, dateTo }: TotalContr
         </Card>
       </div>
 
+      {stats.excluded > 0 && (
+        <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+          {stats.excluded} contract{stats.excluded !== 1 ? 's' : ''} excluded (expired/cancelled status or from churned customers)
+        </div>
+      )}
+
       {/* Contracts List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            All Contracts
+            Counted Contracts ({contracts.length})
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -5,9 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
+import { canonicalizeStageName } from "@/utils/stageNames";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Clock, Building2 } from "lucide-react";
+import { Clock, Building2, Info } from "lucide-react";
 
 interface PayToLiveRow {
   customer_id: string;
@@ -35,30 +36,23 @@ export const PayToLiveDetail = ({ countries, dateFrom, dateTo }: PayToLiveDetail
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get all Payment Processed stages that are done
-        const { data: paymentStages, error: paymentError } = await supabase
+        // Match dashboard logic exactly:
+        // Uses canonicalizeStageName to match stage names
+        // Finds "Payment Processed" and "Go Live" stages with status='done'
+        // Calculates days between them
+
+        // Get all done lifecycle stages
+        const { data: stages, error: stagesError } = await supabase
           .from("lifecycle_stages")
-          .select("customer_id, status_changed_at")
-          .eq("name", "Payment Processed")
+          .select("customer_id, name, status_changed_at")
           .eq("status", "done")
           .not("status_changed_at", "is", null);
 
-        // Get all Go Live stages that are done
-        const { data: goLiveStages, error: goLiveError } = await supabase
-          .from("lifecycle_stages")
-          .select("customer_id, status_changed_at")
-          .eq("name", "Go Live")
-          .eq("status", "done")
-          .not("status_changed_at", "is", null);
+        if (stagesError) throw stagesError;
 
-        if (paymentError || goLiveError) {
-          throw paymentError || goLiveError;
-        }
-
-        if (!paymentStages || !goLiveStages) {
-          setRows([]);
-          return;
-        }
+        // Use canonicalizeStageName — matches dashboard
+        const paymentStages = (stages || []).filter(s => canonicalizeStageName(s.name) === 'Payment Processed');
+        const goLiveStages = (stages || []).filter(s => canonicalizeStageName(s.name) === 'Go Live');
 
         // Get customer details limited by filters
         let customersQuery = supabase
@@ -68,33 +62,30 @@ export const PayToLiveDetail = ({ countries, dateFrom, dateTo }: PayToLiveDetail
         if (countries && countries.length > 0) {
           customersQuery = customersQuery.in("country", countries);
         }
-
         if (dateFrom) {
           customersQuery = customersQuery.gte("created_at", dateFrom.toISOString());
         }
-
         if (dateTo) {
           customersQuery = customersQuery.lte("created_at", dateTo.toISOString());
         }
 
         const { data: customers, error: customersError } = await customersQuery;
-        if (customersError) {
-          throw customersError;
-        }
+        if (customersError) throw customersError;
+
+        const customerMap = new Map((customers || []).map(c => [c.id, c]));
 
         const result: PayToLiveRow[] = [];
 
         paymentStages.forEach((payment) => {
           const goLive = goLiveStages.find((g) => g.customer_id === payment.customer_id);
-          const customer = customers?.find((c) => c.id === payment.customer_id);
+          const customer = customerMap.get(payment.customer_id);
 
           if (goLive && customer && payment.status_changed_at && goLive.status_changed_at) {
             const paymentDate = new Date(payment.status_changed_at);
             const goLiveDate = new Date(goLive.status_changed_at);
 
             if (goLiveDate > paymentDate) {
-              const diffTime = goLiveDate.getTime() - paymentDate.getTime();
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const diffDays = Math.ceil((goLiveDate.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24));
 
               result.push({
                 customer_id: customer.id,
@@ -145,6 +136,15 @@ export const PayToLiveDetail = ({ countries, dateFrom, dateTo }: PayToLiveDetail
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Average number of days between "Payment Processed" completed and "Go Live" completed for each customer.
+        </div>
+      </div>
+
       {/* Simple summary based only on underlying rows */}
       <Card>
         <CardContent className="p-6 flex items-center justify-between">
@@ -155,6 +155,7 @@ export const PayToLiveDetail = ({ countries, dateFrom, dateTo }: PayToLiveDetail
               <p className="text-2xl font-bold text-primary">
                 {averageDays > 0 ? `${averageDays} days` : "N/A"}
               </p>
+              <p className="text-xs text-muted-foreground">(matches dashboard)</p>
             </div>
           </div>
           <div className="text-right">
@@ -219,4 +220,3 @@ export const PayToLiveDetail = ({ countries, dateFrom, dateTo }: PayToLiveDetail
     </div>
   );
 };
-

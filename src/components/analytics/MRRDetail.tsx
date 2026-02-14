@@ -4,12 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/customerUtils";
-import { TrendingUp, ExternalLink } from "lucide-react";
+import { TrendingUp, ExternalLink, Info } from "lucide-react";
 
 interface MRRCustomer {
   id: string;
   name: string;
   monthly_revenue: number;
+  contract_count: number;
 }
 
 interface MRRDetailProps {
@@ -27,19 +28,27 @@ export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
   useEffect(() => {
     const fetchMRRData = async () => {
       try {
+        const today = new Date();
+
+        // Match dashboard logic exactly:
+        // Contracts with status active/pending/null, from non-churned customers,
+        // with end_date in the future
+        // MRR = sum(annual_rate) / 12
         let query = supabase
-          .from('customers')
+          .from('contracts')
           .select(`
-            id,
-            name,
-            country,
+            annual_rate,
+            customer_id,
+            status,
+            end_date,
             created_at,
-            contracts!inner(annual_rate, status, end_date, created_at)
+            customers!inner(id, name, status, country)
           `)
-          .neq('status', 'churned');
+          .or('status.eq.active,status.eq.pending,status.is.null')
+          .gt('end_date', today.toISOString());
         
         if (countries && countries.length > 0) {
-          query = query.in('country', countries);
+          query = query.in('customers.country', countries);
         }
         
         if (dateFrom) {
@@ -54,39 +63,40 @@ export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
 
         if (error) throw error;
 
-        const mrrCustomers: MRRCustomer[] = [];
+        const customerMap = new Map<string, MRRCustomer>();
         let total = 0;
 
-        (data || []).forEach(customer => {
-          const activeContracts = (customer.contracts as any[]).filter(contract => 
-            ['active', 'pending'].includes(contract.status) && 
-            new Date(contract.end_date) > new Date()
-          );
+        (data || []).forEach(contract => {
+          const customer = contract.customers as any;
+          
+          // Exclude churned customers — matches dashboard
+          if (customer.status === 'churned') return;
 
-          if (activeContracts.length === 0) return;
+          const annualRate = contract.annual_rate || 0;
+          if (annualRate <= 0) return;
 
-          let customerMRR = 0;
-          activeContracts.forEach(contract => {
-            const annualRate = contract.annual_rate || 0;
-            if (annualRate > 0) {
-              customerMRR += annualRate / 12;
-            }
-          });
+          const monthlyAmount = annualRate / 12;
 
-          if (customerMRR > 0) {
-            mrrCustomers.push({
+          if (!customerMap.has(customer.id)) {
+            customerMap.set(customer.id, {
               id: customer.id,
               name: customer.name,
-              monthly_revenue: customerMRR
+              monthly_revenue: 0,
+              contract_count: 0
             });
-            total += customerMRR;
           }
+
+          const existing = customerMap.get(customer.id)!;
+          existing.monthly_revenue += monthlyAmount;
+          existing.contract_count += 1;
+          total += monthlyAmount;
         });
 
+        const mrrCustomers = Array.from(customerMap.values());
         mrrCustomers.sort((a, b) => b.monthly_revenue - a.monthly_revenue);
 
         setCustomers(mrrCustomers);
-        setTotalMRR(total);
+        setTotalMRR(Math.round(total));
       } catch (error) {
         console.error("Error fetching MRR data:", error);
       } finally {
@@ -110,6 +120,15 @@ export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Calculation Explanation */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-4">
+        <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">How it's calculated:</span>{" "}
+          Sum of (annual_rate / 12) from active/pending contracts where end_date is in the future, from non-churned customers.
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -118,7 +137,7 @@ export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{customers.length} customers contributing</p>
+          <p className="text-muted-foreground">{customers.length} customers contributing • {customers.reduce((s, c) => s + c.contract_count, 0)} contracts</p>
         </CardContent>
       </Card>
 
@@ -131,7 +150,10 @@ export const MRRDetail = ({ countries, dateFrom, dateTo }: MRRDetailProps) => {
           >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="font-medium flex-1">{customer.name}</p>
+                <div className="flex-1">
+                  <p className="font-medium">{customer.name}</p>
+                  <p className="text-xs text-muted-foreground">{customer.contract_count} contract{customer.contract_count !== 1 ? 's' : ''}</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-bold">{formatCurrency(customer.monthly_revenue)}/month</p>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
