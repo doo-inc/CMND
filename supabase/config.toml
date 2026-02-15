@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.hubspot-sync]
 verify_jwt = true
+
+[functions.create-user-account]
+verify_jwt = true
+
+[functions.delete-user-account]
+verify_jwt = true

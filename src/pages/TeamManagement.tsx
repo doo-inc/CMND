@@ -228,26 +228,42 @@ const TeamManagementPage = () => {
       
       console.log('Creating account for:', data.email);
 
-      // Use centralized supabase client for edge function calls
+      // Call edge function directly via fetch for better error handling
       let response;
       try {
-        const { data: responseData, error: functionError } = await supabase.functions.invoke('create-user-account', {
-          body: {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast.error('You must be logged in to create accounts');
+          return;
+        }
+
+        const supabaseUrl = 'https://vnhwhyufevcixgelsujb.supabase.co';
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-user-account`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaHdoeXVmZXZjaXhnZWxzdWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDY5ODMsImV4cCI6MjA1OTEyMjk4M30.HR91tc5clF0FBUbmRkr2aPdZydMerpSH3A-IQUYK8ds',
+          },
+          body: JSON.stringify({
             email: data.email,
             password: data.password,
             full_name: data.full_name,
             role: data.role,
-          },
+          }),
         });
-        
-        if (functionError) {
-          throw new Error(functionError.message || 'Failed to create user');
+
+        const responseData = await res.json();
+
+        if (!res.ok) {
+          throw new Error(responseData?.error || `Server error: ${res.status}`);
         }
+
         response = { data: responseData, error: null };
         
       } catch (invokeError: any) {
         console.error('Function invoke error:', invokeError);
-        toast.error(`Network error: ${invokeError.message || 'Could not reach server'}`);
+        toast.error(invokeError.message || 'Could not reach server');
         return;
       }
 
@@ -345,55 +361,48 @@ const TeamManagementPage = () => {
       console.log('Encoded token:', encodedToken);
       console.log('Invitation link:', inviteLink);
       
-      // Send invitation email via edge function
+      // Send invitation email via edge function (direct fetch for reliability)
       try {
-        console.log('About to invoke send-invitation-email function');
-        console.log('Supabase client authenticated:', !!supabase.auth.getUser());
+        const { data: { session: emailSession } } = await supabase.auth.getSession();
         
-        const payload = {
-          invitation: {
-            email: data.email,
-            role: data.role,
-            inviteLink: inviteLink,
-            invitedByName: profile?.full_name || 'Team member',
-            companyName: 'DOO Command'
-          }
-        };
-        
-        console.log('Function payload:', payload);
-        
-        // Add timeout to prevent hanging
+        const supabaseUrl = 'https://vnhwhyufevcixgelsujb.supabase.co';
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await supabase.functions.invoke('send-invitation-email', {
-          body: payload
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-invitation-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${emailSession?.access_token || ''}`,
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaHdoeXVmZXZjaXhnZWxzdWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDY5ODMsImV4cCI6MjA1OTEyMjk4M30.HR91tc5clF0FBUbmRkr2aPdZydMerpSH3A-IQUYK8ds',
+          },
+          body: JSON.stringify({
+            invitation: {
+              email: data.email,
+              role: data.role,
+              inviteLink: inviteLink,
+              invitedByName: profile?.full_name || 'Team member',
+              companyName: 'DOO Command'
+            }
+          }),
+          signal: controller.signal,
         });
-        
+
         clearTimeout(timeoutId);
+        const emailData = await emailRes.json().catch(() => ({}));
 
-        console.log('Edge function full response:', response);
-        console.log('Response data:', response.data);
-        console.log('Response error:', response.error);
-
-        if (response.error) {
-          console.error('Error sending invitation email:', response.error);
+        if (!emailRes.ok || emailData?.error) {
+          console.error('Error sending invitation email:', emailData);
           toast.warning(`Invitation created! Email service unavailable - use the link below to share manually.`);
-        } else if (response.data && response.data.error) {
-          console.error('Function returned error:', response.data.error);
-          toast.warning(`Invitation created! ${response.data.message || 'Share the link manually.'}`);
-        } else if (response.data && response.data.warning) {
-          // Email service not configured, but invitation created successfully
-          console.warn('Email service not configured:', response.data.warning);
-          toast.warning(`Invitation created! ${response.data.message || 'Share the link manually.'}`);
+        } else if (emailData?.warning) {
+          console.warn('Email service not configured:', emailData.warning);
+          toast.warning(`Invitation created! ${emailData.message || 'Share the link manually.'}`);
         } else {
-          console.log('Email sent successfully:', response.data);
           toast.success(`Invitation sent successfully to ${data.email}!`);
-          setInvitationLink(''); // Clear link if email was successful
+          setInvitationLink('');
         }
       } catch (emailError: any) {
         console.error('Error invoking email function:', emailError);
-        console.error('Error details:', JSON.stringify(emailError, null, 2));
         toast.warning(`Invitation created! Email service unavailable - use the link below to share manually.`);
       }
       
@@ -466,11 +475,28 @@ const TeamManagementPage = () => {
   const handleDeleteMember = async (memberId: string) => {
     try {
       // Call the secure edge function to delete user completely (from auth.users and profiles)
-      const { data, error } = await supabase.functions.invoke('delete-user-account', {
-        body: { userId: memberId }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in');
+        return;
+      }
+
+      const supabaseUrl = 'https://vnhwhyufevcixgelsujb.supabase.co';
+      const res = await fetch(`${supabaseUrl}/functions/v1/delete-user-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaHdoeXVmZXZjaXhnZWxzdWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDY5ODMsImV4cCI6MjA1OTEyMjk4M30.HR91tc5clF0FBUbmRkr2aPdZydMerpSH3A-IQUYK8ds',
+        },
+        body: JSON.stringify({ userId: memberId }),
       });
 
-      if (error) throw error;
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Server error: ${res.status}`);
+      }
       
       // Check for error in response
       if (data && typeof data === 'object' && 'success' in data && !data.success) {
@@ -510,17 +536,8 @@ const TeamManagementPage = () => {
 
   const createTeamNotification = async (notificationData: CreateNotificationParams) => {
     try {
-      const { data, error } = await supabase.functions.invoke('create-notification', {
-        body: {
-          notification: notificationData
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      // Use the centralized helper instead of edge function for reliability
+      await createNotification(notificationData);
     } catch (error) {
       console.error("Error creating team notification:", error);
     }
