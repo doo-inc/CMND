@@ -1,5 +1,5 @@
 
-import React, { memo, useState, useCallback } from "react";
+import React, { memo, useState, useCallback, useMemo, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { CustomerData, CardLifecycleStage } from "@/types/customers";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sortStagesByOrder } from "@/utils/stageOrdering";
-import { ChevronRight, Clock, Pencil, Phone } from "lucide-react";
+import { ChevronRight, Clock, Pencil, Phone, Save, Undo2, Loader2, X, CalendarDays } from "lucide-react";
 
 export interface CustomerOwner {
   id: string;
@@ -84,14 +84,24 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
   const [localStages, setLocalStages] = useState<CardLifecycleStage[]>(
     customer.lifecycleStages || []
   );
-  const [updatingStageId, setUpdatingStageId] = useState<string | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<Record<string, StageStatus>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
   const [lastContacted, setLastContacted] = useState<string | null>(customer.last_contacted_at || null);
   const [isMarkingContacted, setIsMarkingContacted] = useState(false);
+  const [contactedOpen, setContactedOpen] = useState(false);
+  const [customDate, setCustomDate] = useState("");
 
-  // Sort stages by the canonical order
-  const sortedStages = sortStagesByOrder(localStages);
+  const originalStagesRef = useRef(customer.lifecycleStages || []);
 
-  // Group stages by category
+  // Merge local stages with pending changes for display
+  const effectiveStages = useMemo(() =>
+    localStages.map(s => pendingChanges[s.id] ? { ...s, status: pendingChanges[s.id] } : s),
+    [localStages, pendingChanges]
+  );
+
+  const sortedStages = sortStagesByOrder(effectiveStages);
+
   const stagesByCategory = sortedStages.reduce((acc, stage) => {
     const cat = stage.category || "Other";
     if (!acc[cat]) acc[cat] = [];
@@ -102,10 +112,10 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
   const categoryOrder = ["Pre-Sales", "Sales", "Implementation", "Finance", "Other"];
   const orderedCategories = categoryOrder.filter(cat => stagesByCategory[cat]);
 
-  // Calculate quick stats
-  const totalStages = localStages.length;
-  const doneCount = localStages.filter(s => s.status === "done" || s.status === "not-applicable").length;
-  const inProgressCount = localStages.filter(s => s.status === "in-progress").length;
+  const totalStages = effectiveStages.length;
+  const doneCount = effectiveStages.filter(s => s.status === "done" || s.status === "not-applicable").length;
+  const inProgressCount = effectiveStages.filter(s => s.status === "in-progress").length;
+  const pendingCount = Object.keys(pendingChanges).length;
 
   const getInitials = (name: string) => {
     return name
@@ -119,72 +129,137 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
     navigate(`/customers/${customer.id}`);
   };
 
-  const handleMarkContacted = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const now = new Date().toISOString();
-
-    // Optimistic update
-    setLastContacted(now);
+  const saveContactedDate = useCallback(async (dateValue: string | null) => {
+    const previousValue = lastContacted;
+    setLastContacted(dateValue);
     setIsMarkingContacted(true);
+    setContactedOpen(false);
+    setCustomDate("");
 
     try {
       const { error } = await supabase
         .from("customers")
-        .update({ last_contacted_at: now })
+        .update({ last_contacted_at: dateValue })
         .eq("id", customer.id);
 
       if (error) throw error;
 
-      toast.success("Marked as contacted");
+      toast.success(dateValue ? "Contact date updated" : "Contact date cleared");
     } catch (error) {
-      console.error("Error marking contacted:", error);
+      console.error("Error updating contacted:", error);
       toast.error("Failed to update");
-      setLastContacted(customer.last_contacted_at || null);
+      setLastContacted(previousValue);
     } finally {
       setIsMarkingContacted(false);
     }
-  }, [customer.id, customer.last_contacted_at]);
+  }, [customer.id, lastContacted]);
 
-  const handleStageStatusChange = useCallback(async (stageId: string, currentStatus: string) => {
-    const currentIndex = STATUS_CYCLE.indexOf(currentStatus as StageStatus);
-    const nextIndex = (currentIndex + 1) % STATUS_CYCLE.length;
-    const newStatus = STATUS_CYCLE[nextIndex];
+  const handleContactedNow = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    saveContactedDate(new Date().toISOString());
+  }, [saveContactedDate]);
+
+  const handleClearContacted = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    saveContactedDate(null);
+  }, [saveContactedDate]);
+
+  const handleSetCustomDate = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!customDate) return;
+    const date = new Date(customDate + "T12:00:00");
+    if (isNaN(date.getTime())) {
+      toast.error("Invalid date");
+      return;
+    }
+    saveContactedDate(date.toISOString());
+  }, [customDate, saveContactedDate]);
+
+  const handleSetStageStatus = useCallback((stageId: string, newStatus: StageStatus) => {
+    const original = originalStagesRef.current.find(s => s.id === stageId);
+    if (original && original.status === newStatus) {
+      setPendingChanges(prev => {
+        const next = { ...prev };
+        delete next[stageId];
+        return next;
+      });
+    } else {
+      setPendingChanges(prev => ({ ...prev, [stageId]: newStatus }));
+    }
+    setExpandedStageId(null);
+  }, []);
+
+  const handleDiscardChanges = useCallback(() => {
+    setPendingChanges({});
+    setExpandedStageId(null);
+  }, []);
+
+  const handleSaveChanges = useCallback(async () => {
+    if (pendingCount === 0) return;
+
+    setIsSaving(true);
     const now = new Date().toISOString();
 
-    setLocalStages(prev =>
-      prev.map(s => s.id === stageId ? { ...s, status: newStatus, updated_at: now } : s)
-    );
-    setUpdatingStageId(stageId);
-
     try {
-      const updateData: any = {
-        status: newStatus,
-        updated_at: now,
-      };
-      if (newStatus !== "not-started") {
-        updateData.status_changed_at = now;
+      const updates = Object.entries(pendingChanges).map(([stageId, newStatus]) => {
+        const updateData: Record<string, string> = {
+          status: newStatus,
+          updated_at: now,
+        };
+        if (newStatus !== "not-started") {
+          updateData.status_changed_at = now;
+        }
+        return supabase
+          .from("lifecycle_stages")
+          .update(updateData)
+          .eq("id", stageId);
+      });
+
+      const results = await Promise.all(updates);
+      const errors = results.filter(r => r.error);
+
+      if (errors.length > 0) {
+        throw new Error(`${errors.length} update(s) failed`);
       }
 
-      const { error } = await supabase
-        .from("lifecycle_stages")
-        .update(updateData)
-        .eq("id", stageId);
+      // Apply changes to local state so dots reflect saved state
+      setLocalStages(prev =>
+        prev.map(s => pendingChanges[s.id]
+          ? { ...s, status: pendingChanges[s.id], updated_at: now }
+          : s
+        )
+      );
+      originalStagesRef.current = localStages.map(s =>
+        pendingChanges[s.id] ? { ...s, status: pendingChanges[s.id], updated_at: now } : s
+      );
+      setPendingChanges({});
 
-      if (error) throw error;
+      toast.success(`${pendingCount} stage${pendingCount > 1 ? "s" : ""} updated`);
 
-      toast.success(`Stage updated to "${STATUS_CONFIG[newStatus].label}"`);
+      setStagesOpen(false);
 
       if (onStageUpdate) {
-        setTimeout(() => onStageUpdate(false), 300);
+        setTimeout(() => onStageUpdate(false), 400);
       }
     } catch (error) {
-      console.error("Error updating stage:", error);
-      toast.error("Failed to update stage");
-      setLocalStages(customer.lifecycleStages || []);
+      console.error("Error saving stage changes:", error);
+      toast.error("Failed to save changes");
     } finally {
-      setUpdatingStageId(null);
+      setIsSaving(false);
     }
-  }, [customer.lifecycleStages, onStageUpdate]);
+  }, [pendingChanges, pendingCount, localStages, onStageUpdate]);
+
+  const handlePopoverClose = useCallback((open: boolean) => {
+    if (!open && pendingCount > 0) {
+      // Auto-save pending changes when closing the popover
+      handleSaveChanges();
+      return;
+    }
+    setStagesOpen(open);
+    if (!open) {
+      setExpandedStageId(null);
+    }
+  }, [pendingCount, handleSaveChanges]);
 
   return (
     <Card 
@@ -218,7 +293,7 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
 
         {/* Lifecycle stages: compact dots + popover */}
         {localStages.length > 0 && (
-          <Popover open={stagesOpen} onOpenChange={setStagesOpen}>
+          <Popover open={stagesOpen} onOpenChange={handlePopoverClose}>
             <PopoverTrigger asChild>
               <button
                 onClick={(e) => {
@@ -254,7 +329,9 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
             >
               <div className="p-3 border-b">
                 <h4 className="font-medium text-sm">Lifecycle Stages</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Click to cycle: Not Started → In Progress → Done → Blocked → N/A</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Click a status to change it. {pendingCount > 0 ? "Changes save when you close." : ""}
+                </p>
               </div>
               <div className="max-h-[400px] overflow-y-auto p-1">
                 {orderedCategories.map((category) => (
@@ -264,28 +341,86 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
                     </p>
                     {stagesByCategory[category].map((stage) => {
                       const config = STATUS_CONFIG[stage.status] || STATUS_CONFIG["not-started"];
-                      const isUpdating = updatingStageId === stage.id;
+                      const isModified = !!pendingChanges[stage.id];
+                      const isExpanded = expandedStageId === stage.id;
                       return (
-                        <button
-                          key={stage.id}
-                          disabled={isUpdating}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStageStatusChange(stage.id, stage.status);
-                          }}
-                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left ${isUpdating ? "opacity-50" : ""}`}
-                        >
-                          <div className={`w-2.5 h-2.5 rounded-full ${config.dot} shrink-0 ${isUpdating ? "animate-pulse" : ""}`} />
-                          <span className="text-sm flex-1 truncate">{stage.name}</span>
-                          <span className={`text-xs font-medium ${config.color} ${config.bg} px-2 py-0.5 rounded-full`}>
-                            {config.label}
-                          </span>
-                        </button>
+                        <div key={stage.id} className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedStageId(isExpanded ? null : stage.id);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left ${isExpanded ? "bg-accent" : ""}`}
+                          >
+                            {isModified && (
+                              <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-amber-400" />
+                            )}
+                            <div className={`w-2.5 h-2.5 rounded-full ${config.dot} shrink-0`} />
+                            <span className="text-sm flex-1 truncate">{stage.name}</span>
+                            <span className={`text-xs font-medium ${config.color} ${config.bg} px-2 py-0.5 rounded-full`}>
+                              {config.label}
+                            </span>
+                          </button>
+                          {isExpanded && (
+                            <div className="flex items-center gap-1 px-3 pb-2 pt-0.5">
+                              {STATUS_CYCLE.map((status) => {
+                                const sc = STATUS_CONFIG[status];
+                                const isActive = stage.status === status;
+                                return (
+                                  <button
+                                    key={status}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSetStageStatus(stage.id, status);
+                                    }}
+                                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+                                      isActive
+                                        ? `${sc.bg} ${sc.color} ring-1 ring-current`
+                                        : "hover:bg-accent text-muted-foreground"
+                                    }`}
+                                  >
+                                    <div className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                                    {sc.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                 ))}
               </div>
+              {pendingCount > 0 && (
+                <div className="border-t p-2 flex items-center gap-2 bg-muted/30">
+                  <span className="text-xs text-muted-foreground flex-1 pl-1">
+                    {pendingCount} unsaved change{pendingCount > 1 ? "s" : ""}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDiscardChanges();
+                    }}
+                    disabled={isSaving}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    <Undo2 className="h-3 w-3" />
+                    Discard
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveChanges();
+                    }}
+                    disabled={isSaving}
+                    className="flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save
+                  </button>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
         )}
@@ -298,16 +433,73 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
             <span>Updated {customer.lastUpdatedAt ? formatShortDate(customer.lastUpdatedAt) : "—"}</span>
           </div>
 
-          {/* Last Contacted — clickable to stamp */}
-          <button
-            onClick={handleMarkContacted}
-            disabled={isMarkingContacted}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
-            title={lastContacted ? `Contacted ${new Date(lastContacted).toLocaleString()} — click to update` : "Click to mark as contacted"}
-          >
-            <Phone className={`h-3 w-3 ${isMarkingContacted ? "animate-pulse" : ""}`} />
-            <span>Contacted {lastContacted ? formatShortDate(lastContacted) : "Never"}</span>
-          </button>
+          {/* Last Contacted — popover with options */}
+          <Popover open={contactedOpen} onOpenChange={setContactedOpen}>
+            <PopoverTrigger asChild>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContactedOpen(!contactedOpen);
+                }}
+                disabled={isMarkingContacted}
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Phone className={`h-3 w-3 ${isMarkingContacted ? "animate-pulse" : ""}`} />
+                <span>Contacted {lastContacted ? formatShortDate(lastContacted) : "Never"}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-56 p-1"
+              align="end"
+              side="top"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleContactedNow}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left text-sm"
+              >
+                <Phone className="h-3.5 w-3.5 text-green-500" />
+                Contacted Now
+              </button>
+
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                  Set a different date
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={customDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => { e.stopPropagation(); setCustomDate(e.target.value); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <button
+                    onClick={handleSetCustomDate}
+                    disabled={!customDate}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <CalendarDays className="h-3 w-3" />
+                    Set
+                  </button>
+                </div>
+              </div>
+
+              {lastContacted && (
+                <>
+                  <div className="h-px bg-border mx-2" />
+                  <button
+                    onClick={handleClearContacted}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-destructive/10 transition-colors text-left text-sm text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Clear Contact Date
+                  </button>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
       </CardContent>
     </Card>

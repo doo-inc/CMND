@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,23 +23,21 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Rocket, Plus, Calendar, Edit, Trash2, GripVertical, Check, X, Settings } from "lucide-react";
+import { Rocket, Plus, Calendar, Edit, Trash2, GripVertical, Check, X, Settings, AlertTriangle, Clock, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { createNotification } from "@/utils/notificationHelpers";
-import { Task } from "@/types/tasks";
+import { Task, TaskCategory, TASK_CATEGORIES } from "@/types/tasks";
 import { logActivity } from "@/utils/activityLogger";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-// Column interface
 interface Column {
-  id: string; // Database status value: todo, in-progress, done, blocked
-  name: string; // Display name (editable)
+  id: string;
+  name: string;
   color: string;
-  isCompleted?: boolean; // Special flag for the completed column
+  isCompleted?: boolean;
 }
 
-// Default columns
 const DEFAULT_COLUMNS: Column[] = [
   { id: "backlog", name: "Backlog", color: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200" },
   { id: "in-progress", name: "In Progress", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" },
@@ -58,29 +56,50 @@ const COLUMN_COLORS = [
   { id: "cyan", class: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300" },
 ];
 
+function getDaysUntilDue(dueDate: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  return Math.ceil((due.getTime() - now.getTime()) / 86400000);
+}
+
+function getUrgencyInfo(daysLeft: number) {
+  if (daysLeft < 0) return { label: `${Math.abs(daysLeft)}d overdue`, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800", dot: "bg-red-500", pulse: true };
+  if (daysLeft === 0) return { label: "Due today", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800", dot: "bg-orange-500", pulse: true };
+  if (daysLeft === 1) return { label: "Due tomorrow", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800", dot: "bg-amber-500", pulse: false };
+  if (daysLeft <= 3) return { label: `${daysLeft}d left`, color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800", dot: "bg-yellow-500", pulse: false };
+  return { label: `${daysLeft}d left`, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800", dot: "bg-blue-500", pulse: false };
+}
+
+function getCategoryBadge(category: TaskCategory) {
+  const cat = TASK_CATEGORIES.find(c => c.id === category) || TASK_CATEGORIES[2];
+  return cat;
+}
+
 const TasksBoard = () => {
   const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
   const [columnsLoaded, setColumnsLoaded] = useState(false);
-
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [isManagingColumns, setIsManagingColumns] = useState(false);
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const [addingColumn, setAddingColumn] = useState(false);
+  const [reminderTab, setReminderTab] = useState<TaskCategory | "all">("all");
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const [newTask, setNewTask] = useState<Partial<Task>>({
     title: "",
     description: "",
-    status: columns[0]?.id || "todo",
+    status: "backlog",
+    category: "General",
     due_date: null,
     customer_id: null,
     assigned_to: null
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  // Fetch columns from database
   const fetchColumns = async () => {
-    console.log('Fetching columns from database...');
     const { data, error } = await (supabase as any)
       .from('board_columns')
       .select('*')
@@ -91,8 +110,6 @@ const TasksBoard = () => {
       return;
     }
     
-    console.log('Columns from database:', data);
-    
     if (data && data.length > 0) {
       const dbColumns: Column[] = data.map((col: any) => ({
         id: col.id,
@@ -100,25 +117,19 @@ const TasksBoard = () => {
         color: getColorForColumn(col.id, col.is_completed),
         isCompleted: col.is_completed
       }));
-      console.log('Setting columns:', dbColumns);
       setColumns(dbColumns);
-    } else {
-      console.log('No columns in database, using defaults');
     }
     setColumnsLoaded(true);
   };
 
-  // Helper to get color class for a column
   const getColorForColumn = (id: string, isCompleted: boolean): string => {
     if (isCompleted || id === 'done') return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
     if (id === 'in-progress') return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
     if (id === 'review') return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
     if (id === 'todo' || id === 'backlog') return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
-    // Random color for custom columns
     return COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)].class;
   };
 
-  // Save column to database
   const saveColumnToDb = async (column: Column, position: number) => {
     const { error } = await (supabase as any)
       .from('board_columns')
@@ -130,35 +141,24 @@ const TasksBoard = () => {
         updated_at: new Date().toISOString()
       });
     
-    if (error) {
-      console.error('Error saving column:', error);
-      throw error;
-    }
+    if (error) throw error;
   };
 
-  // Delete column from database
   const deleteColumnFromDb = async (columnId: string) => {
     const { error } = await (supabase as any)
       .from('board_columns')
       .delete()
       .eq('id', columnId);
     
-    if (error) {
-      console.error('Error deleting column:', error);
-      throw error;
-    }
+    if (error) throw error;
   };
 
-  // Tasks query - must be before useEffect that uses refetch
   const { data: tasks = [], isLoading, refetch } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select(`
-          *,
-          customers(name)
-        `)
+        .select(`*, customers(name)`)
         .order('created_at', { ascending: false });
         
       if (error) {
@@ -166,7 +166,6 @@ const TasksBoard = () => {
         return [];
       }
       
-      // Batch fetch all assignee profiles in ONE query (fixes N+1)
       const assigneeIds = [...new Set(data.filter(t => t.assigned_to).map(t => t.assigned_to))];
       let profilesMap: Record<string, { full_name: string | null; email: string }> = {};
       
@@ -184,11 +183,11 @@ const TasksBoard = () => {
         }
       }
       
-      // Map tasks with cached profile data (no additional queries)
       const tasksWithAssignees = data.map((task) => {
         const profile = task.assigned_to ? profilesMap[task.assigned_to] : null;
         return {
           ...task,
+          category: (task as any).category || "General",
           customer_name: task.customers?.name || null,
           assigned_to_name: profile?.full_name || profile?.email || null,
           completed_by_name: null
@@ -206,12 +205,7 @@ const TasksBoard = () => {
         .from('customers')
         .select('id, name')
         .order('name');
-        
-      if (error) {
-        console.error("Error fetching customers:", error);
-        return [];
-      }
-      
+      if (error) return [];
       return data;
     }
   });
@@ -219,44 +213,37 @@ const TasksBoard = () => {
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members-list'],
     queryFn: async () => {
-      // Try fetching from profiles first (linked to auth.users)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .order('full_name');
       
       if (!profilesError && profilesData && profilesData.length > 0) {
-        console.log('Team members from profiles:', profilesData.length);
         return profilesData.map(member => ({
           id: member.id,
           name: member.full_name || member.email || 'Unknown'
         }));
       }
       
-      // Fallback: try staff table (in case foreign key references staff)
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('id, name, email')
         .order('name');
         
       if (!staffError && staffData && staffData.length > 0) {
-        console.log('Team members from staff:', staffData.length);
         return staffData.map(member => ({
           id: member.id,
           name: member.name || member.email || 'Unknown'
         }));
       }
       
-      console.error("Error fetching team members:", profilesError || staffError);
       return [];
     }
   });
 
-  // Load columns on mount and subscribe to changes
   useEffect(() => {
     fetchColumns();
     
-    // Subscribe to real-time changes for columns
     const columnsChannel = supabase
       .channel('board_columns_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'board_columns' }, () => {
@@ -264,11 +251,9 @@ const TasksBoard = () => {
       })
       .subscribe();
     
-    // Subscribe to real-time changes for tasks
     const tasksChannel = supabase
       .channel('tasks_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        console.log('Tasks changed - refetching...');
         refetch();
       })
       .subscribe();
@@ -279,7 +264,67 @@ const TasksBoard = () => {
     };
   }, [refetch]);
 
-  // Column management functions
+  // Derived data: non-completed tasks with due dates in the next 7 days (or overdue)
+  const isCompletedColumn = (c: Column) =>
+    c.isCompleted || c.id === "done" || c.name.toLowerCase().includes("done") || c.name.toLowerCase().includes("complete");
+
+  const activeColumns = useMemo(() => columns.filter(c => !isCompletedColumn(c)), [columns]);
+  const activeColumnIds = useMemo(() => new Set(activeColumns.map(c => c.id)), [activeColumns]);
+
+  const isTaskCompleted = (t: Task) =>
+    !!t.completed_at || !activeColumnIds.has(t.status);
+
+  const completedTasks = useMemo(() => tasks.filter(t => isTaskCompleted(t)), [tasks, activeColumnIds]);
+
+  const dueSoonTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.due_date && !isTaskCompleted(t))
+      .map(t => ({ ...t, _daysLeft: getDaysUntilDue(t.due_date!) }))
+      .filter(t => t._daysLeft <= 7)
+      .sort((a, b) => a._daysLeft - b._daysLeft);
+  }, [tasks, activeColumnIds]);
+
+  const recentlyAdded = useMemo(() => {
+    return tasks
+      .filter(t => !isTaskCompleted(t))
+      .slice(0, 5);
+  }, [tasks, activeColumnIds]);
+
+  const filteredDueSoon = useMemo(() => {
+    if (reminderTab === "all") return dueSoonTasks;
+    return dueSoonTasks.filter(t => t.category === reminderTab);
+  }, [dueSoonTasks, reminderTab]);
+
+  const stats = useMemo(() => {
+    const active = tasks.filter(t => !isTaskCompleted(t));
+    const overdueTasks = dueSoonTasks.filter(t => t._daysLeft < 0);
+    const dueTodayTasks = dueSoonTasks.filter(t => t._daysLeft === 0);
+    const coeCount = active.filter(t => t.category === "COE").length;
+    const bdCount = active.filter(t => t.category === "BD").length;
+
+    const breakdown = (list: Task[]) => {
+      const coe = list.filter(t => t.category === "COE").length;
+      const bd = list.filter(t => t.category === "BD").length;
+      const gen = list.filter(t => t.category !== "COE" && t.category !== "BD").length;
+      const parts: string[] = [];
+      if (coe) parts.push(`${coe} COE`);
+      if (bd) parts.push(`${bd} BD`);
+      if (gen) parts.push(`${gen} General`);
+      return parts.join(" · ");
+    };
+
+    return {
+      active: active.length,
+      overdue: overdueTasks.length,
+      overdueBreakdown: breakdown(overdueTasks),
+      dueToday: dueTodayTasks.length,
+      dueTodayBreakdown: breakdown(dueTodayTasks),
+      coeCount,
+      bdCount
+    };
+  }, [tasks, activeColumnIds, dueSoonTasks]);
+
+  // Column management
   const handleAddColumn = async () => {
     if (!newColumnName.trim()) {
       toast.error("Please enter a column name");
@@ -292,7 +337,6 @@ const TasksBoard = () => {
       color: COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)].class
     };
     
-    // Insert before the completed column (if exists)
     const completedIndex = columns.findIndex(c => c.isCompleted);
     const newColumns = [...columns];
     if (completedIndex >= 0) {
@@ -302,7 +346,6 @@ const TasksBoard = () => {
     }
     
     try {
-      // Save all columns with updated positions
       for (let i = 0; i < newColumns.length; i++) {
         await saveColumnToDb(newColumns[i], i);
       }
@@ -310,7 +353,7 @@ const TasksBoard = () => {
       setNewColumnName("");
       setAddingColumn(false);
       toast.success("Column added");
-    } catch (error) {
+    } catch {
       toast.error("Failed to add column");
     }
   };
@@ -322,7 +365,6 @@ const TasksBoard = () => {
       return;
     }
     
-    // Move tasks from deleted column to first column
     const tasksInColumn = tasks.filter(t => t.status === columnId);
     if (tasksInColumn.length > 0) {
       toast.error("Move all tasks out of this column before deleting");
@@ -333,29 +375,27 @@ const TasksBoard = () => {
       await deleteColumnFromDb(columnId);
       setColumns(prev => prev.filter(col => col.id !== columnId));
       toast.success("Column deleted");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete column");
     }
   };
 
   const handleResetColumns = async () => {
     try {
-      // Delete all existing columns
       const { error: deleteError } = await (supabase as any)
         .from('board_columns')
         .delete()
-        .neq('id', 'placeholder'); // Delete all
+        .neq('id', 'placeholder');
       
       if (deleteError) throw deleteError;
       
-      // Insert default columns
       for (let i = 0; i < DEFAULT_COLUMNS.length; i++) {
         await saveColumnToDb(DEFAULT_COLUMNS[i], i);
       }
       
       setColumns(DEFAULT_COLUMNS);
       toast.success("Columns reset to defaults");
-    } catch (error) {
+    } catch {
       toast.error("Failed to reset columns");
     }
   };
@@ -376,78 +416,54 @@ const TasksBoard = () => {
       setColumns(updatedColumns);
       setEditingColumnId(null);
       toast.success("Column renamed");
-    } catch (error) {
+    } catch {
       toast.error("Failed to rename column");
     }
   };
 
-
   const handleChangeColumnColor = async (columnId: string, color: string) => {
-    const updatedColumns = columns.map(col => 
+    setColumns(prev => prev.map(col => 
       col.id === columnId ? { ...col, color } : col
-    );
-    
-    // Note: We don't save color to database as it's derived from column type
-    // Color is visual only and consistent across users
-    setColumns(updatedColumns);
+    ));
+  };
+
+  // Task CRUD
+  const getValidId = (value: string | null | undefined): string | undefined => {
+    if (!value || value === 'none' || value === 'unassigned' || value === '' || value === 'null') return undefined;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(value)) return undefined;
+    return value;
   };
 
   const handleCreateTask = async () => {
     try {
-      // Ensure proper null handling for foreign keys - must be valid UUID or undefined (not null for some Supabase configs)
-      const getValidId = (value: string | null | undefined): string | undefined => {
-        if (!value || value === 'none' || value === 'unassigned' || value === '' || value === 'null') {
-          return undefined; // Use undefined instead of null to omit from insert
-        }
-        // Basic UUID validation
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(value)) {
-          console.warn('Invalid UUID detected:', value);
-          return undefined;
-        }
-        return value;
-      };
-      
-      // Build insert data
       const insertData: any = {
         title: newTask.title,
         description: newTask.description || '',
-        status: newTask.status || 'backlog'
+        status: newTask.status || 'backlog',
+        category: newTask.category || 'General'
       };
       
-      // Only add optional fields if they have valid values
-      if (newTask.due_date) {
-        insertData.due_date = newTask.due_date;
-      }
+      if (newTask.due_date) insertData.due_date = newTask.due_date;
       
       const customerId = getValidId(newTask.customer_id);
-      if (customerId) {
-        insertData.customer_id = customerId;
-      }
+      if (customerId) insertData.customer_id = customerId;
       
       const assignedTo = getValidId(newTask.assigned_to);
-      if (assignedTo) {
-        insertData.assigned_to = assignedTo;
-      }
-      
-      console.log('Creating task with data:', insertData);
+      if (assignedTo) insertData.assigned_to = assignedTo;
       
       let { data, error } = await supabase
         .from('tasks')
         .insert(insertData)
         .select();
       
-      // If foreign key error, retry without assigned_to
       if (error && (error.message?.includes('foreign key') || error.message?.includes('fkey') || error.message?.includes('violates'))) {
-        console.log('Foreign key error, retrying without assigned_to:', error.message);
         delete insertData.assigned_to;
         const retry1 = await supabase.from('tasks').insert(insertData).select();
         data = retry1.data;
         error = retry1.error;
         
-        // If still failing, also remove customer_id
         if (error && (error.message?.includes('foreign key') || error.message?.includes('fkey') || error.message?.includes('violates'))) {
-          console.log('Still failing, retrying without customer_id:', error.message);
           delete insertData.customer_id;
           const retry2 = await supabase.from('tasks').insert(insertData).select();
           data = retry2.data;
@@ -462,10 +478,7 @@ const TasksBoard = () => {
         entityType: 'task' as any,
         entityId: data[0].id,
         entityName: newTask.title,
-        details: { 
-          assigned_to: newTask.assigned_to,
-          status: newTask.status 
-        }
+        details: { assigned_to: newTask.assigned_to, status: newTask.status, category: newTask.category }
       });
       
       if (insertData.assigned_to) {
@@ -482,19 +495,19 @@ const TasksBoard = () => {
       setNewTask({
         title: "",
         description: "",
-        status: columns[0]?.id || "todo",
+        status: activeColumns[0]?.id || "backlog",
+        category: "General",
         due_date: null,
         customer_id: null,
         assigned_to: null
       });
       
       setIsAddingTask(false);
-      toast.success("Task created successfully");
+      toast.success("Mission created");
       refetch();
-      
     } catch (error: any) {
       console.error("Error creating task:", error);
-      toast.error(`Failed to create task: ${error?.message || 'Unknown error'}`);
+      toast.error(`Failed to create mission: ${error?.message || 'Unknown error'}`);
     }
   };
 
@@ -502,17 +515,10 @@ const TasksBoard = () => {
     if (!editingTask) return;
     
     try {
-      // Ensure proper null handling for foreign keys
-      const getValidId = (value: string | null | undefined): string | null => {
-        if (!value || value === 'none' || value === 'unassigned' || value === '' || value === 'null') {
-          return null;
-        }
-        // Basic UUID validation
+      const getValidIdForUpdate = (value: string | null | undefined): string | null => {
+        if (!value || value === 'none' || value === 'unassigned' || value === '' || value === 'null') return null;
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(value)) {
-          console.warn('Invalid UUID detected:', value);
-          return null;
-        }
+        if (!uuidRegex.test(value)) return null;
         return value;
       };
       
@@ -520,24 +526,20 @@ const TasksBoard = () => {
         title: editingTask.title,
         description: editingTask.description || '',
         status: editingTask.status || 'backlog',
+        category: editingTask.category || 'General',
         due_date: editingTask.due_date || null,
-        customer_id: getValidId(editingTask.customer_id),
-        assigned_to: getValidId(editingTask.assigned_to)
+        customer_id: getValidIdForUpdate(editingTask.customer_id),
+        assigned_to: getValidIdForUpdate(editingTask.assigned_to)
       };
       
-      console.log('Updating task with data:', updateData);
-      
-      // Check if moving to completed column
       const isCompletedColumn = columns.find(c => c.id === editingTask.status)?.isCompleted;
       const wasCompleted = columns.find(c => c.id === tasks.find(t => t.id === editingTask.id)?.status)?.isCompleted;
       
-      // If moving to completed for the first time, record who completed it
       if (isCompletedColumn && !wasCompleted) {
         const { data: userData } = await supabase.auth.getUser();
         updateData.completed_by = userData?.user?.id;
         updateData.completed_at = new Date().toISOString();
       } else if (!isCompletedColumn && wasCompleted) {
-        // If moving out of completed, clear the completed info
         updateData.completed_by = null;
         updateData.completed_at = null;
       }
@@ -547,72 +549,65 @@ const TasksBoard = () => {
         .update(updateData)
         .eq('id', editingTask.id);
       
-      // If error is about missing column, retry without completed fields
       if (error && error.message?.includes('completed')) {
         delete updateData.completed_by;
         delete updateData.completed_at;
-        const result = await supabase
-          .from('tasks')
-          .update(updateData)
-          .eq('id', editingTask.id);
+        const result = await supabase.from('tasks').update(updateData).eq('id', editingTask.id);
         error = result.error;
       }
         
       if (error) throw error;
       
       setEditingTask(null);
-      toast.success("Task updated successfully");
+      toast.success("Mission updated");
       refetch();
-      
     } catch (error) {
       console.error("Error updating task:", error);
-      toast.error("Failed to update task");
+      toast.error("Failed to update mission");
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-        
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
       if (error) throw error;
-      
-      toast.success("Task deleted successfully");
+      toast.success("Mission deleted");
       refetch();
-      
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      toast.error("Failed to delete task");
+    } catch {
+      toast.error("Failed to delete mission");
     }
   };
 
   const handleMarkAsDone = async (taskId: string) => {
     try {
-      // Find the done column
-      const doneColumn = columns.find(c => c.isCompleted || c.id === 'done');
-      if (!doneColumn) {
-        toast.error("No Done column found");
-        return;
+      const doneColumn = columns.find(c => isCompletedColumn(c));
+      const doneStatus = doneColumn?.id || "done";
+
+      const { data: userData } = await supabase.auth.getUser();
+      const updateData: any = {
+        status: doneStatus,
+        completed_at: new Date().toISOString(),
+        completed_by: userData?.user?.id || null
+      };
+
+      let { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
+
+      if (error && error.message?.includes('completed')) {
+        delete updateData.completed_by;
+        delete updateData.completed_at;
+        const result = await supabase.from('tasks').update(updateData).eq('id', taskId);
+        error = result.error;
       }
-      
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status: doneColumn.id })
-        .eq('id', taskId);
-        
+
       if (error) throw error;
-      
-      toast.success("Task marked as done! ✓");
+      toast.success("Mission completed!");
       refetch();
-      
-    } catch (error) {
-      console.error("Error marking task as done:", error);
-      toast.error("Failed to mark task as done");
+    } catch {
+      toast.error("Failed to mark as done");
     }
   };
 
+  // Drag & drop
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, task: Task) => {
     e.dataTransfer.setData("taskId", task.id);
   };
@@ -641,35 +636,178 @@ const TasksBoard = () => {
         updateData.completed_at = null;
       }
       
-      let { error } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', taskId);
+      let { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
       
-      // If error is about missing column, retry without completed fields
       if (error && error.message?.includes('completed')) {
         delete updateData.completed_by;
         delete updateData.completed_at;
-        const result = await supabase
-          .from('tasks')
-          .update(updateData)
-          .eq('id', taskId);
+        const result = await supabase.from('tasks').update(updateData).eq('id', taskId);
         error = result.error;
       }
         
       if (error) throw error;
-      
-      toast.success("Task moved");
+      toast.success("Mission moved");
       refetch();
-      
-    } catch (error) {
-      console.error("Error updating task status:", error);
-      toast.error("Failed to update task");
+    } catch {
+      toast.error("Failed to move mission");
     }
   };
 
+  // Task form fields (shared between create and edit)
+  const renderTaskFormFields = (
+    taskData: Partial<Task>,
+    onChange: (updates: Partial<Task>) => void
+  ) => (
+    <div className="grid gap-4 py-4">
+      <div className="grid gap-2">
+        <Label>Title</Label>
+        <Input value={taskData.title || ""} onChange={(e) => onChange({ title: e.target.value })} />
+      </div>
+      <div className="grid gap-2">
+        <Label>Description</Label>
+        <Textarea value={taskData.description || ""} onChange={(e) => onChange({ description: e.target.value })} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="grid gap-2">
+          <Label>Category</Label>
+          <Select value={taskData.category || "General"} onValueChange={(value) => onChange({ category: value as TaskCategory })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TASK_CATEGORIES.map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  <span className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${cat.bg.split(' ')[0]}`} />
+                    {cat.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>Column</Label>
+          <Select value={taskData.status || activeColumns[0]?.id} onValueChange={(value) => onChange({ status: value })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {activeColumns.map(col => (
+                <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>Due Date</Label>
+          <Input type="date" value={taskData.due_date || ""} onChange={(e) => onChange({ due_date: e.target.value || null })} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label>Customer</Label>
+          <Select value={taskData.customer_id || "none"} onValueChange={(value) => onChange({ customer_id: value === "none" ? null : value })}>
+            <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {customers.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>Assignee</Label>
+          <Select value={taskData.assigned_to || "unassigned"} onValueChange={(value) => onChange({ assigned_to: value === "unassigned" ? null : value })}>
+            <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {teamMembers.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render a single task card in the kanban column
+  const renderTaskCard = (task: Task, column: Column) => {
+    const catInfo = getCategoryBadge(task.category);
+    const hasDueDate = !!task.due_date;
+    const daysLeft = hasDueDate ? getDaysUntilDue(task.due_date!) : null;
+    const urgency = daysLeft !== null && !column.isCompleted ? getUrgencyInfo(daysLeft) : null;
+    const isOverdueOrToday = urgency && daysLeft !== null && daysLeft <= 0;
+
+    return (
+      <div
+        key={task.id}
+        className={`bg-card border rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer group ${isOverdueOrToday ? "border-red-300 dark:border-red-700" : ""}`}
+        draggable
+        onDragStart={(e) => handleDragStart(e, task)}
+        onClick={() => setEditingTask(task)}
+      >
+        <div className="flex justify-between items-start mb-1.5">
+          <h4 className="font-semibold text-sm flex-1 pr-2 leading-snug">{task.title}</h4>
+          <div className="flex space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!column.isCompleted && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-green-100 hover:text-green-600" onClick={(e) => { e.stopPropagation(); handleMarkAsDone(task.id); }} title="Mark as Done">
+                <Check className="h-3 w-3" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setEditingTask(task); }}>
+              <Edit className="h-3 w-3 text-doo-purple-500" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}>
+              <Trash2 className="h-3 w-3 text-red-500" />
+            </Button>
+          </div>
+        </div>
+
+        {task.description && (
+          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+        )}
+
+        {column.isCompleted && task.completed_by_name && (
+          <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 mb-2">
+            <Check className="h-3 w-3" />
+            <span>Done by {task.completed_by_name}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs gap-1 flex-wrap">
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className={`text-[10px] h-5 ${catInfo.color} ${catInfo.bg} border-0`}>
+              {catInfo.label}
+            </Badge>
+            {task.customer_name && (
+              <Badge variant="outline" className="text-[10px] h-5">{task.customer_name}</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {urgency && (
+              <span className={`flex items-center gap-1 text-[10px] font-medium ${urgency.color}`}>
+                {urgency.pulse && <span className="relative flex h-1.5 w-1.5"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${urgency.dot} opacity-75`}></span><span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${urgency.dot}`}></span></span>}
+                {urgency.label}
+              </span>
+            )}
+            {hasDueDate && !urgency && (
+              <div className="flex items-center text-muted-foreground">
+                <Calendar className="h-3 w-3 mr-0.5" />
+                <span>{new Date(task.due_date!).toLocaleDateString()}</span>
+              </div>
+            )}
+            {task.assigned_to_name && (
+              <Badge variant="secondary" className="text-[10px] h-5 bg-doo-purple-100 text-doo-purple-800">
+                {task.assigned_to_name}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderColumn = (column: Column) => {
-    const columnTasks = tasks.filter(task => task.status === column.id);
+    const columnTasks = tasks.filter(task => task.status === column.id && !isTaskCompleted(task));
     
     return (
       <div 
@@ -678,24 +816,18 @@ const TasksBoard = () => {
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, column.id)}
       >
-        <div className={`rounded-t-md p-3 ${column.color}`}>
+        <div className={`rounded-t-lg p-3 ${column.color}`}>
           <div className="flex items-center justify-between">
             {editingColumnId === column.id ? (
               <div className="flex items-center gap-2 flex-1">
                 <Input
                   value={columns.find(c => c.id === column.id)?.name || ""}
-                  onChange={(e) => setColumns(prev => prev.map(c => 
-                    c.id === column.id ? { ...c, name: e.target.value } : c
-                  ))}
+                  onChange={(e) => setColumns(prev => prev.map(c => c.id === column.id ? { ...c, name: e.target.value } : c))}
                   className="h-7 text-sm"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleRenameColumn(column.id, columns.find(c => c.id === column.id)?.name || "");
-                    }
-                    if (e.key === 'Escape') {
-                      setEditingColumnId(null);
-                    }
+                    if (e.key === 'Enter') handleRenameColumn(column.id, columns.find(c => c.id === column.id)?.name || "");
+                    if (e.key === 'Escape') setEditingColumnId(null);
                   }}
                 />
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRenameColumn(column.id, columns.find(c => c.id === column.id)?.name || "")}>
@@ -709,28 +841,14 @@ const TasksBoard = () => {
               <>
                 <h3 className="font-semibold flex items-center">
                   {column.name}
-                  <Badge variant="outline" className="ml-2">
-                    {columnTasks.length}
-                  </Badge>
+                  <Badge variant="outline" className="ml-2">{columnTasks.length}</Badge>
                 </h3>
                 <div className="flex items-center gap-1">
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-6 w-6 opacity-60 hover:opacity-100"
-                    onClick={() => setEditingColumnId(column.id)}
-                    title="Rename column"
-                  >
+                  <Button size="icon" variant="ghost" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setEditingColumnId(column.id)} title="Rename column">
                     <Edit className="h-3 w-3" />
                   </Button>
-                  {!column.isCompleted && columns.length > 1 && (
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-6 w-6 opacity-60 hover:opacity-100 text-red-500"
-                      onClick={() => handleDeleteColumn(column.id)}
-                      title="Delete column"
-                    >
+                  {columns.length > 1 && (
+                    <Button size="icon" variant="ghost" className="h-6 w-6 opacity-60 hover:opacity-100 text-red-500" onClick={() => handleDeleteColumn(column.id)} title="Delete column">
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   )}
@@ -739,83 +857,8 @@ const TasksBoard = () => {
             )}
           </div>
         </div>
-        <div className="bg-muted/30 rounded-b-md flex-1 p-2 space-y-2 min-h-[400px] overflow-y-auto">
-          {columnTasks.map(task => (
-            <div 
-              key={task.id}
-              className="bg-card border rounded-md p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              draggable
-              onDragStart={(e) => handleDragStart(e, task)}
-              onClick={() => setEditingTask(task)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-semibold text-sm flex-1 pr-2">{task.title}</h4>
-                <div className="flex space-x-1">
-                  {/* Quick Done button - only show if not already in done column */}
-                  {!column.isCompleted && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 hover:bg-green-100 hover:text-green-600" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkAsDone(task.id);
-                      }}
-                      title="Mark as Done"
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingTask(task);
-                  }}>
-                    <Edit className="h-3 w-3 text-doo-purple-500" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteTask(task.id);
-                  }}>
-                    <Trash2 className="h-3 w-3 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-              {task.description && (
-                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
-              )}
-              
-              {/* Show completed by for completed tasks */}
-              {column.isCompleted && task.completed_by_name && (
-                <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 mb-2">
-                  <Check className="h-3 w-3" />
-                  <span>Done by {task.completed_by_name}</span>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center">
-                  {task.customer_name && (
-                    <Badge variant="outline" className="text-[10px] h-5">
-                      {task.customer_name}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  {task.due_date && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {task.assigned_to && task.assigned_to_name && (
-                    <Badge variant="secondary" className="text-[10px] h-5 bg-doo-purple-100 text-doo-purple-800">
-                      {task.assigned_to_name}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="bg-muted/30 rounded-b-lg flex-1 p-2 space-y-2 min-h-[400px] overflow-y-auto">
+          {columnTasks.map(task => renderTaskCard(task, column))}
         </div>
       </div>
     );
@@ -823,11 +866,12 @@ const TasksBoard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Rocket className="h-6 w-6 text-doo-purple-500" />
-            MO Mission Board
+            Mission Board
           </h1>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setIsManagingColumns(true)}>
@@ -840,105 +884,15 @@ const TasksBoard = () => {
                   <Plus className="mr-2 h-4 w-4" /> Add Mission
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[540px]">
                 <DialogHeader>
                   <DialogTitle>Create New Mission</DialogTitle>
-                  <DialogDescription>
-                    Add a new mission to your board
-                  </DialogDescription>
+                  <DialogDescription>Add a new mission to your board</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={newTask.title}
-                      onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={newTask.description}
-                      onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="status">Column</Label>
-                      <Select
-                        value={newTask.status}
-                        onValueChange={(value) => setNewTask({...newTask, status: value as Task["status"]})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select column" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {columns.map(col => (
-                            <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="dueDate">Due Date</Label>
-                      <Input
-                        id="dueDate"
-                        type="date"
-                        value={newTask.due_date || ""}
-                        onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="customer">Customer</Label>
-                      <Select
-                        value={newTask.customer_id || "none"}
-                        onValueChange={(value) => setNewTask({...newTask, customer_id: value === "none" ? null : value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select customer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="assignee">Assignee</Label>
-                      <Select
-                        value={newTask.assigned_to || "unassigned"}
-                        onValueChange={(value) => setNewTask({...newTask, assigned_to: value === "unassigned" ? null : value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select assignee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {teamMembers.map((person) => (
-                            <SelectItem key={person.id} value={person.id}>
-                              {person.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
+                {renderTaskFormFields(newTask, (updates) => setNewTask(prev => ({ ...prev, ...updates })))}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddingTask(false)}>Cancel</Button>
-                  <Button 
-                    className="bg-doo-purple-500 hover:bg-doo-purple-600"
-                    onClick={handleCreateTask}
-                    disabled={!newTask.title}
-                  >
+                  <Button className="bg-doo-purple-500 hover:bg-doo-purple-600" onClick={handleCreateTask} disabled={!newTask.title}>
                     Create Mission
                   </Button>
                 </DialogFooter>
@@ -946,7 +900,68 @@ const TasksBoard = () => {
             </Dialog>
           </div>
         </div>
-        
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-doo-purple-100 dark:bg-doo-purple-900/30">
+                <Rocket className="h-4 w-4 text-doo-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Active</p>
+                <p className="text-lg font-bold">{stats.active}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-red-100 dark:bg-red-900/30">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Overdue</p>
+                <p className="text-lg font-bold text-red-600">{stats.overdue}</p>
+                {stats.overdueBreakdown && <p className="text-[10px] text-muted-foreground">{stats.overdueBreakdown}</p>}
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-orange-100 dark:bg-orange-900/30">
+                <Clock className="h-4 w-4 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Due Today</p>
+                <p className="text-lg font-bold text-orange-600">{stats.dueToday}</p>
+                {stats.dueTodayBreakdown && <p className="text-[10px] text-muted-foreground">{stats.dueTodayBreakdown}</p>}
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-violet-100 dark:bg-violet-900/30">
+                <Sparkles className="h-4 w-4 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">COE</p>
+                <p className="text-lg font-bold">{stats.coeCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-sky-100 dark:bg-sky-900/30">
+                <Sparkles className="h-4 w-4 text-sky-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">BD</p>
+                <p className="text-lg font-bold">{stats.bdCount}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
         <Card className="p-0">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -956,11 +971,10 @@ const TasksBoard = () => {
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 overflow-x-auto pb-4">
-              {columns.map(column => renderColumn(column))}
+              {activeColumns.map(column => renderColumn(column))}
               
-              {/* Add Column */}
               {addingColumn ? (
-                <div className="min-w-[280px] p-3 border-2 border-dashed border-border rounded-md bg-muted/20">
+                <div className="min-w-[280px] p-3 border-2 border-dashed border-border rounded-lg bg-muted/20">
                   <div className="space-y-3">
                     <Input
                       placeholder="Column name..."
@@ -969,27 +983,17 @@ const TasksBoard = () => {
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleAddColumn();
-                        if (e.key === 'Escape') {
-                          setAddingColumn(false);
-                          setNewColumnName("");
-                        }
+                        if (e.key === 'Escape') { setAddingColumn(false); setNewColumnName(""); }
                       }}
                     />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleAddColumn}>Add</Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setAddingColumn(false);
-                        setNewColumnName("");
-                      }}>Cancel</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setAddingColumn(false); setNewColumnName(""); }}>Cancel</Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <Button 
-                  variant="outline" 
-                  className="min-w-[200px] h-12 border-dashed"
-                  onClick={() => setAddingColumn(true)}
-                >
+                <Button variant="outline" className="min-w-[200px] h-12 border-dashed" onClick={() => setAddingColumn(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Column
                 </Button>
@@ -997,108 +1001,170 @@ const TasksBoard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Completed section */}
+        {completedTasks.length > 0 && (
+          <Card className="p-0">
+            <button
+              onClick={() => setShowCompleted(!showCompleted)}
+              className="w-full flex items-center gap-3 p-4 text-left hover:bg-accent/30 transition-colors rounded-lg"
+            >
+              {showCompleted ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              <Check className="h-4 w-4 text-green-500" />
+              <span className="font-semibold text-sm">Completed</span>
+              <Badge variant="secondary" className="text-xs">{completedTasks.length}</Badge>
+            </button>
+            {showCompleted && (
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {completedTasks.map(task => {
+                    const catInfo = getCategoryBadge(task.category);
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => setEditingTask(task)}
+                        className="flex items-center gap-3 p-2.5 rounded-lg border border-border/60 bg-muted/20 hover:bg-accent/30 cursor-pointer transition-colors group"
+                      >
+                        <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate line-through text-muted-foreground">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="outline" className={`text-[10px] h-4 ${catInfo.color} ${catInfo.bg} border-0`}>{catInfo.label}</Badge>
+                            {task.customer_name && <span className="text-[10px] text-muted-foreground">{task.customer_name}</span>}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}>
+                          <Trash2 className="h-3 w-3 text-red-500" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Due Soon + Recently Added */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Due Soon Reminders */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Due Soon
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={reminderTab} onValueChange={(v) => setReminderTab(v as TaskCategory | "all")}>
+                <TabsList className="mb-3">
+                  <TabsTrigger value="all" className="text-xs">
+                    All
+                    {dueSoonTasks.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">{dueSoonTasks.length}</Badge>}
+                  </TabsTrigger>
+                  {TASK_CATEGORIES.map(cat => {
+                    const count = dueSoonTasks.filter(t => t.category === cat.id).length;
+                    return (
+                      <TabsTrigger key={cat.id} value={cat.id} className="text-xs">
+                        {cat.label}
+                        {count > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">{count}</Badge>}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {filteredDueSoon.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No missions due soon</p>
+                  ) : (
+                    filteredDueSoon.map(task => {
+                      const urgency = getUrgencyInfo(task._daysLeft);
+                      const catInfo = getCategoryBadge(task.category);
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => setEditingTask(task)}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${urgency.bg}`}
+                        >
+                          {urgency.pulse && (
+                            <span className="relative flex h-2.5 w-2.5 shrink-0">
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${urgency.dot} opacity-75`}></span>
+                              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${urgency.dot}`}></span>
+                            </span>
+                          )}
+                          {!urgency.pulse && <div className={`w-2.5 h-2.5 rounded-full ${urgency.dot} shrink-0`} />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{task.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Badge variant="outline" className={`text-[10px] h-4 ${catInfo.color} ${catInfo.bg} border-0`}>{catInfo.label}</Badge>
+                              {task.customer_name && <span className="text-[11px] text-muted-foreground truncate">{task.customer_name}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`text-xs font-semibold ${urgency.color}`}>{urgency.label}</p>
+                            {task.assigned_to_name && <p className="text-[10px] text-muted-foreground mt-0.5">{task.assigned_to_name}</p>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Recently Added */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-doo-purple-500" />
+                Recently Added
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                {recentlyAdded.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No recent missions</p>
+                ) : (
+                  recentlyAdded.map(task => {
+                    const catInfo = getCategoryBadge(task.category);
+                    const age = getDaysUntilDue(task.created_at);
+                    const ageLabel = Math.abs(age) === 0 ? "Today" : Math.abs(age) === 1 ? "Yesterday" : `${Math.abs(age)}d ago`;
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => setEditingTask(task)}
+                        className="flex items-center gap-3 p-2.5 rounded-lg border border-border/60 hover:bg-accent/50 cursor-pointer transition-colors"
+                      >
+                        <div className={`w-2 h-2 rounded-full ${catInfo.bg.split(' ')[0]} shrink-0`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="outline" className={`text-[10px] h-4 ${catInfo.color} ${catInfo.bg} border-0`}>{catInfo.label}</Badge>
+                            {task.assigned_to_name && <span className="text-[10px] text-muted-foreground">{task.assigned_to_name}</span>}
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{ageLabel}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
       
       {/* Edit Task Dialog */}
       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[540px]">
           <DialogHeader>
             <DialogTitle>Edit Mission</DialogTitle>
           </DialogHeader>
-          {editingTask && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-title">Title</Label>
-                <Input
-                  id="edit-title"
-                  value={editingTask.title}
-                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingTask.description}
-                  onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-status">Column</Label>
-                  <Select
-                    value={editingTask.status}
-                    onValueChange={(value) => setEditingTask({...editingTask, status: value as Task["status"]})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select column" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {columns.map(col => (
-                        <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-dueDate">Due Date</Label>
-                  <Input
-                    id="edit-dueDate"
-                    type="date"
-                    value={editingTask.due_date || ""}
-                    onChange={(e) => setEditingTask({...editingTask, due_date: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-customer">Customer</Label>
-                  <Select
-                    value={editingTask.customer_id || "none"}
-                    onValueChange={(value) => setEditingTask({...editingTask, customer_id: value === "none" ? null : value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-assignee">Assignee</Label>
-                  <Select
-                    value={editingTask.assigned_to || "unassigned"}
-                    onValueChange={(value) => setEditingTask({...editingTask, assigned_to: value === "unassigned" ? null : value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {teamMembers.map((person) => (
-                        <SelectItem key={person.id} value={person.id}>
-                          {person.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
+          {editingTask && renderTaskFormFields(editingTask, (updates) => setEditingTask(prev => prev ? { ...prev, ...updates } : prev))}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTask(null)}>Cancel</Button>
-            <Button 
-              className="bg-doo-purple-500 hover:bg-doo-purple-600"
-              onClick={handleUpdateTask}
-              disabled={!editingTask?.title}
-            >
+            <Button className="bg-doo-purple-500 hover:bg-doo-purple-600" onClick={handleUpdateTask} disabled={!editingTask?.title}>
               Update Mission
             </Button>
           </DialogFooter>
@@ -1110,26 +1176,16 @@ const TasksBoard = () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Manage Columns</DialogTitle>
-            <DialogDescription>
-              Customize column names and colors. Click the pencil icon on any column header to rename it.
-            </DialogDescription>
+            <DialogDescription>Customize column names and colors.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4 max-h-[400px] overflow-y-auto">
-            {columns.map((column) => (
+            {activeColumns.map((column) => (
               <div key={column.id} className="flex items-center gap-3 p-3 border rounded-md">
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                 <div className={`w-4 h-4 rounded ${column.color.split(' ')[0]}`} />
                 <span className="flex-1 font-medium">{column.name}</span>
-                {column.isCompleted && (
-                  <Badge variant="secondary" className="text-xs">Done</Badge>
-                )}
-                <Select
-                  value={column.color}
-                  onValueChange={(value) => handleChangeColumnColor(column.id, value)}
-                >
-                  <SelectTrigger className="w-24 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={column.color} onValueChange={(value) => handleChangeColumnColor(column.id, value)}>
+                  <SelectTrigger className="w-24 h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {COLUMN_COLORS.map(color => (
                       <SelectItem key={color.id} value={color.class}>
