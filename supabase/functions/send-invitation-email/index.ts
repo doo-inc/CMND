@@ -8,7 +8,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-export interface InvitationEmailData {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ROLES = ['admin', 'user'] as const;
+
+interface ValidatedInvitation {
   email: string;
   role: 'admin' | 'user';
   inviteLink: string;
@@ -16,14 +19,75 @@ export interface InvitationEmailData {
   companyName?: string;
 }
 
-interface EmailRequest {
-  invitation: InvitationEmailData;
+function validateInvitationInput(data: unknown): { valid: true; invitation: ValidatedInvitation } | { valid: false; error: string } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: "Invalid request body" };
+  }
+
+  const body = data as Record<string, unknown>;
+  const invitation = body.invitation as Record<string, unknown> | undefined;
+
+  if (!invitation || typeof invitation !== 'object') {
+    return { valid: false, error: "Missing invitation data" };
+  }
+
+  // Email validation
+  if (!invitation.email || typeof invitation.email !== 'string') {
+    return { valid: false, error: "Email is required" };
+  }
+  const trimmedEmail = invitation.email.trim().toLowerCase();
+  if (trimmedEmail.length > 255 || !EMAIL_REGEX.test(trimmedEmail)) {
+    return { valid: false, error: "Invalid email format" };
+  }
+
+  // Role validation
+  if (!invitation.role || typeof invitation.role !== 'string' || !VALID_ROLES.includes(invitation.role as any)) {
+    return { valid: false, error: "Invalid role. Must be 'admin' or 'user'" };
+  }
+
+  // Invite link validation
+  if (!invitation.inviteLink || typeof invitation.inviteLink !== 'string') {
+    return { valid: false, error: "Invite link is required" };
+  }
+  try {
+    new URL(invitation.inviteLink);
+  } catch {
+    return { valid: false, error: "Invalid invite link URL format" };
+  }
+  if (invitation.inviteLink.length > 2048) {
+    return { valid: false, error: "Invite link is too long" };
+  }
+
+  // Optional fields
+  const invitedByName = (typeof invitation.invitedByName === 'string' && invitation.invitedByName.length <= 255)
+    ? invitation.invitedByName.trim() : undefined;
+  const companyName = (typeof invitation.companyName === 'string' && invitation.companyName.length <= 255)
+    ? invitation.companyName.trim() : undefined;
+
+  return {
+    valid: true,
+    invitation: {
+      email: trimmedEmail,
+      role: invitation.role as 'admin' | 'user',
+      inviteLink: invitation.inviteLink,
+      invitedByName,
+      companyName,
+    },
+  };
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 serve(async (req) => {
   console.log("Received request:", req.method);
   
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -56,7 +120,6 @@ serve(async (req) => {
       },
     });
 
-    // Verify the user's JWT token
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !user) {
@@ -67,7 +130,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has admin role (only admins can send invitations)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("role")
@@ -93,23 +155,21 @@ serve(async (req) => {
     console.log(`send-invitation-email: Authorized admin user ${user.id}`);
     // ============ END AUTHENTICATION ============
 
-    const body = await req.json();
-    const { invitation }: EmailRequest = body;
-    
-    console.log("Processing invitation for:", invitation?.email);
+    // ============ INPUT VALIDATION ============
+    const rawBody = await req.json();
+    const validation = validateInvitationInput(rawBody);
 
-    if (!invitation?.email || !invitation?.role || !invitation?.inviteLink) {
+    if (!validation.valid) {
       return new Response(
-        JSON.stringify({ 
-          error: "Missing required fields",
-          received: invitation
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { invitation } = validation;
+    // ============ END INPUT VALIDATION ============
+
+    console.log("Processing invitation for:", invitation.email);
 
     // Check for RESEND_API_KEY
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -122,10 +182,7 @@ serve(async (req) => {
           warning: "Email not configured",
           message: "Invitation created. Email service not configured - share link manually."
         }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -136,13 +193,12 @@ serve(async (req) => {
 
       const emailContent = buildInvitationEmailContent(invitation);
 
-      // Use configured sender or default DOO email
       const fromEmail = Deno.env.get("SENDER_EMAIL") || "DOO Command <hello@doo.ooo>";
       
       const result = await resend.emails.send({
         from: fromEmail,
         to: [invitation.email],
-        subject: `You're invited to join ${invitation.companyName || 'our team'} on DOO Command`,
+        subject: `You're invited to join ${escapeHtml(invitation.companyName || 'our team')} on DOO Command`,
         html: emailContent,
       });
 
@@ -155,10 +211,7 @@ serve(async (req) => {
             message: "Invitation created but email failed to send. Share link manually.",
             details: result.error.message
           }),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -169,10 +222,7 @@ serve(async (req) => {
           emailId: result.data?.id,
           message: "Invitation email sent successfully"
         }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
     } catch (emailError: unknown) {
@@ -185,10 +235,7 @@ serve(async (req) => {
           message: "Invitation created but email failed to send. Share link manually.",
           details: errorMessage
         }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -196,20 +243,21 @@ serve(async (req) => {
     console.error("Function error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 
-function buildInvitationEmailContent(invitation: InvitationEmailData): string {
+function buildInvitationEmailContent(invitation: ValidatedInvitation): string {
   const roleColor = invitation.role === 'admin' ? '#8B5CF6' : '#3B82F6';
   const roleIcon = invitation.role === 'admin' ? '🛡️' : '👤';
+  
+  // Escape all user-provided content for XSS protection
+  const safeInvitedByName = invitation.invitedByName ? escapeHtml(invitation.invitedByName) : '';
+  const safeCompanyName = invitation.companyName ? escapeHtml(invitation.companyName) : '';
+  const safeInviteLink = encodeURI(invitation.inviteLink);
+  const safeRole = escapeHtml(invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1));
 
   return `
     <!DOCTYPE html>
@@ -233,8 +281,8 @@ function buildInvitationEmailContent(invitation: InvitationEmailData): string {
             <div style="font-size: 64px; margin-bottom: 15px;">${roleIcon}</div>
             <h2 style="color: #1F2937; margin: 0 0 10px 0; font-size: 24px; font-weight: 600;">You're Invited!</h2>
             <p style="color: #6B7280; margin: 0; font-size: 16px;">
-              ${invitation.invitedByName ? `${invitation.invitedByName} has invited you to join` : 'You have been invited to join'} 
-              ${invitation.companyName || 'the team'} on DOO Command
+              ${safeInvitedByName ? `${safeInvitedByName} has invited you to join` : 'You have been invited to join'} 
+              ${safeCompanyName || 'the team'} on DOO Command
             </p>
           </div>
           
@@ -242,13 +290,13 @@ function buildInvitationEmailContent(invitation: InvitationEmailData): string {
             <p style="margin: 0; font-size: 16px; color: #374151;">
               <strong style="color: ${roleColor};">Your Role:</strong> 
               <span style="background: ${roleColor}20; color: ${roleColor}; padding: 4px 8px; border-radius: 4px; font-weight: 600;">
-                ${invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
+                ${safeRole}
               </span>
             </p>
           </div>
           
           <div style="text-align: center; margin-bottom: 30px;">
-            <a href="${invitation.inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); transition: transform 0.2s;">
+            <a href="${safeInviteLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); transition: transform 0.2s;">
               Accept Invitation & Join Team
             </a>
           </div>
@@ -272,7 +320,7 @@ function buildInvitationEmailContent(invitation: InvitationEmailData): string {
           </p>
           <p style="margin: 0; font-size: 12px; color: #9CA3AF;">
             Having trouble with the button? Copy this link: <br>
-            <a href="${invitation.inviteLink}" style="color: #667eea; text-decoration: none; word-break: break-all; font-size: 11px;">${invitation.inviteLink}</a>
+            <a href="${safeInviteLink}" style="color: #667eea; text-decoration: none; word-break: break-all; font-size: 11px;">${safeInviteLink}</a>
           </p>
           <p style="margin: 20px 0 0 0; font-size: 11px; color: #D1D5DB;">
             © ${new Date().getFullYear()} DOO. All rights reserved.

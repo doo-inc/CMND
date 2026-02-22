@@ -8,11 +8,55 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-interface CreateUserRequest {
-  email: string;
-  password: string;
-  full_name: string;
-  role: 'admin' | 'user';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ROLES = ['admin', 'user'] as const;
+
+function validateCreateUserInput(data: unknown): { valid: true; email: string; password: string; full_name: string; role: 'admin' | 'user' } | { valid: false; error: string } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: "Invalid request body" };
+  }
+
+  const { email, password, full_name, role } = data as Record<string, unknown>;
+
+  // Email validation
+  if (!email || typeof email !== 'string') {
+    return { valid: false, error: "Email is required" };
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  if (trimmedEmail.length > 255) {
+    return { valid: false, error: "Email must be less than 255 characters" };
+  }
+  if (!EMAIL_REGEX.test(trimmedEmail)) {
+    return { valid: false, error: "Invalid email format" };
+  }
+
+  // Password validation
+  if (!password || typeof password !== 'string') {
+    return { valid: false, error: "Password is required" };
+  }
+  if (password.length < 6) {
+    return { valid: false, error: "Password must be at least 6 characters" };
+  }
+  if (password.length > 128) {
+    return { valid: false, error: "Password must be less than 128 characters" };
+  }
+
+  // Full name validation
+  if (!full_name || typeof full_name !== 'string') {
+    return { valid: false, error: "Full name is required" };
+  }
+  const trimmedName = full_name.trim();
+  if (trimmedName.length === 0) {
+    return { valid: false, error: "Full name cannot be empty" };
+  }
+  if (trimmedName.length > 255) {
+    return { valid: false, error: "Full name must be less than 255 characters" };
+  }
+
+  // Role validation
+  const validatedRole = (role && typeof role === 'string' && VALID_ROLES.includes(role as any)) ? role as 'admin' | 'user' : 'user';
+
+  return { valid: true, email: trimmedEmail, password, full_name: trimmedName, role: validatedRole };
 }
 
 serve(async (req) => {
@@ -87,22 +131,19 @@ serve(async (req) => {
     console.log(`create-user-account: Authorized admin user ${callingUser.id}`);
     // ============ END AUTHENTICATION ============
 
-    const { email, password, full_name, role }: CreateUserRequest = await req.json();
-
-    if (!email || !password || !full_name) {
+    // ============ INPUT VALIDATION ============
+    const rawBody = await req.json();
+    const validation = validateCreateUserInput(rawBody);
+    
+    if (!validation.valid) {
       return new Response(
-        JSON.stringify({ error: "Email, password, and full name are required" }),
+        JSON.stringify({ error: validation.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Validate password length
-    if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "Password must be at least 6 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const { email, password, full_name, role } = validation;
+    // ============ END INPUT VALIDATION ============
 
     console.log(`Creating user account for: ${email}`);
 
@@ -141,7 +182,7 @@ serve(async (req) => {
       .from("profiles")
       .update({
         full_name,
-        role: role || 'user',
+        role: role,
       })
       .eq('id', userData.user.id);
 
@@ -154,7 +195,7 @@ serve(async (req) => {
           id: userData.user.id,
           email,
           full_name,
-          role: role || 'user',
+          role: role,
         }, { onConflict: 'id' });
       
       if (upsertError) {
@@ -169,7 +210,7 @@ serve(async (req) => {
         entity_type: "user",
         entity_id: userData.user.id,
         user_id: callingUser.id,
-        details: { email, full_name, role: role || 'user', created_by: callingUser.id },
+        details: { email, full_name, role, created_by: callingUser.id },
       });
     } catch (logError) {
       console.error("Error logging activity:", logError);
@@ -184,7 +225,7 @@ serve(async (req) => {
           id: userData.user.id,
           email: userData.user.email,
           full_name,
-          role: role || 'user',
+          role,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
