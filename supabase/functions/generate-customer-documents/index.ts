@@ -7,6 +7,30 @@ const DOO_PURPLE = [146/255, 68/255, 255/255];
 const DOO_LIGHT_PURPLE = [180/255, 120/255, 255/255];
 const DOO_WHITE = [1, 1, 1];
 
+// Sanitize text for PDF embedding - strip control chars and limit length
+function sanitizeText(text: unknown, maxLength = 500): string {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  // Remove control characters except newline/tab, limit length
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim().substring(0, maxLength);
+}
+
+// Sanitize customer object fields before use in PDF
+function sanitizeCustomer(customer: Record<string, unknown>): Record<string, unknown> {
+  const textFields = [
+    'name', 'contact_name', 'contact_email', 'contact_phone',
+    'company_registration_number', 'legal_address', 'representative_name',
+    'representative_title', 'industry', 'country', 'description', 'currency'
+  ];
+  const sanitized = { ...customer };
+  for (const field of textFields) {
+    if (sanitized[field] != null) {
+      sanitized[field] = sanitizeText(sanitized[field], field === 'description' ? 2000 : 500);
+    }
+  }
+  return sanitized;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -461,11 +485,39 @@ serve(async (req) => {
     console.log(`generate-customer-documents: User ${user.id} authorized with role '${profile.role}'`);
     // ============ END AUTHORIZATION ============
 
-    const { customer_id, document_types, format = 'pdf' } = await req.json();
+    const body = await req.json();
+    const { customer_id, document_types, format = 'pdf' } = body;
 
-    if (!customer_id || !document_types || !Array.isArray(document_types)) {
+    // Input validation
+    if (!customer_id || typeof customer_id !== 'string' || customer_id.length > 100) {
       return new Response(
-        JSON.stringify({ error: 'customer_id and document_types array are required' }),
+        JSON.stringify({ error: 'Valid customer_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(customer_id)) {
+      return new Response(
+        JSON.stringify({ error: 'customer_id must be a valid UUID' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!document_types || !Array.isArray(document_types)) {
+      return new Response(
+        JSON.stringify({ error: 'document_types array is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate document types
+    const allowedDocTypes = ['proposal', 'service_agreement', 'sla', 'quotation'];
+    const invalidTypes = document_types.filter((t: unknown) => typeof t !== 'string' || !allowedDocTypes.includes(t as string));
+    if (invalidTypes.length > 0 || document_types.length === 0 || document_types.length > 10) {
+      return new Response(
+        JSON.stringify({ error: `Invalid document types. Allowed: ${allowedDocTypes.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -485,6 +537,9 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Sanitize customer data before PDF generation
+    const sanitizedCustomer = sanitizeCustomer(customer as Record<string, unknown>);
 
     // Fetch latest active contract
     const { data: contract } = await supabase
@@ -540,16 +595,16 @@ serve(async (req) => {
         let finalDoc;
         switch (docType) {
           case 'proposal':
-            finalDoc = await generateProposal(customer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
+            finalDoc = await generateProposal(sanitizedCustomer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
             break;
           case 'service_agreement':
-            finalDoc = await generateServiceAgreement(customer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
+            finalDoc = await generateServiceAgreement(sanitizedCustomer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
             break;
           case 'sla':
-            finalDoc = await generateSLA(customer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
+            finalDoc = await generateSLA(sanitizedCustomer, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
             break;
           case 'quotation':
-            finalDoc = await generateInvoice(customer, contract, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
+            finalDoc = await generateInvoice(sanitizedCustomer, contract, pdfDoc, font, boldFont, dooLogoBytes, customerLogoBytes);
             break;
           default:
             console.log(`Unknown document type: ${docType}`);
