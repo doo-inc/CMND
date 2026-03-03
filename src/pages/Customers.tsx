@@ -394,8 +394,8 @@ const Customers = () => {
 
       // Build all batch promises for stages and contracts in parallel
       const batchSize = 50;
-      const stagePromises: Promise<any>[] = [];
-      const contractPromises: Promise<any>[] = [];
+      const stagePromises: PromiseLike<any>[] = [];
+      const contractPromises: PromiseLike<any>[] = [];
 
       for (let i = 0; i < customerIds.length; i += batchSize) {
         const batch = customerIds.slice(i, i + batchSize);
@@ -405,6 +405,7 @@ const Customers = () => {
             .select('id, customer_id, name, status, category, updated_at, created_at')
             .in('customer_id', batch)
             .limit(batch.length * 20)
+            .then(res => res)
         );
         contractPromises.push(
           supabase
@@ -412,6 +413,7 @@ const Customers = () => {
             .select('customer_id, value, status')
             .in('customer_id', batch)
             .in('status', ['active', 'pending'])
+            .then(res => res)
         );
       }
 
