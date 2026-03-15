@@ -638,7 +638,7 @@ export default function ContractPaymentsView() {
                     </div>
 
                     {schedule.map((payment) => {
-                      const record = records[payment.id] || {};
+                      const record: PaymentRecord = records[payment.id] || { isPaid: false };
                       const effectiveDate =
                         record.dueDateOverride || payment.dueDate;
                       const overdue =
