@@ -412,10 +412,12 @@ export default function ContractPaymentsView() {
 
       let invoiceUrl: string | undefined;
       if (!uploadError) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("invoices").getPublicUrl(filePath);
-        invoiceUrl = publicUrl;
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("invoices")
+          .createSignedUrl(filePath, 3600);
+        if (!signedError && signedData?.signedUrl) {
+          invoiceUrl = signedData.signedUrl;
+        }
       }
 
       const records = { ...(paymentData.get(contractId) || {}) };

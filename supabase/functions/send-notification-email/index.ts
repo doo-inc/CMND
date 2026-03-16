@@ -228,13 +228,13 @@ function buildEmailContent(notification: NotificationData): string {
           </div>
           
           <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h2 style="color: #1F2937; margin: 0 0 15px 0; font-size: 20px; font-weight: 600;">${notification.title}</h2>
-            <p style="color: #4B5563; margin: 0; font-size: 16px; line-height: 1.6;">${notification.message}</p>
+            <h2 style="color: #1F2937; margin: 0 0 15px 0; font-size: 20px; font-weight: 600;">${safeTitle}</h2>
+            <p style="color: #4B5563; margin: 0; font-size: 16px; line-height: 1.6;">${safeMessage}</p>
             
-            ${notification.related_id ? `
+            ${safeRelatedId ? `
               <div style="margin-top: 20px; padding: 15px; background: #F9FAFB; border-radius: 6px; border-left: 3px solid ${color};">
                 <p style="margin: 0; font-size: 14px; color: #6B7280;">
-                  <strong>Related ${notification.related_type || 'Item'}:</strong> ${notification.related_id}
+                  <strong>Related ${safeRelatedType || 'Item'}:</strong> ${safeRelatedId}
                 </p>
               </div>
             ` : ''}

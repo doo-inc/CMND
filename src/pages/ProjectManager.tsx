@@ -1347,14 +1347,14 @@ export default function ProjectManager() {
         return;
       }
 
-      const { data: urlData } = supabase.storage
+      const { data: signedUrlData } = await supabase.storage
         .from('project-files')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 3600);
 
       const newDoc: ProjectDocument = {
         id: crypto.randomUUID(),
         name: file.name,
-        url: urlData.publicUrl,
+        url: signedUrlData?.signedUrl || '',
         size: file.size,
         uploaded_at: new Date().toISOString(),
       };
