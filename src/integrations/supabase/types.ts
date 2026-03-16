@@ -1647,6 +1647,7 @@ export type Database = {
         Returns: Json
       }
       generate_invitation_token: { Args: never; Returns: string }
+      generate_share_code: { Args: never; Returns: string }
       get_current_user_profile: {
         Args: never
         Returns: {
@@ -1658,6 +1659,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_project_by_share_code: { Args: { code: string }; Returns: Json }
       get_user_notification_settings: {
         Args: { user_id_param: string }
         Returns: {
@@ -1687,7 +1689,7 @@ export type Database = {
       update_payment_status: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "manager" | "user"
+      app_role: "admin" | "manager" | "user" | "batelco"
       notification_type:
         | "lifecycle"
         | "customer"
@@ -1833,7 +1835,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "user"],
+      app_role: ["admin", "manager", "user", "batelco"],
       notification_type: [
         "lifecycle",
         "customer",
