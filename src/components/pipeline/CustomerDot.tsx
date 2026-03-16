@@ -2,7 +2,7 @@
 import React from "react";
 import { CustomerData } from "@/types/customers";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -12,9 +12,10 @@ import { useNavigate } from "react-router-dom";
 
 interface CustomerDotProps {
   customer: CustomerData;
+  readOnly?: boolean;
 }
 
-export const CustomerDot: React.FC<CustomerDotProps> = ({ customer }) => {
+export const CustomerDot: React.FC<CustomerDotProps> = ({ customer, readOnly = false }) => {
   const navigate = useNavigate();
 
   const getInitials = (name: string) => {
@@ -41,6 +42,7 @@ export const CustomerDot: React.FC<CustomerDotProps> = ({ customer }) => {
   };
 
   const handleClick = () => {
+    if (readOnly) return;
     navigate(`/customers/${customer.id}`);
   };
 
@@ -48,10 +50,10 @@ export const CustomerDot: React.FC<CustomerDotProps> = ({ customer }) => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div 
+          <div
             className={`
-              cursor-pointer transition-transform hover:scale-110
-              ring-2 ${getStatusColor(customer.status || "not-started")} 
+              ${readOnly ? "cursor-default" : "cursor-pointer transition-transform hover:scale-110"}
+              ring-2 ${getStatusColor(customer.status || "not-started")}
               rounded-full
             `}
             onClick={handleClick}

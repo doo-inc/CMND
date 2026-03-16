@@ -133,91 +133,42 @@ export const syncCustomerPipelineStages = async (): Promise<boolean> => {
 
     // console.log(`🔄 Grouped stages for ${Object.keys(stagesByCustomer).length} customers`);
 
-    let updatedCount = 0;
-    const syncResults: Array<{
-      customer: string;
-      oldStage: string;
-      newStage: string;
-      oldStatus: string;
-      newStatus: string;
-      stages: string[];
-    }> = [];
+    // Collect all needed updates first (no awaits in the loop)
+    const updateQueue: Array<{ id: string; stage: string; status: string }> = [];
 
-    // Update each customer's pipeline stage and status
     for (const customer of customers || []) {
       const customerStages = stagesByCustomer[customer.id] || [];
+
+      // Preserve manually-set stage for customers with no lifecycle stages
+      if (customerStages.length === 0) continue;
+
       const newPipelineStage = computePipelineStage(customerStages);
       const newOperationalStatus = computeOperationalStatus(customerStages);
-      
-      // Log stage computation details
-      const completedStages = customerStages
-        .filter(s => isCompletedLike(s.status))
-        .map(s => s.name);
-      const inProgressStages = customerStages
-        .filter(s => isInProgressLike(s.status))
-        .map(s => s.name);
-      
-      // Special detailed logging for Gulf Air and Macqueen
-      if (customer.name?.toLowerCase().includes('gulf air') || customer.name?.toLowerCase().includes('macqueen')) {
-        // console.log(`🔴🔴🔴 ${customer.name.toUpperCase()} SYNC DETAILS:`);
-        // console.log(`   Customer ID: ${customer.id}`);
-        // console.log(`   Stages found for this customer ID: ${customerStages.length}`);
-        // console.log(`   All stages:`, customerStages.map(s => ({ name: s.name, status: s.status, canonical: canonicalizeStageName(s.name) })));
-        // console.log(`   Completed stages: [${completedStages.join(', ')}]`);
-        // console.log(`   In progress stages: [${inProgressStages.join(', ')}]`);
-        // console.log(`   Computed pipeline stage: ${newPipelineStage}`);
-        // console.log(`   Computed status: ${newOperationalStatus}`);
-        // console.log(`   Current DB: stage="${customer.stage}", status="${customer.status}"`);
-      }
-      
-      // IMPORTANT: Don't downgrade customers with no lifecycle stages
-      // If a customer has 0 stages, preserve their existing stage (may have been manually set)
-      if (customerStages.length === 0) {
-        // console.log(`⏭️ SKIPPING ${customer.name}: No lifecycle stages - preserving current stage "${customer.stage}"`);
-        continue;
-      }
 
-      // Only update if stage or status has changed
       if (customer.stage !== newPipelineStage || customer.status !== newOperationalStatus) {
-        // console.log(`🔄 UPDATING ${customer.name}: Stage ${customer.stage} -> ${newPipelineStage}, Status ${customer.status} -> ${newOperationalStatus}`);
-        
-        const { data: updateData, error: updateError } = await supabase
-          .from('customers')
-          .update({
-            stage: newPipelineStage,
-            status: newOperationalStatus
-          })
-          .eq('id', customer.id)
-          .select();
-
-        if (updateError) {
-          console.error(`❌ Error updating customer ${customer.name}:`, updateError);
-        } else {
-          // console.log(`✅ Successfully updated ${customer.name}:`, updateData);
-          updatedCount++;
-          syncResults.push({
-            customer: customer.name,
-            oldStage: customer.stage || 'null',
-            newStage: newPipelineStage,
-            oldStatus: customer.status || 'null',
-            newStatus: newOperationalStatus,
-            stages: [...completedStages, ...inProgressStages]
-          });
-        }
+        updateQueue.push({ id: customer.id, stage: newPipelineStage, status: newOperationalStatus });
       }
     }
+
+    // Run all updates concurrently instead of sequentially — turns N round-trips
+    // into a single parallel wave (e.g. 50 updates: ~50× faster than sequential).
+    const updateResults = await Promise.all(
+      updateQueue.map(({ id, stage, status }) =>
+        supabase
+          .from('customers')
+          .update({ stage, status })
+          .eq('id', id)
+      )
+    );
+
+    const updatedCount = updateResults.filter(r => !r.error).length;
+    const failedCount = updateResults.filter(r => r.error).length;
 
     const duration = Date.now() - startTime;
-    // console.log("=== PIPELINE SYNC COMPLETED ===");
-    // console.log(`✅ Updated ${updatedCount} customers in ${duration}ms`);
-    
-    if (syncResults.length > 0) {
-      // console.log("📊 SYNC SUMMARY:");
-      syncResults.forEach(result => {
-        // console.log(`   • ${result.customer}: ${result.oldStage} -> ${result.newStage} (${result.oldStatus} -> ${result.newStatus})`);
-      });
+    if (failedCount > 0) {
+      console.error(`❌ Pipeline sync: ${failedCount} update(s) failed`);
     }
-    
+
     return true;
   } catch (error) {
     console.error("❌ CRITICAL ERROR in syncCustomerPipelineStages:", error);

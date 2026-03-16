@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { BatelcoLayout } from "@/components/batelco/BatelcoLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText,
-  Upload,
   Download,
-  Trash2,
   CheckCircle2,
   Circle,
   Search,
@@ -47,8 +45,6 @@ const BatelcoDocuments = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
-  const [uploadingFor, setUploadingFor] = useState<{ customerId: string; type: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -151,57 +147,6 @@ const BatelcoDocuments = () => {
   const getDocumentsByType = (docs: CustomerDocument[], type: string) => docs.filter((d) => d.document_type === type);
   const hasDocumentType = (docs: CustomerDocument[], type: string) => docs.some((d) => d.document_type === type);
 
-  const handleUploadClick = (customerId: string, type: string) => {
-    setUploadingFor({ customerId, type });
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !uploadingFor) return;
-
-    const file = files[0];
-    const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!allowed.includes(file.type)) {
-      toast({ title: "Invalid file type", description: "PDF or Word documents only.", variant: "destructive" });
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 50MB.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const { customerId, type } = uploadingFor;
-      const fileName = `batelco-${customerId}-${Date.now()}-${file.name}`;
-      const filePath = `batelco/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
-      if (uploadError) throw uploadError;
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error: insertError } = await supabase.from("documents").insert({
-        customer_id: customerId,
-        name: file.name,
-        file_path: filePath,
-        document_type: type,
-        file_size: file.size,
-        uploaded_by: user?.id,
-      });
-      if (insertError) throw insertError;
-
-      toast({ title: "Document uploaded", description: `${file.name} uploaded as ${type}.` });
-      fetchData();
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast({ title: "Upload failed", description: "Error uploading document.", variant: "destructive" });
-    } finally {
-      setUploadingFor(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
   const downloadDocument = async (doc: CustomerDocument) => {
     try {
       const { data, error } = await supabase.storage.from("documents").download(doc.file_path);
@@ -219,18 +164,6 @@ const BatelcoDocuments = () => {
     }
   };
 
-  const deleteDocument = async (doc: CustomerDocument) => {
-    try {
-      await supabase.storage.from("documents").remove([doc.file_path]);
-      const { error } = await supabase.from("documents").delete().eq("id", doc.id);
-      if (error) throw error;
-      toast({ title: "Document deleted", description: `${doc.name} removed.` });
-      fetchData();
-    } catch {
-      toast({ title: "Delete failed", variant: "destructive" });
-    }
-  };
-
   const filteredCustomers = customers.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const totalCustomers = customers.length;
@@ -244,7 +177,7 @@ const BatelcoDocuments = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent">Documents</h1>
-          <p className="text-muted-foreground mt-1">Upload service agreements & proposals for Batelco contracts</p>
+          <p className="text-muted-foreground mt-1">View service agreements & proposals for Batelco contracts</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -258,8 +191,6 @@ const BatelcoDocuments = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search customers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
-
-        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileSelect} className="hidden" />
 
         {loading ? (
           <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500" /></div>
@@ -323,9 +254,6 @@ const BatelcoDocuments = () => {
                               Proposals
                               {proposals.length > 0 && <Badge variant="secondary" className="text-xs">{proposals.length}</Badge>}
                             </h4>
-                            <Button size="sm" variant="outline" onClick={() => handleUploadClick(customer.id, "Proposal")}>
-                              <Upload className="h-3.5 w-3.5 mr-1.5" />Upload
-                            </Button>
                           </div>
                           {proposals.length === 0 ? (
                             <div className="text-sm text-muted-foreground italic p-3 bg-muted/30 rounded-lg">No proposals uploaded yet</div>
@@ -336,7 +264,6 @@ const BatelcoDocuments = () => {
                                   <div className="flex items-center gap-2 min-w-0 flex-1"><FileText className="h-4 w-4 text-blue-500 shrink-0" /><span className="text-sm truncate">{doc.name}</span></div>
                                   <div className="flex items-center gap-1">
                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => downloadDocument(doc)}><Download className="h-3.5 w-3.5" /></Button>
-                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteDocument(doc)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                   </div>
                                 </div>
                               ))}
@@ -352,9 +279,6 @@ const BatelcoDocuments = () => {
                               Service Agreements
                               {agreements.length > 0 && <Badge variant="secondary" className="text-xs">{agreements.length}</Badge>}
                             </h4>
-                            <Button size="sm" variant="outline" onClick={() => handleUploadClick(customer.id, "Service Agreement")}>
-                              <Upload className="h-3.5 w-3.5 mr-1.5" />Upload
-                            </Button>
                           </div>
                           {agreements.length === 0 ? (
                             <div className="text-sm text-muted-foreground italic p-3 bg-muted/30 rounded-lg">No service agreements uploaded yet</div>
@@ -365,7 +289,6 @@ const BatelcoDocuments = () => {
                                   <div className="flex items-center gap-2 min-w-0 flex-1"><FileCheck className="h-4 w-4 text-green-500 shrink-0" /><span className="text-sm truncate">{doc.name}</span></div>
                                   <div className="flex items-center gap-1">
                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => downloadDocument(doc)}><Download className="h-3.5 w-3.5" /></Button>
-                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteDocument(doc)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                   </div>
                                 </div>
                               ))}

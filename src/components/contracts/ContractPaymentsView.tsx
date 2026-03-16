@@ -103,6 +103,7 @@ function computePaymentSchedule(contract: ActiveContract): ScheduledPayment[] {
           startDate.getDate()
         );
 
+  // ── 1. Setup fee is always the first, separate line item ─────────────────
   if (contract.setupFee > 0) {
     payments.push({
       id: `setup`,
@@ -114,95 +115,121 @@ function computePaymentSchedule(contract: ActiveContract): ScheduledPayment[] {
     });
   }
 
-  const annualRate = contract.annualRate;
-  if (annualRate <= 0) return payments;
+  // ── 2. Recurring amount = total contract value minus setup fee ────────────
+  // Fall back to annualRate if total value is not separately recorded.
+  const totalValue = contract.value > 0 ? contract.value : contract.annualRate;
+  const recurringTotal = Math.max(0, totalValue - contract.setupFee);
+  if (recurringTotal <= 0) return payments;
 
-  // Annual & one-time: single upfront payment at start (alongside setup)
-  if (
-    contract.paymentFrequency === "annual" ||
-    contract.paymentFrequency === "one-time"
-  ) {
+  // ── 3. Calculate full contract years, rounded DOWN (bonus months are free) ─
+  // e.g. 14 months → 1 year, 26 months → 2 years. Minimum 1 year.
+  const totalMonths =
+    (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+    (endDate.getMonth() - startDate.getMonth());
+  const fullYears = Math.max(1, Math.floor(totalMonths / 12));
+
+  // Helper: add a date offset in months from startDate
+  const dateAt = (monthOffset: number): string => {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + monthOffset);
+    return d.toISOString().split("T")[0];
+  };
+
+  // Helper: H1/H2 label from a payment index (0-based) and start
+  const halfLabel = (i: number): string => {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + i * 6);
+    const half = d.getMonth() < 6 ? "H1" : "H2";
+    return `${half} ${d.getFullYear()}`;
+  };
+
+  // Helper: Quarter label
+  const quarterLabel = (i: number): string => {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + i * 3);
+    const q = Math.ceil((d.getMonth() + 1) / 3);
+    return `Q${q} ${d.getFullYear()}`;
+  };
+
+  // Helper: Month label
+  const monthLabel = (i: number): string => {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + i);
+    return `${d.toLocaleString("default", { month: "short" })} ${d.getFullYear()}`;
+  };
+
+  // ── 4. Generate fixed payment counts based on frequency × full years ──────
+  //
+  //  Annual:      1 payment  per year  (e.g. 2-year → 2 payments)
+  //  Semi-annual: 2 payments per year  (e.g. 1-year → 2 payments)
+  //  Quarterly:   4 payments per year  (e.g. 1-year → 4 payments)
+  //  Monthly:    12 payments per year  (e.g. 2-year → 24 payments)
+  //
+  //  The while-loop approach was removed — it over-counted when contract
+  //  end dates didn't land exactly on a payment boundary.
+
+  const freq = contract.paymentFrequency;
+
+  if (freq === "one-time") {
     payments.push({
       id: `p1`,
       type: "recurring",
-      label:
-        contract.paymentFrequency === "one-time"
-          ? "One-time Payment"
-          : "Annual Fee",
-      amount: annualRate,
+      label: "One-time Payment",
+      amount: recurringTotal,
       dueDate: contract.startDate,
       periodIndex: 1,
     });
     return payments;
   }
 
-  // Monthly: 12 payments per year, one each month from start date
-  if (contract.paymentFrequency === "monthly") {
-    const amountPerPayment = Math.round((annualRate / 12) * 100) / 100;
-    let paymentDate = new Date(startDate);
-    let idx = 1;
+  let count: number;
+  let intervalMonths: number;
+  let labelFn: (i: number) => string;
 
-    while (paymentDate <= endDate) {
-      payments.push({
-        id: `p${idx}`,
-        type: "recurring",
-        label: `${paymentDate.toLocaleString("default", { month: "short" })} ${paymentDate.getFullYear()}`,
-        amount: amountPerPayment,
-        dueDate: paymentDate.toISOString().split("T")[0],
-        periodIndex: idx,
-      });
-      paymentDate = new Date(paymentDate);
-      paymentDate.setMonth(paymentDate.getMonth() + 1);
-      idx++;
-    }
-    return payments;
-  }
-
-  // Semi-annual: exactly 2 payments, 6 months apart (first at start)
-  if (contract.paymentFrequency === "semi-annual") {
-    const half = Math.round((annualRate / 2) * 100) / 100;
+  if (freq === "annual") {
+    count = fullYears * 1;
+    intervalMonths = 12;
+    labelFn = (i) => {
+      const d = new Date(startDate);
+      d.setFullYear(d.getFullYear() + i);
+      return `Annual ${d.getFullYear()}`;
+    };
+  } else if (freq === "semi-annual") {
+    count = fullYears * 2;
+    intervalMonths = 6;
+    labelFn = halfLabel;
+  } else if (freq === "quarterly") {
+    count = fullYears * 4;
+    intervalMonths = 3;
+    labelFn = quarterLabel;
+  } else if (freq === "monthly") {
+    count = fullYears * 12;
+    intervalMonths = 1;
+    labelFn = monthLabel;
+  } else {
+    // Unknown frequency — single payment for the full recurring amount
     payments.push({
       id: `p1`,
       type: "recurring",
-      label: "Semi-annual (1 of 2)",
-      amount: half,
+      label: "Payment",
+      amount: recurringTotal,
       dueDate: contract.startDate,
       periodIndex: 1,
-    });
-    const secondDate = new Date(startDate);
-    secondDate.setMonth(secondDate.getMonth() + 6);
-    payments.push({
-      id: `p2`,
-      type: "recurring",
-      label: "Semi-annual (2 of 2)",
-      amount: half,
-      dueDate: secondDate.toISOString().split("T")[0],
-      periodIndex: 2,
     });
     return payments;
   }
 
-  // Quarterly: 4 payments per year, first at start, then every 3 months
-  const monthsPerPeriod = 3;
-  const amountPerPayment =
-    Math.round((annualRate / 4) * 100) / 100;
-  let paymentDate = new Date(startDate);
-  let idx = 1;
+  const amountPerPayment = Math.round((recurringTotal / count) * 100) / 100;
 
-  while (paymentDate <= endDate) {
-    const q = Math.ceil((paymentDate.getMonth() + 1) / 3);
+  for (let i = 0; i < count; i++) {
     payments.push({
-      id: `p${idx}`,
+      id: `p${i + 1}`,
       type: "recurring",
-      label: `Q${q} ${paymentDate.getFullYear()}`,
+      label: labelFn(i),
       amount: amountPerPayment,
-      dueDate: paymentDate.toISOString().split("T")[0],
-      periodIndex: idx,
+      dueDate: dateAt(i * intervalMonths),
+      periodIndex: i + 1,
     });
-
-    paymentDate = new Date(paymentDate);
-    paymentDate.setMonth(paymentDate.getMonth() + monthsPerPeriod);
-    idx++;
   }
 
   return payments;

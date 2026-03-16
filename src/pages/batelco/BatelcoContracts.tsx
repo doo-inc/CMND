@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AddEditContract, ContractData } from "@/components/contracts/AddEditContract";
+import { ContractData } from "@/components/contracts/AddEditContract";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/contractUtils";
@@ -121,68 +121,6 @@ const BatelcoContracts = () => {
     fetchContracts();
   }, []);
 
-  const handleAddContract = async (newContract: Partial<ContractData>) => {
-    try {
-      if (!newContract.customerId) {
-        toast.error("Customer is required");
-        return;
-      }
-
-      const insertData: Record<string, any> = {
-        customer_id: newContract.customerId,
-        name: newContract.type || "Service Agreement",
-        status: newContract.status || "draft",
-        start_date: newContract.startDate && newContract.startDate !== "-" ? new Date(newContract.startDate).toISOString() : null,
-        end_date: newContract.endDate && newContract.endDate !== "-" ? new Date(newContract.endDate).toISOString() : null,
-        value: parseInt(newContract.value?.replace(/[^0-9.-]+/g, "") || "0"),
-        setup_fee: parseInt(newContract.setupFee?.replace(/[^0-9.-]+/g, "") || "0"),
-        annual_rate: parseInt(newContract.annualRate?.replace(/[^0-9.-]+/g, "") || "0"),
-        payment_frequency: newContract.paymentFrequency || "annual",
-        partner_label: "batelco",
-      };
-
-      let result = await (supabase as any).from("contracts").insert(insertData);
-
-      if (result.error?.message?.includes("partner_label")) {
-        delete insertData.partner_label;
-        result = await supabase.from("contracts").insert(insertData as any);
-      }
-
-      if (result.error) throw result.error;
-
-      toast.success("Contract created successfully");
-      fetchContracts();
-    } catch (error) {
-      console.error("Error adding contract:", error);
-      toast.error("Failed to add contract");
-    }
-  };
-
-  const handleUpdateContract = async (contractId: string, updatedContract: Partial<ContractData>) => {
-    try {
-      const { error } = await supabase
-        .from("contracts")
-        .update({
-          name: updatedContract.type,
-          status: updatedContract.status,
-          start_date: updatedContract.startDate && updatedContract.startDate !== "-" ? new Date(updatedContract.startDate).toISOString() : null,
-          end_date: updatedContract.endDate && updatedContract.endDate !== "-" ? new Date(updatedContract.endDate).toISOString() : null,
-          value: parseInt(updatedContract.value?.replace(/[^0-9.-]+/g, "") || "0"),
-          setup_fee: parseInt(updatedContract.setupFee?.replace(/[^0-9.-]+/g, "") || "0"),
-          annual_rate: parseInt(updatedContract.annualRate?.replace(/[^0-9.-]+/g, "") || "0"),
-          payment_frequency: updatedContract.paymentFrequency || "annual",
-        })
-        .eq("id", contractId);
-
-      if (error) throw error;
-      toast.success("Contract updated");
-      fetchContracts();
-    } catch (error) {
-      console.error("Error updating contract:", error);
-      toast.error("Failed to update contract");
-    }
-  };
-
   const parseValue = (v: string) => {
     const n = Number(v.replace(/[^0-9.-]+/g, ""));
     return isNaN(n) ? 0 : n;
@@ -218,7 +156,6 @@ const BatelcoContracts = () => {
             <Button variant="outline" size="sm" onClick={fetchContracts} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <AddEditContract onSave={handleAddContract} />
           </div>
         </div>
 
@@ -266,7 +203,6 @@ const BatelcoContracts = () => {
                     <TableHead>Start Date</TableHead>
                     <TableHead>End Date</TableHead>
                     <TableHead>Value</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -275,7 +211,7 @@ const BatelcoContracts = () => {
                       .fill(0)
                       .map((_, i) => (
                         <TableRow key={`loading-${i}`}>
-                          <TableCell colSpan={8}>
+                          <TableCell colSpan={7}>
                             <div className="h-12 bg-muted animate-pulse rounded" />
                           </TableCell>
                         </TableRow>
@@ -297,18 +233,11 @@ const BatelcoContracts = () => {
                         <TableCell>{contract.startDate}</TableCell>
                         <TableCell>{contract.endDate}</TableCell>
                         <TableCell>{contract.value}</TableCell>
-                        <TableCell>
-                          <AddEditContract
-                            contract={contract}
-                            isEditing={true}
-                            onSave={(u) => handleUpdateContract(contract.id!, u)}
-                          />
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No Batelco contracts found.
                       </TableCell>
                     </TableRow>

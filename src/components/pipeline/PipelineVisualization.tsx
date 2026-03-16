@@ -8,11 +8,13 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 interface PipelineVisualizationProps {
   selectedCountries?: string[];
   filteredCustomerIds?: string[];
+  readOnly?: boolean;
 }
 
 export const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({
   selectedCountries = [],
   filteredCustomerIds = [],
+  readOnly = false,
 }) => {
   const { pipelineData, isLoading, error } = usePipelineData();
 
@@ -127,10 +129,11 @@ export const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({
           <div className="flex items-center gap-0 pb-4 min-h-[200px]">
             {filteredPipelineData.map((stage, index) => (
               <div key={stage.stageName} className="flex items-center flex-shrink-0 animate-scale-in">
-                <PipelineStage 
-                  stage={stage} 
+                <PipelineStage
+                  stage={stage}
                   stageIndex={index}
                   totalStages={filteredPipelineData.length}
+                  readOnly={readOnly}
                 />
                 {index < filteredPipelineData.length - 1 && (
                   <div className="w-8 h-1 bg-gradient-to-r from-primary/60 to-primary/30 mx-2 flex-shrink-0 animate-pulse" />

@@ -56,28 +56,21 @@ const BatelcoDashboard = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Fetch all customers, then filter in memory for Batelco visibility
+      // Batelco portal only shows customers added through the Batelco portal (partner_label = 'batelco').
       const { data: allCustomers, error: custErr } = await supabase
         .from("customers")
-        .select("*");
+        .select("*")
+        .eq("partner_label", "batelco");
 
       if (custErr) throw custErr;
 
-      const customers = (allCustomers || []).filter(
-        (c: any) =>
-          (c.country && c.country.trim().toLowerCase() === "bahrain") ||
-          (c.partner_label && String(c.partner_label).toLowerCase() === "batelco")
-      );
+      const customers = allCustomers || [];
 
       const validCustomers = customers.filter(
         (c: any) => c.status !== "churned" && c.stage !== "Lost"
       );
 
-      // For contracts/revenue KPIs, only count contracts from Batelco-labeled customers
-      const batelcoLabeledCustomers = customers.filter(
-        (c: any) => c.partner_label && String(c.partner_label).toLowerCase() === "batelco"
-      );
-      const batelcoCustomerIds = batelcoLabeledCustomers.map((c: any) => c.id);
+      const batelcoCustomerIds = customers.map((c: any) => c.id);
 
       let batelcoContracts: any[] = [];
       if (batelcoCustomerIds.length > 0) {
@@ -154,7 +147,7 @@ const BatelcoDashboard = () => {
     {
       title: "Total Customers",
       value: `${d?.totalCustomers || 0}`,
-      description: "Bahrain & Batelco customers",
+      description: "Batelco partner customers",
       icon: <Users className="h-6 w-6" />,
     },
     {

@@ -21,7 +21,6 @@ import { CustomerData } from "@/types/customers";
 import { toast } from "sonner";
 import { resolvePipelineStageFromLifecycleStages } from "@/utils/pipelineRules";
 import { sortStagesByOrder } from "@/utils/stageOrdering";
-import { defaultLifecycleStages } from "@/data/defaultLifecycleStages";
 
 const BatelcoCustomers = () => {
   const navigate = useNavigate();
@@ -29,7 +28,6 @@ const BatelcoCustomers = () => {
   const [stageFilter, setStageFilter] = useState("all");
   const [segmentFilter, setSegmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [partnerFilter, setPartnerFilter] = useState<"all" | "batelco" | "non-batelco">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
@@ -88,16 +86,14 @@ const BatelcoCustomers = () => {
       if (showRefresh) setIsRefreshing(true);
       else setIsLoading(true);
 
-      // Batelco sees: all Bahrain customers + any with partner_label = batelco (including newly added).
-      // Fetch all then filter in memory so we always show the right set (no .or() or column dependency).
-      const { data: allRows, error } = await supabase.from("customers").select("*");
+      // Batelco portal only shows customers that were added through the Batelco portal (partner_label = 'batelco').
+      const { data: allRows, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("partner_label", "batelco");
       if (error) throw error;
 
-      const dbCustomers: any[] = (allRows || []).filter(
-        (c: any) =>
-          (c.country && c.country.trim().toLowerCase() === "bahrain") ||
-          (c.partner_label && String(c.partner_label).toLowerCase() === "batelco")
-      );
+      const dbCustomers: any[] = allRows || [];
 
       if (dbCustomers.length === 0) {
         setCustomers([]);
@@ -132,44 +128,6 @@ const BatelcoCustomers = () => {
         if (!stagesByCustomer[s.customer_id]) stagesByCustomer[s.customer_id] = [];
         stagesByCustomer[s.customer_id].push(s);
       });
-
-      // Auto-create missing lifecycle stages for customers that have none
-      const customersWithoutStages = dbCustomers.filter((c: any) => !stagesByCustomer[c.id] || stagesByCustomer[c.id].length === 0);
-      if (customersWithoutStages.length > 0) {
-        let defaultOwnerId: string | null = null;
-        try {
-          const { data: staffData } = await supabase.from("staff").select("id").limit(1);
-          defaultOwnerId = staffData?.[0]?.id || null;
-        } catch { /* staff table may be empty */ }
-
-        const allNewStages: any[] = [];
-        for (const cust of customersWithoutStages) {
-          const stagesToInsert = defaultLifecycleStages.map((stage) => ({
-            customer_id: cust.id,
-            name: stage.name,
-            status: stage.status,
-            category: stage.category,
-            ...(defaultOwnerId ? { owner_id: defaultOwnerId } : {}),
-          }));
-          allNewStages.push(...stagesToInsert);
-        }
-
-        if (allNewStages.length > 0) {
-          await (supabase as any).from("lifecycle_stages").insert(allNewStages);
-
-          // Re-fetch stages for the affected customers to get proper IDs
-          const missingIds = customersWithoutStages.map((c: any) => c.id);
-          const { data: refetchedStages } = await supabase
-            .from("lifecycle_stages")
-            .select("id, customer_id, name, status, category, updated_at, created_at")
-            .in("customer_id", missingIds);
-
-          (refetchedStages || []).forEach((s) => {
-            if (!stagesByCustomer[s.customer_id]) stagesByCustomer[s.customer_id] = [];
-            stagesByCustomer[s.customer_id].push(s);
-          });
-        }
-      }
 
       const contractValues: Record<string, number> = {};
       (allContracts || []).forEach((c) => {
@@ -213,19 +171,16 @@ const BatelcoCustomers = () => {
       if (stageFilter !== "all" && c.stage !== stageFilter) return false;
       if (segmentFilter !== "all" && c.segment !== segmentFilter) return false;
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
-      if (partnerFilter === "batelco" && c.partner_label !== "batelco") return false;
-      if (partnerFilter === "non-batelco" && c.partner_label === "batelco") return false;
       if (searchTerm && !c.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [customers, countryFilter, stageFilter, segmentFilter, statusFilter, partnerFilter, searchTerm]);
+  }, [customers, countryFilter, stageFilter, segmentFilter, statusFilter, searchTerm]);
 
   const activeFilterCount =
     (countryFilter !== "all" ? 1 : 0) +
     (stageFilter !== "all" ? 1 : 0) +
     (segmentFilter !== "all" ? 1 : 0) +
-    (statusFilter !== "all" ? 1 : 0) +
-    (partnerFilter !== "all" ? 1 : 0);
+    (statusFilter !== "all" ? 1 : 0);
 
   return (
     <BatelcoLayout>
@@ -234,7 +189,7 @@ const BatelcoCustomers = () => {
           <div>
             <h1 className="text-2xl font-bold">Customers</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Bahrain customer base & Batelco pipeline
+              Batelco partner customers
             </p>
           </div>
           <div className="flex gap-2">
@@ -289,7 +244,6 @@ const BatelcoCustomers = () => {
                       setStageFilter("all");
                       setSegmentFilter("all");
                       setStatusFilter("all");
-                      setPartnerFilter("all");
                     }}
                     className="h-8 text-xs"
                   >
@@ -358,19 +312,6 @@ const BatelcoCustomers = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Partner</Label>
-                  <Select value={partnerFilter} onValueChange={(v) => setPartnerFilter(v as "all" | "batelco" | "non-batelco")}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="All Partners" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Customers</SelectItem>
-                      <SelectItem value="batelco">Batelco Only</SelectItem>
-                      <SelectItem value="non-batelco">Non-Batelco Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </PopoverContent>
           </Popover>

@@ -11,12 +11,14 @@ interface PipelineStageProps {
   stage: PipelineStageData;
   stageIndex: number;
   totalStages: number;
+  readOnly?: boolean;
 }
 
-export const PipelineStage: React.FC<PipelineStageProps> = ({ 
-  stage, 
+export const PipelineStage: React.FC<PipelineStageProps> = ({
+  stage,
   stageIndex,
-  totalStages 
+  totalStages,
+  readOnly = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   // Grid layout: 8 columns × 2 rows = 16 customers to fill the card optimally
@@ -82,7 +84,7 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
             <div className="overflow-visible">
               <div className="grid grid-cols-8 gap-2 p-2 overflow-visible">
                 {stage.customers.slice(0, INITIAL_DISPLAY_COUNT).map((customer) => (
-                  <CustomerDot key={customer.id} customer={customer} />
+                  <CustomerDot key={customer.id} customer={customer} readOnly={readOnly} />
                 ))}
                 {/* Fill empty grid cells if we have fewer customers than grid capacity */}
                 {stage.customers.length < INITIAL_DISPLAY_COUNT && 
@@ -118,7 +120,7 @@ export const PipelineStage: React.FC<PipelineStageProps> = ({
                   <ScrollArea className="h-72 w-full overflow-visible">
                     <div className="flex flex-wrap gap-3 p-2 pb-5 overflow-visible">
                       {stage.customers.slice(INITIAL_DISPLAY_COUNT).map((customer) => (
-                        <CustomerDot key={customer.id} customer={customer} />
+                        <CustomerDot key={customer.id} customer={customer} readOnly={readOnly} />
                       ))}
                     </div>
                   </ScrollArea>

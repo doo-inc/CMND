@@ -359,7 +359,9 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
               <div className="p-3 border-b">
                 <h4 className="font-medium text-sm">Lifecycle Stages</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Click a status to change it. {pendingCount > 0 ? "Changes save when you close." : ""}
+                  {isBatelco
+                    ? "View-only lifecycle stage progress."
+                    : `Click a status to change it. ${pendingCount > 0 ? "Changes save when you close." : ""}`}
                 </p>
               </div>
               <div className="max-h-[400px] overflow-y-auto p-1">
@@ -390,7 +392,7 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
                               {config.label}
                             </span>
                           </button>
-                          {isExpanded && (
+                          {!isBatelco && isExpanded && (
                             <div className="flex items-center gap-1 px-3 pb-2 pt-0.5">
                               {STATUS_CYCLE.map((status) => {
                                 const sc = STATUS_CONFIG[status];
@@ -421,7 +423,7 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
                   </div>
                 ))}
               </div>
-              {pendingCount > 0 && (
+              {!isBatelco && pendingCount > 0 && (
                 <div className="border-t p-2 flex items-center gap-2 bg-muted/30">
                   <span className="text-xs text-muted-foreground flex-1 pl-1">
                     {pendingCount} unsaved change{pendingCount > 1 ? "s" : ""}
@@ -482,34 +484,37 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
             <div className="p-3 space-y-2">
               <textarea
                 value={notesValue}
-                onChange={(e) => setNotesValue(e.target.value)}
+                readOnly={isBatelco}
+                onChange={isBatelco ? undefined : (e) => setNotesValue(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                placeholder="Add notes about this customer..."
-                className="w-full min-h-[100px] text-sm bg-background border rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder={isBatelco ? "No notes." : "Add notes about this customer..."}
+                className={`w-full min-h-[100px] text-sm bg-background border rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring ${isBatelco ? "cursor-default opacity-70" : ""}`}
               />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setNotesValue(customer.description || "");
-                    setNotesOpen(false);
-                  }}
-                  className="px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSaveNotes();
-                  }}
-                  disabled={isSavingNotes}
-                  className="flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Save
-                </button>
-              </div>
+              {!isBatelco && (
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNotesValue(customer.description || "");
+                      setNotesOpen(false);
+                    }}
+                    className="px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveNotes();
+                    }}
+                    disabled={isSavingNotes}
+                    className="flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save
+                  </button>
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
@@ -522,73 +527,80 @@ function CustomerCardComponent({ customer, showEditOptions = false, isDetailed =
             <span>Updated {customer.lastUpdatedAt ? formatShortDate(customer.lastUpdatedAt) : "—"}</span>
           </div>
 
-          {/* Last Contacted — popover with options */}
-          <Popover open={contactedOpen} onOpenChange={setContactedOpen}>
-            <PopoverTrigger asChild>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setContactedOpen(!contactedOpen);
-                }}
-                disabled={isMarkingContacted}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+          {/* Last Contacted — read-only for Batelco, interactive popover for DOO */}
+          {isBatelco ? (
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Phone className="h-3 w-3" />
+              <span>Contacted {lastContacted ? formatShortDate(lastContacted) : "Never"}</span>
+            </div>
+          ) : (
+            <Popover open={contactedOpen} onOpenChange={setContactedOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setContactedOpen(!contactedOpen);
+                  }}
+                  disabled={isMarkingContacted}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Phone className={`h-3 w-3 ${isMarkingContacted ? "animate-pulse" : ""}`} />
+                  <span>Contacted {lastContacted ? formatShortDate(lastContacted) : "Never"}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-56 p-1"
+                align="end"
+                side="top"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Phone className={`h-3 w-3 ${isMarkingContacted ? "animate-pulse" : ""}`} />
-                <span>Contacted {lastContacted ? formatShortDate(lastContacted) : "Never"}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-56 p-1"
-              align="end"
-              side="top"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={handleContactedNow}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left text-sm"
-              >
-                <Phone className="h-3.5 w-3.5 text-green-500" />
-                Contacted Now
-              </button>
+                <button
+                  onClick={handleContactedNow}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left text-sm"
+                >
+                  <Phone className="h-3.5 w-3.5 text-green-500" />
+                  Contacted Now
+                </button>
 
-              <div className="px-3 py-2">
-                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                  Set a different date
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    value={customDate}
-                    max={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => { e.stopPropagation(); setCustomDate(e.target.value); }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  <button
-                    onClick={handleSetCustomDate}
-                    disabled={!customDate}
-                    className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <CalendarDays className="h-3 w-3" />
-                    Set
-                  </button>
+                <div className="px-3 py-2">
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    Set a different date
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={customDate}
+                      max={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => { e.stopPropagation(); setCustomDate(e.target.value); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={handleSetCustomDate}
+                      disabled={!customDate}
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      Set
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {lastContacted && (
-                <>
-                  <div className="h-px bg-border mx-2" />
-                  <button
-                    onClick={handleClearContacted}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-destructive/10 transition-colors text-left text-sm text-destructive"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Clear Contact Date
-                  </button>
-                </>
-              )}
-            </PopoverContent>
-          </Popover>
+                {lastContacted && (
+                  <>
+                    <div className="h-px bg-border mx-2" />
+                    <button
+                      onClick={handleClearContacted}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-destructive/10 transition-colors text-left text-sm text-destructive"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Clear Contact Date
+                    </button>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </CardContent>
     </Card>

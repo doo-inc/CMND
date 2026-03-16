@@ -27,16 +27,6 @@ const PipelineMap = () => {
     new Set(allCustomers.map((c) => c.country).filter(Boolean))
   ).sort();
 
-  // Run pipeline sync when page loads
-  useEffect(() => {
-    const initializePipelineMap = async () => {
-      console.log("🔄 PipelineMap: Running pipeline sync on page load");
-      await syncCustomerPipelineStages();
-    };
-    
-    initializePipelineMap();
-  }, []);
-
   // Handle manual sync
   const handleManualSync = async () => {
     console.log("🔄 Manual pipeline sync triggered from Pipeline Map");

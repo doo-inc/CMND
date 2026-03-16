@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BatelcoLayout } from "@/components/batelco/BatelcoLayout";
 import { PipelineVisualization } from "@/components/pipeline/PipelineVisualization";
-import { syncCustomerPipelineStages } from "@/utils/pipelineSync";
 import { usePipelineData } from "@/hooks/usePipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,19 +14,14 @@ const BatelcoPipeline = () => {
 
   const fetchBahrainIds = async () => {
     try {
-      const { data: allCustomers } = await supabase
+      // Filter at the DB level — avoids downloading every customer record
+      // just to filter by country/partner_label on the client.
+      const { data } = await supabase
         .from("customers")
-        .select("id, country, partner_label");
+        .select("id")
+        .or("country.eq.Bahrain,partner_label.eq.batelco");
 
-      const ids = (allCustomers || [])
-        .filter(
-          (c: any) =>
-            (c.country && c.country.trim().toLowerCase() === "bahrain") ||
-            (c.partner_label && String(c.partner_label).toLowerCase() === "batelco")
-        )
-        .map((c: any) => c.id);
-
-      setBahrainCustomerIds(ids);
+      setBahrainCustomerIds((data || []).map((c: any) => c.id));
     } catch {
       setBahrainCustomerIds([]);
     } finally {
@@ -36,19 +30,17 @@ const BatelcoPipeline = () => {
   };
 
   useEffect(() => {
-    syncCustomerPipelineStages();
     fetchBahrainIds();
   }, []);
 
-  const handleManualSync = async () => {
-    toast.loading("Syncing pipeline data...");
+  const handleRefresh = async () => {
+    toast.loading("Refreshing pipeline data...");
     try {
-      await syncCustomerPipelineStages();
       await refetch();
       await fetchBahrainIds();
-      toast.success("Pipeline synced successfully!");
+      toast.success("Pipeline refreshed!");
     } catch {
-      toast.error("Failed to sync pipeline");
+      toast.error("Failed to refresh pipeline");
     }
   };
 
@@ -67,17 +59,17 @@ const BatelcoPipeline = () => {
             </p>
           </div>
           <Button
-            onClick={handleManualSync}
+            onClick={handleRefresh}
             disabled={isLoading}
             variant="outline"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Sync Pipeline
+            Refresh
           </Button>
         </div>
 
         {ready && bahrainCustomerIds.length > 0 ? (
-          <PipelineVisualization filteredCustomerIds={bahrainCustomerIds} />
+          <PipelineVisualization filteredCustomerIds={bahrainCustomerIds} readOnly={true} />
         ) : ready ? (
           <p className="text-muted-foreground text-sm">No Bahrain customers in pipeline yet.</p>
         ) : null}

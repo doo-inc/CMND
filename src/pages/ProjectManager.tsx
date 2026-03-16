@@ -343,6 +343,10 @@ export default function ProjectManager() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Only scroll to bottom on new outgoing/incoming messages, not on initial load
+  const shouldScrollToBottomRef = useRef(false);
+  // Ref to scroll the detail panel back to the top when a new project is selected
+  const detailPanelRef = useRef<HTMLDivElement>(null);
   
   // Debounce timer for text field updates
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -546,11 +550,13 @@ export default function ProjectManager() {
         message: newMessage.trim(),
       };
 
+      shouldScrollToBottomRef.current = true;
       const { error } = await supabase
         .from('project_messages' as any)
         .insert(messageData);
 
       if (error) {
+        shouldScrollToBottomRef.current = false;
         console.error('Error sending message:', error);
         toast.error('Failed to send message');
         return;
@@ -851,10 +857,21 @@ export default function ProjectManager() {
     }
   }, [selectedProject?.id]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom only when a message was just sent or received in real-time,
+  // NOT when messages are initially loaded after selecting a project.
   useEffect(() => {
-    scrollToBottom();
+    if (shouldScrollToBottomRef.current) {
+      scrollToBottom();
+      shouldScrollToBottomRef.current = false;
+    }
   }, [messages]);
+
+  // Scroll the detail panel back to the top whenever a different project is selected.
+  useEffect(() => {
+    if (selectedProject?.id && detailPanelRef.current) {
+      detailPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedProject?.id]);
 
   // Real-time subscription for messages
   useEffect(() => {
@@ -872,6 +889,7 @@ export default function ProjectManager() {
         },
         (payload) => {
           const newMsg = payload.new as ProjectMessage;
+          shouldScrollToBottomRef.current = true;
           setMessages(prev => [...prev, newMsg]);
         }
       )
@@ -2006,7 +2024,7 @@ export default function ProjectManager() {
     }
 
     return (
-      <Card className="lg:col-span-2 border-2 border-border/50">
+      <Card ref={detailPanelRef} className="lg:col-span-2 border-2 border-border/50">
         <CardHeader className="pb-4">
           {/* Header Row: Avatar, Name, Badges */}
           <div className="flex items-start gap-3">
@@ -2057,13 +2075,13 @@ export default function ProjectManager() {
                       variant="ghost"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        const url = `${window.location.origin}/projectupdate/${selectedProject.share_code}`;
-                        navigator.clipboard.writeText(url);
-                        toast.success("Client update link copied to clipboard");
+                        const message = `Access your project update at: cmnd.doo.ooo/projectupdate — Your code: ${selectedProject.share_code}`;
+                        navigator.clipboard.writeText(message);
+                        toast.success("Copied!");
                       }}
                     >
                       <Copy className="h-3 w-3 mr-1" />
-                      Copy Link
+                      Copy Code
                     </Button>
                   </div>
                 )}
