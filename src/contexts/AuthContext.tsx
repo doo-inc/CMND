@@ -65,14 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setProfile(data);
         }
-      })
-      .catch((err) => {
+        setProfileLoading(false);
+      }, (err) => {
         if (!cancelled) {
           console.error('Error fetching profile:', err);
           setProfile(null);
         }
-      })
-      .finally(() => {
         if (!cancelled) setProfileLoading(false);
       });
     return () => { cancelled = true; };
@@ -232,14 +230,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
       if (error) {
-        toast.error('Failed to update profile');
+      toast({ title: 'Failed to update profile', variant: 'destructive' });
         return { error };
       }
       setProfile(data);
-      toast.success('Profile updated successfully');
+      toast({ title: 'Profile updated successfully' });
       return { data };
     } catch (err: any) {
-      toast.error('Failed to update profile');
+      toast({ title: 'Failed to update profile', variant: 'destructive' });
       return { error: err };
     } finally {
       setProfileUpdating(false);

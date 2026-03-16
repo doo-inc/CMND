@@ -83,12 +83,12 @@ const createAccountSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   full_name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  role: z.enum(["admin", "user", "batelco"]),
+  role: z.enum(["admin", "manager", "user", "batelco"]),
 });
 
 const editMemberSchema = z.object({
   full_name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  role: z.enum(["admin", "user", "batelco"]),
+  role: z.enum(["admin", "manager", "user", "batelco"]),
 });
 
 type InviteFormValues = z.infer<typeof inviteFormSchema>;

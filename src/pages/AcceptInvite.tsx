@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface InvitationData {
   id: string;
   email: string;
-  role: 'admin' | 'user' | 'batelco';
+  role: 'admin' | 'manager' | 'user' | 'batelco';
   invited_by: string;
 }
 

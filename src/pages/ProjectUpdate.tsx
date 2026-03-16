@@ -111,7 +111,7 @@ function CodeEntryView() {
     setError("");
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_project_by_share_code", { code: trimmed });
+      const { data, error: rpcError } = await supabase.rpc("get_project_by_share_code" as any, { code: trimmed });
       if (rpcError || !data) {
         setError("Invalid project code. Please check and try again.");
         setLoading(false);
@@ -189,7 +189,7 @@ function ProjectDetailView({ code }: { code: string }) {
       setLoading(true);
       setError("");
       try {
-        const { data, error: rpcError } = await supabase.rpc("get_project_by_share_code", { code: code.toUpperCase() });
+        const { data, error: rpcError } = await supabase.rpc("get_project_by_share_code" as any, { code: code.toUpperCase() });
         if (rpcError || !data) {
           setError("Project not found. Please check your code and try again.");
           return;
