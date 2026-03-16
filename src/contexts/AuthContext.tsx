@@ -232,14 +232,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
       if (error) {
-        toast.error('Failed to update profile');
+      toast({ title: 'Failed to update profile', variant: 'destructive' });
         return { error };
       }
       setProfile(data);
-      toast.success('Profile updated successfully');
+      toast({ title: 'Profile updated successfully' });
       return { data };
     } catch (err: any) {
-      toast.error('Failed to update profile');
+      toast({ title: 'Failed to update profile', variant: 'destructive' });
       return { error: err };
     } finally {
       setProfileUpdating(false);
