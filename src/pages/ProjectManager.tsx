@@ -40,7 +40,9 @@ import {
   Inbox,
   Users,
   ExternalLink,
-  GanttChart
+  GanttChart,
+  Copy,
+  Link,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createNotification } from "@/utils/notificationHelpers";
@@ -108,6 +110,7 @@ interface ProjectCustomer {
   demo_delivered?: boolean;
   testing_links?: TestingLink[];
   documents?: ProjectDocument[];
+  share_code?: string;
   created_at: string;
   completed_at?: string;
 }
@@ -400,6 +403,7 @@ export default function ProjectManager() {
         demo_delivered: p.demo_delivered || false,
         testing_links: (p.testing_links as TestingLink[]) || [],
         documents: (p.documents as ProjectDocument[]) || [],
+        share_code: p.share_code || undefined,
         created_at: p.created_at,
         completed_at: p.completed_at || undefined,
       }));
@@ -942,6 +946,7 @@ export default function ProjectManager() {
             demo_date: newRecord.demo_date || undefined,
             demo_delivered: newRecord.demo_delivered || false,
             documents: (newRecord.documents as ProjectDocument[]) || [],
+            share_code: (newRecord as any).share_code || undefined,
             created_at: newRecord.created_at,
           };
           
@@ -984,6 +989,7 @@ export default function ProjectManager() {
             demo_delivered: updatedRecord.demo_delivered || false,
             testing_links: (updatedRecord.testing_links as TestingLink[]) || [],
             documents: (updatedRecord.documents as ProjectDocument[]) || [],
+            share_code: (updatedRecord as any).share_code || undefined,
             created_at: updatedRecord.created_at,
           };
           
@@ -1118,6 +1124,7 @@ export default function ProjectManager() {
         demo_delivered: responseData.demo_delivered || false,
         testing_links: (responseData.testing_links as TestingLink[]) || [],
         documents: (responseData.documents as ProjectDocument[]) || [],
+        share_code: (responseData as any).share_code || undefined,
         created_at: responseData.created_at,
       };
       
@@ -2039,6 +2046,27 @@ export default function ProjectManager() {
                       ? `Service: ${selectedProject.service_type.charAt(0).toUpperCase() + selectedProject.service_type.slice(1)}`
                       : 'Service Type: Not Available'}
                   </Badge>
+                {selectedProject.share_code && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Badge variant="outline" className="font-mono text-xs tracking-wider gap-1">
+                      <Link className="h-3 w-3" />
+                      {selectedProject.share_code}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        const url = `${window.location.origin}/projectupdate/${selectedProject.share_code}`;
+                        navigator.clipboard.writeText(url);
+                        toast.success("Client update link copied to clipboard");
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy Link
+                    </Button>
+                  </div>
+                )}
                 </div>
               </div>
             </div>

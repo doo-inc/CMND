@@ -1158,6 +1158,7 @@ export type Database = {
           secondary_project_manager: string | null
           service_description: string | null
           service_type: string | null
+          share_code: string | null
           start_date: string | null
           status: string
           testing_links: Json | null
@@ -1183,6 +1184,7 @@ export type Database = {
           secondary_project_manager?: string | null
           service_description?: string | null
           service_type?: string | null
+          share_code?: string | null
           start_date?: string | null
           status?: string
           testing_links?: Json | null
@@ -1208,6 +1210,7 @@ export type Database = {
           secondary_project_manager?: string | null
           service_description?: string | null
           service_type?: string | null
+          share_code?: string | null
           start_date?: string | null
           status?: string
           testing_links?: Json | null

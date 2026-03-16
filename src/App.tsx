@@ -30,6 +30,7 @@ import {
   LazyLegalDocuments,
   LazyProposalGenie,
   LazyReports,
+  LazyProjectUpdate,
   LazyBatelcoDashboard,
   LazyBatelcoCustomers,
   LazyBatelcoContracts,
@@ -71,6 +72,8 @@ const App = () => {
                   {/* Public routes - these should come first to ensure they're matched */}
                   <Route path="/auth" element={<LazyAuth />} />
                   <Route path="/accept-invite" element={<LazyAcceptInvite />} />
+                  <Route path="/projectupdate" element={<LazyProjectUpdate />} />
+                  <Route path="/projectupdate/:code" element={<LazyProjectUpdate />} />
                   
                   {/* Protected routes */}
                   <Route path="/" element={<ProtectedRoute><LazyIndex /></ProtectedRoute>} />
