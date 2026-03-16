@@ -65,14 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setProfile(data);
         }
-      })
-      .catch((err) => {
+        setProfileLoading(false);
+      }, (err) => {
         if (!cancelled) {
           console.error('Error fetching profile:', err);
           setProfile(null);
         }
-      })
-      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
         if (!cancelled) setProfileLoading(false);
       });
     return () => { cancelled = true; };
