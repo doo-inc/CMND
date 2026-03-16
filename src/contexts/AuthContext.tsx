@@ -73,8 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (!cancelled) setProfileLoading(false);
       });
-        if (!cancelled) setProfileLoading(false);
-      });
     return () => { cancelled = true; };
   }, [user?.id]);
 
