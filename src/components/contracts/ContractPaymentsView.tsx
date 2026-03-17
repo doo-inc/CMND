@@ -187,25 +187,21 @@ function computePaymentSchedule(contract: ActiveContract): ScheduledPayment[] {
   let labelFn: (i: number) => string;
 
   if (freq === "annual") {
-    count = fullYears * 1;
+    count = 1;
     intervalMonths = 12;
-    labelFn = (i) => {
-      const d = new Date(startDate);
-      d.setFullYear(d.getFullYear() + i);
-      return `Annual ${d.getFullYear()}`;
-    };
+    labelFn = (i) => `Annual Rate Payment ${i + 1}`;
   } else if (freq === "semi-annual") {
-    count = fullYears * 2;
+    count = 2;
     intervalMonths = 6;
-    labelFn = halfLabel;
+    labelFn = (i) => `Annual Rate Payment ${i + 1}`;
   } else if (freq === "quarterly") {
-    count = fullYears * 4;
+    count = 4;
     intervalMonths = 3;
-    labelFn = quarterLabel;
+    labelFn = (i) => `Annual Rate Payment ${i + 1}`;
   } else if (freq === "monthly") {
-    count = fullYears * 12;
+    count = 12;
     intervalMonths = 1;
-    labelFn = monthLabel;
+    labelFn = (i) => `Annual Rate Payment ${i + 1}`;
   } else {
     // Unknown frequency — single payment for the full recurring amount
     payments.push({
@@ -309,7 +305,7 @@ export default function ContractPaymentsView() {
           : "-",
         setupFee: c.setup_fee || 0,
         annualRate: c.annual_rate || 0,
-        paymentFrequency: c.payment_frequency || "annual",
+        paymentFrequency: ((c.payment_frequency || "annual").replace("_", "-")) as ActiveContract["paymentFrequency"],
         value: c.value || 0,
         terms: c.terms || null,
       }));
@@ -680,7 +676,7 @@ export default function ContractPaymentsView() {
                       return (
                         <div
                           key={payment.id}
-                          className={`grid grid-cols-[40px_1fr_120px_140px_140px_80px] items-center px-5 py-3 transition-colors ${
+                          className={`group grid grid-cols-[40px_1fr_120px_140px_140px_80px] items-center px-5 py-3 transition-colors ${
                             record.isPaid
                               ? "bg-green-50/50 dark:bg-green-950/10"
                               : overdue
